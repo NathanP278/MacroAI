@@ -5,11 +5,15 @@ import {
   saveCustomRecipe,
   calculateRecipeTotals,
 } from '@/lib/recipes/recipe-builder';
+import { scaleNutrition } from '@/lib/nutrition/scaling';
 import { searchStaples } from '@/lib/foods/staples-search';
 import type {
   CustomRecipe,
   CustomRecipeIngredient,
   FoodItem,
+  MacroNutrients,
+  Micronutrients,
+  NutritionBasis,
 } from '@/types/nutrition';
 import {
   X,
@@ -18,8 +22,17 @@ import {
   ChefHat,
   Search,
   Check,
-  Scale,
 } from 'lucide-react';
+
+export interface ModalIngredientRow extends CustomRecipeIngredient {
+  amountStr?: string;
+  baseNutrients: MacroNutrients;
+  baseMicros: Micronutrients;
+  baseBasis: NutritionBasis;
+  servingSize?: number;
+  gramsPerUnit: number;
+  gramWeight: number;
+}
 
 export interface RecipeBuilderModalProps {
   isOpen: boolean;
@@ -37,7 +50,7 @@ export function RecipeBuilderModal({
   const [name, setName] = useState('');
   const [basis, setBasis] = useState<'perServing' | 'per100g'>('perServing');
   const [defaultServings, setDefaultServings] = useState(1);
-  const [ingredients, setIngredients] = useState<CustomRecipeIngredient[]>([]);
+  const [ingredients, setIngredients] = useState<ModalIngredientRow[]>([]);
 
   // Manual ingredient form fields
   const [manualName, setManualName] = useState('');
@@ -59,7 +72,51 @@ export function RecipeBuilderModal({
         setName(initialRecipe.name || '');
         setBasis(initialRecipe.basis || 'perServing');
         setDefaultServings(initialRecipe.defaultServings || 1);
-        setIngredients(initialRecipe.ingredients ? [...initialRecipe.ingredients] : []);
+        const mapped: ModalIngredientRow[] = (initialRecipe.ingredients || []).map((ing) => {
+          const isGram = ing.unit === 'g' || ing.unit === 'ml';
+          const gramsPerUnit =
+            (ing as any).gramsPerUnit || (isGram ? 1 : (ing as any).servingSize || 1);
+          const gramWeight = (ing as any).gramWeight ?? gramsPerUnit * ing.amount;
+          const baseBasis: NutritionBasis =
+            (ing as any).baseBasis || (isGram ? 'per100g' : 'perServing');
+          const baseFactor =
+            baseBasis === 'per100g' || baseBasis === 'per100ml'
+              ? ing.amount > 0
+                ? 100 / ing.amount
+                : 1
+              : ing.amount > 0
+                ? 1 / ing.amount
+                : 1;
+
+          const baseNutrients: MacroNutrients = (ing as any).baseNutrients || {
+            calories: (ing.nutritionSnapshot.calories || 0) * baseFactor,
+            protein: (ing.nutritionSnapshot.protein || 0) * baseFactor,
+            carbs: (ing.nutritionSnapshot.carbs || 0) * baseFactor,
+            fat: (ing.nutritionSnapshot.fat || 0) * baseFactor,
+            fiber: (ing.nutritionSnapshot.fiber || 0) * baseFactor,
+          };
+
+          const baseMicros: Micronutrients = (ing as any).baseMicros || {};
+          if (!(ing as any).baseMicros && ing.nutritionSnapshot.micros) {
+            for (const [k, v] of Object.entries(ing.nutritionSnapshot.micros)) {
+              if (typeof v === 'number') {
+                baseMicros[k] = v * baseFactor;
+              }
+            }
+          }
+
+          return {
+            ...ing,
+            amountStr: String(ing.amount),
+            baseNutrients,
+            baseMicros,
+            baseBasis,
+            servingSize: (ing as any).servingSize,
+            gramsPerUnit,
+            gramWeight,
+          };
+        });
+        setIngredients(mapped);
       } else {
         setName('');
         setBasis('perServing');
@@ -116,7 +173,7 @@ export function RecipeBuilderModal({
     };
   }, [searchQuery]);
 
-  // Live totals
+  // Live totals calculated with explicit gram weights
   const totals = useMemo(() => calculateRecipeTotals(ingredients), [ingredients]);
 
   const previewNutrients = useMemo(() => {
@@ -154,22 +211,42 @@ export function RecipeBuilderModal({
     const carbs = Number(manualCarbs) || 0;
     const fat = Number(manualFat) || 0;
 
-    const newIng: CustomRecipeIngredient = {
+    // Normalizing base nutrients per 100g
+    const factor = grams > 0 ? 100 / grams : 1;
+    const baseNutrients: MacroNutrients = {
+      calories: cals * factor,
+      protein: pro * factor,
+      carbs: carbs * factor,
+      fat: fat * factor,
+      fiber: 0,
+    };
+    const baseMicros: Micronutrients = {};
+
+    const { macros, micros } = scaleNutrition(
+      baseNutrients,
+      baseMicros,
+      'per100g',
+      grams
+    );
+
+    const newRow: ModalIngredientRow = {
       foodId: `manual:${Date.now()}`,
       name: trimmedName,
       amount: grams,
+      amountStr: String(grams),
       unit: 'g',
+      baseNutrients,
+      baseMicros,
+      baseBasis: 'per100g',
+      gramsPerUnit: 1,
+      gramWeight: grams,
       nutritionSnapshot: {
-        calories: cals,
-        protein: pro,
-        carbs: carbs,
-        fat: fat,
-        fiber: 0,
-        micros: {},
+        ...macros,
+        micros,
       },
     };
 
-    setIngredients((prev) => [...prev, newIng]);
+    setIngredients((prev) => [...prev, newRow]);
     setManualName('');
     setManualGrams('');
     setManualCals('');
@@ -180,84 +257,82 @@ export function RecipeBuilderModal({
 
   const handleAddFoodItem = (food: FoodItem) => {
     const isPerServing = food.basis === 'perServing';
-    const amount = isPerServing ? 1 : food.servingSize || 100;
-    const unit = isPerServing ? food.servingUnit || 'serving' : 'g';
+    const isPer100ml = food.basis === 'per100ml';
+    const unit = isPerServing
+      ? food.servingUnit || 'serving'
+      : isPer100ml
+        ? 'ml'
+        : 'g';
 
-    const snapCals = isPerServing
-      ? food.nutrientsPerBasis.calories
-      : (food.nutrientsPerBasis.calories * amount) / 100;
-    const snapP = isPerServing
-      ? food.nutrientsPerBasis.protein
-      : (food.nutrientsPerBasis.protein * amount) / 100;
-    const snapC = isPerServing
-      ? food.nutrientsPerBasis.carbs
-      : (food.nutrientsPerBasis.carbs * amount) / 100;
-    const snapF = isPerServing
-      ? food.nutrientsPerBasis.fat
-      : (food.nutrientsPerBasis.fat * amount) / 100;
-    const snapFib = isPerServing
-      ? food.nutrientsPerBasis.fiber
-      : (food.nutrientsPerBasis.fiber * amount) / 100;
+    const initialAmount = isPerServing ? 1 : food.servingSize || 100;
+    // Calculate realistic gram weight per unit for perServing foods
+    const gramsPerUnit = isPerServing
+      ? typeof food.servingSize === 'number' && food.servingSize > 0
+        ? food.servingSize
+        : 1
+      : 1;
 
-    const micros: Record<string, number> = {};
-    if (food.micronutrientsPerBasis) {
-      const factor = isPerServing ? 1 : amount / 100;
-      for (const [k, v] of Object.entries(food.micronutrientsPerBasis)) {
-        if (typeof v === 'number') {
-          micros[k] = Math.round((v * factor + Number.EPSILON) * 100) / 100;
-        }
-      }
-    }
+    // Direct use of scaleNutrition from @/lib/nutrition/scaling
+    const { macros, micros } = scaleNutrition(
+      food.nutrientsPerBasis,
+      food.micronutrientsPerBasis || {},
+      food.basis,
+      initialAmount,
+      food.servingSize
+    );
 
-    const newIng: CustomRecipeIngredient = {
+    const newRow: ModalIngredientRow = {
       foodId: food.id,
       name: food.name,
-      amount: Math.round(amount),
+      amount: initialAmount,
+      amountStr: String(initialAmount),
       unit,
+      baseNutrients: { ...food.nutrientsPerBasis },
+      baseMicros: { ...(food.micronutrientsPerBasis || {}) },
+      baseBasis: food.basis,
+      servingSize: food.servingSize,
+      gramsPerUnit,
+      gramWeight: gramsPerUnit * initialAmount,
       nutritionSnapshot: {
-        calories: Math.round(snapCals),
-        protein: Math.round((snapP + Number.EPSILON) * 10) / 10,
-        carbs: Math.round((snapC + Number.EPSILON) * 10) / 10,
-        fat: Math.round((snapF + Number.EPSILON) * 10) / 10,
-        fiber: Math.round((snapFib + Number.EPSILON) * 10) / 10,
+        ...macros,
         micros,
       },
     };
 
-    setIngredients((prev) => [...prev, newIng]);
+    setIngredients((prev) => [...prev, newRow]);
     setSearchQuery('');
     setSearchResults([]);
   };
 
-  const handleUpdateIngredientAmount = (index: number, newAmount: number) => {
+  const handleUpdateIngredientAmount = (index: number, newAmountStr: string) => {
     setIngredients((prev) => {
       const next = [...prev];
       const target = next[index];
       if (!target) return prev;
-      const oldAmount = Math.max(1, target.amount);
-      const ratio = newAmount / oldAmount;
-      const snap = target.nutritionSnapshot;
 
-      const updatedSnap = {
-        calories: Math.round(snap.calories * ratio),
-        protein: Math.round((snap.protein * ratio + Number.EPSILON) * 10) / 10,
-        carbs: Math.round((snap.carbs * ratio + Number.EPSILON) * 10) / 10,
-        fat: Math.round((snap.fat * ratio + Number.EPSILON) * 10) / 10,
-        fiber: Math.round((snap.fiber * ratio + Number.EPSILON) * 10) / 10,
-        micros: { ...snap.micros },
-      };
-      if (snap.micros) {
-        for (const [k, v] of Object.entries(snap.micros)) {
-          if (typeof v === 'number') {
-            updatedSnap.micros[k] = Math.round((v * ratio + Number.EPSILON) * 100) / 100;
-          }
-        }
-      }
+      const parsed = parseFloat(newAmountStr);
+      const safeAmount = isNaN(parsed) || parsed < 0 ? 0 : parsed;
+
+      // Direct calculation from immutable base profile using scaleNutrition - NO rounding drift!
+      const { macros, micros } = scaleNutrition(
+        target.baseNutrients,
+        target.baseMicros,
+        target.baseBasis,
+        safeAmount,
+        target.servingSize
+      );
+
+      const gramWeight = target.gramsPerUnit * safeAmount;
 
       next[index] = {
         ...target,
-        amount: newAmount,
-        nutritionSnapshot: updatedSnap,
+        amount: safeAmount,
+        amountStr: newAmountStr,
+        gramWeight,
+        nutritionSnapshot: {
+          ...macros,
+          micros,
+        },
       };
       return next;
     });
@@ -271,12 +346,16 @@ export function RecipeBuilderModal({
     if (!name.trim()) return;
 
     try {
+      const gramWeights = ingredients.map(
+        (ing) => ing.gramWeight ?? (ing.gramsPerUnit ? ing.gramsPerUnit * ing.amount : ing.amount)
+      );
       const saved = await saveCustomRecipe({
         id: initialRecipe?.id,
         name: name.trim(),
         ingredients,
         basis,
         defaultServings: Math.max(1, defaultServings),
+        gramWeights,
       });
       onSaved?.(saved);
       onClose();
@@ -446,14 +525,10 @@ export function RecipeBuilderModal({
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
-                        min="1"
-                        value={ing.amount}
-                        onChange={(e) =>
-                          handleUpdateIngredientAmount(
-                            idx,
-                            Math.max(1, parseInt(e.target.value, 10) || 1)
-                          )
-                        }
+                        min="0"
+                        step="any"
+                        value={ing.amountStr !== undefined ? ing.amountStr : ing.amount}
+                        onChange={(e) => handleUpdateIngredientAmount(idx, e.target.value)}
                         className="w-16 bg-card border border-border rounded-lg px-2 py-1 text-center font-mono text-xs text-foreground focus:outline-hidden"
                       />
                       <span className="text-muted-foreground font-mono text-[10px]">

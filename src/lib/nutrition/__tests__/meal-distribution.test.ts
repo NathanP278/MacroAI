@@ -9,13 +9,14 @@ import {
   saveCustomRecipe,
   logCustomRecipe,
   offsetIsoDate,
+  calculateRecipeTotals,
 } from '@/lib/recipes/recipe-builder';
 import { MealSlotsView } from '@/components/log/meal-slots-view';
 import { RecipeBuilderModal } from '@/components/recipes/recipe-builder-modal';
 import RecipesPage from '@/app/recipes/page';
 import LogPage from '@/app/log/page';
 import { useLoggerStore } from '@/stores/logger-store';
-import type { UserGoals, FoodLogEntry, CustomRecipe } from '@/types/nutrition';
+import type { UserGoals, FoodLogEntry, CustomRecipe, CustomRecipeIngredient } from '@/types/nutrition';
 
 describe('Task 12: Fitia-Style Smart Meal Distribution & Copy Yesterday', () => {
   beforeEach(async () => {
@@ -612,6 +613,133 @@ describe('Task 12: Fitia-Style Smart Meal Distribution & Copy Yesterday', () => 
         const remaining = await db.customRecipes.toArray();
         expect(remaining).toHaveLength(0);
       });
+    });
+
+    test('regression: editing ingredient amount in RecipeBuilderModal through 100 -> 1 -> "" -> 200 yields exact 2x calories without rounding drift', async () => {
+      render(
+        React.createElement(RecipeBuilderModal, {
+          isOpen: true,
+          onClose: () => {},
+        })
+      );
+
+      // Add a manual ingredient with 100g, 389 kcal, 16.9g protein, 66.3g carbs, 6.9g fat
+      const ingNameInput = screen.getByPlaceholderText(/ingredient name/i);
+      const ingGramsInput = screen.getByPlaceholderText(/weight \(g\)/i);
+      const ingCalsInput = screen.getByPlaceholderText(/calories/i);
+      const ingProteinInput = screen.getByPlaceholderText(/protein/i);
+      const addIngBtn = screen.getByRole('button', { name: /add ingredient/i });
+
+      fireEvent.change(ingNameInput, { target: { value: 'Rolled Oats' } });
+      fireEvent.change(ingGramsInput, { target: { value: '100' } });
+      fireEvent.change(ingCalsInput, { target: { value: '389' } });
+      fireEvent.change(ingProteinInput, { target: { value: '16.9' } });
+      fireEvent.click(addIngBtn);
+
+      expect(screen.getByText('Rolled Oats')).toBeInTheDocument();
+      expect(screen.getByText(/389 kcal/)).toBeInTheDocument();
+
+      // Find the ingredient's amount input
+      const amountInput = screen.getByDisplayValue('100');
+
+      // Edit: 100 -> 1 (intermediate edit)
+      fireEvent.change(amountInput, { target: { value: '1' } });
+      // At 1g, calories is Math.round(389 * 0.01) = 4 kcal
+      expect(screen.getByText(/4 kcal/)).toBeInTheDocument();
+
+      // Edit: 1 -> "" (user clears input while typing)
+      fireEvent.change(amountInput, { target: { value: '' } });
+
+      // Edit: "" -> 200 (final desired amount)
+      fireEvent.change(amountInput, { target: { value: '200' } });
+
+      // At 200g, calories MUST be exact 2x of baseline (389 * 2 = 778 kcal), NOT drifted compounding (e.g. 4 * 200 = 800)
+      expect(screen.getByText(/778 kcal/)).toBeInTheDocument();
+      // Protein should also be exact 2x (16.9 * 2 = 33.8g, rounded to 34P in display)
+      expect(screen.getByText(/34P/)).toBeInTheDocument();
+    });
+
+    test('regression: perServing item inside per100g recipe computes realistic totalGrams and nutrientsPerBasis without counting 1 serving as 1 gram', async () => {
+      // 1. Direct unit test of calculateRecipeTotals with a perServing ingredient that has servingSize: 50g
+      const eggIng: CustomRecipeIngredient = {
+        foodId: 'food:egg',
+        name: 'Whole Egg',
+        amount: 2, // 2 eggs
+        unit: 'serving',
+        nutritionSnapshot: {
+          calories: 144, // 72 kcal per egg
+          protein: 12.6,
+          carbs: 0.8,
+          fat: 9.6,
+          fiber: 0,
+          micros: {},
+        },
+      };
+      (eggIng as any).gramsPerUnit = 50; // 50g per egg
+      (eggIng as any).servingSize = 50;
+
+      const totals = calculateRecipeTotals([eggIng]);
+      // 2 eggs * 50g = 100g total weight, NOT 2g!
+      expect(totals.totalGrams).toBe(100);
+
+      // Save custom recipe with basis per100g
+      const recipe = await saveCustomRecipe({
+        name: 'Egg Scramble Base',
+        basis: 'per100g',
+        ingredients: [eggIng],
+      });
+
+      // Total grams is 100g
+      expect(recipe.totalGrams).toBe(100);
+      // Per 100g calories must be 144 kcal (144 * 100 / 100), NOT 7200 kcal!
+      expect(recipe.nutrientsPerBasis.calories).toBe(144);
+      expect(recipe.nutrientsPerBasis.protein).toBe(13); // round(12.6)
+
+      // 2. Test in RecipeBuilderModal with a perServing staple food item
+      const { setStaplesCache } = await import('@/lib/foods/staples-search');
+      setStaplesCache([
+        {
+          id: 'staple:egg-large',
+          name: 'Large Egg',
+          basis: 'perServing',
+          servingSize: 50,
+          servingUnit: 'g',
+          nutrientsPerBasis: {
+            calories: 72,
+            protein: 6.3,
+            carbs: 0.4,
+            fat: 4.8,
+            fiber: 0,
+          },
+          micronutrientsPerBasis: {},
+          source: 'staple',
+          updatedAt: 1,
+        },
+      ]);
+
+      render(
+        React.createElement(RecipeBuilderModal, {
+          isOpen: true,
+          onClose: () => {},
+        })
+      );
+
+      // Switch basis to per100g
+      const per100gBtn = screen.getByRole('button', { name: /per 100g/i });
+      fireEvent.click(per100gBtn);
+
+      // Search and add Large Egg
+      const searchInput = screen.getByPlaceholderText(/search foods to add as ingredient/i);
+      fireEvent.change(searchInput, { target: { value: 'Egg' } });
+
+      const foodResult = await screen.findByText('Large Egg');
+      fireEvent.click(foodResult);
+
+      // The modal should display 50g total weight for 1 egg (not 1g!)
+      expect(screen.getByText(/50g total weight/i)).toBeInTheDocument();
+
+      // And preview per 100g should be realistic (~144 kcal for 100g of egg, not 7200 kcal!)
+      expect(screen.getByText(/144/)).toBeInTheDocument();
     });
   });
 });

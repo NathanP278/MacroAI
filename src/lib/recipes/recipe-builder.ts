@@ -38,8 +38,14 @@ export interface RecipeTotals {
 
 /**
  * Computes raw cumulative totals across ingredients.
+ * Respects explicit gramWeights, (ing as any).gramWeight, (ing as any).gramsPerUnit,
+ * or (ing as any).servingSize for perServing ingredients so that per100g recipes
+ * do not count 1 serving as 1 gram.
  */
-export function calculateRecipeTotals(ingredients: CustomRecipeIngredient[]): RecipeTotals {
+export function calculateRecipeTotals(
+  ingredients: CustomRecipeIngredient[],
+  gramWeights?: number[]
+): RecipeTotals {
   let totalGrams = 0;
   let calories = 0;
   let protein = 0;
@@ -48,8 +54,28 @@ export function calculateRecipeTotals(ingredients: CustomRecipeIngredient[]): Re
   let fiber = 0;
   const micros: Micronutrients = {};
 
-  for (const ing of ingredients) {
-    totalGrams += Number(ing.amount) || 0;
+  for (let i = 0; i < (ingredients || []).length; i++) {
+    const ing = ingredients[i];
+    if (!ing) continue;
+
+    let weight = 0;
+    if (gramWeights && typeof gramWeights[i] === 'number' && Number.isFinite(gramWeights[i])) {
+      weight = gramWeights[i];
+    } else if (typeof (ing as any).gramWeight === 'number' && Number.isFinite((ing as any).gramWeight)) {
+      weight = (ing as any).gramWeight;
+    } else if (typeof (ing as any).gramsPerUnit === 'number' && Number.isFinite((ing as any).gramsPerUnit)) {
+      weight = (ing as any).gramsPerUnit * (Number(ing.amount) || 0);
+    } else if (
+      typeof (ing as any).servingSize === 'number' &&
+      (ing as any).servingSize > 0 &&
+      (ing.unit === 'serving' || ing.unit === 'servings' || ing.unit === 'srv')
+    ) {
+      weight = (ing as any).servingSize * (Number(ing.amount) || 0);
+    } else {
+      weight = Number(ing.amount) || 0;
+    }
+
+    totalGrams += weight;
     const snap = ing.nutritionSnapshot;
     if (snap) {
       calories += Number(snap.calories) || 0;
@@ -92,6 +118,7 @@ export interface SaveCustomRecipeInput {
   ingredients: CustomRecipeIngredient[];
   basis?: 'per100g' | 'perServing';
   defaultServings?: number;
+  gramWeights?: number[];
 }
 
 /**
@@ -100,7 +127,7 @@ export interface SaveCustomRecipeInput {
 export async function saveCustomRecipe(input: SaveCustomRecipeInput): Promise<CustomRecipe> {
   const basis = input.basis || 'perServing';
   const defaultServings = Math.max(1, Number(input.defaultServings) || 1);
-  const totals = calculateRecipeTotals(input.ingredients || []);
+  const totals = calculateRecipeTotals(input.ingredients || [], input.gramWeights);
   const totalGrams = totals.totalGrams;
 
   let nutrientsPerBasis: MacroNutrients;

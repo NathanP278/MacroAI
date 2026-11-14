@@ -26,6 +26,13 @@ export default function RecipesPage() {
   const [editingRecipe, setEditingRecipe] = useState<CustomRecipe | null>(null);
   const [selectedSlots, setSelectedSlots] = useState<Record<string, string>>({});
   const [loggedFeedback, setLoggedFeedback] = useState<Record<string, string>>({});
+  const feedbackTimersRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  React.useEffect(() => {
+    return () => {
+      Object.values(feedbackTimersRef.current).forEach((timer) => clearTimeout(timer));
+    };
+  }, []);
 
   const activeDate = useLoggerStore((s) => s.activeDate);
   const activeMealSlot = useLoggerStore((s) => s.activeMealSlot);
@@ -78,12 +85,16 @@ export default function RecipesPage() {
         [recipe.id]: `Logged to ${slot}!`,
       }));
 
-      setTimeout(() => {
+      if (feedbackTimersRef.current[recipe.id]) {
+        clearTimeout(feedbackTimersRef.current[recipe.id]);
+      }
+      feedbackTimersRef.current[recipe.id] = setTimeout(() => {
         setLoggedFeedback((prev) => {
           const next = { ...prev };
           delete next[recipe.id];
           return next;
         });
+        delete feedbackTimersRef.current[recipe.id];
       }, 2500);
     } catch (err) {
       console.error('Failed to log custom recipe:', err);

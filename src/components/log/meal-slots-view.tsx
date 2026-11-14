@@ -14,6 +14,13 @@ export function MealSlotsView() {
   const activeDate = useLoggerStore((s) => s.activeDate);
   const openSheet = useLoggerStore((s) => s.openSheet);
   const [copyFeedback, setCopyFeedback] = useState<Record<string, string>>({});
+  const feedbackTimersRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  React.useEffect(() => {
+    return () => {
+      Object.values(feedbackTimersRef.current).forEach((timer) => clearTimeout(timer));
+    };
+  }, []);
 
   // Query today's logs
   const todayLogs = useLiveQuery(
@@ -74,12 +81,16 @@ export function MealSlotsView() {
           ...prev,
           [slotId]: `Copied ${count} item${count > 1 ? 's' : ''}`,
         }));
-        setTimeout(() => {
+        if (feedbackTimersRef.current[slotId]) {
+          clearTimeout(feedbackTimersRef.current[slotId]);
+        }
+        feedbackTimersRef.current[slotId] = setTimeout(() => {
           setCopyFeedback((prev) => {
             const next = { ...prev };
             delete next[slotId];
             return next;
           });
+          delete feedbackTimersRef.current[slotId];
         }, 2500);
       }
     } catch (err) {
