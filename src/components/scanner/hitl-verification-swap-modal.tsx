@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, Check, Database, Sparkles, Plus, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Search, X, Check, Plus, Loader2 } from 'lucide-react';
 import { db, generateId } from '@/lib/db/macroai-db';
 import { searchStaples } from '@/lib/foods/staples-search';
 import { searchUsdaFoods } from '@/lib/foods/usda-adapter';
@@ -46,24 +46,85 @@ export function HitlVerificationSwapModal({
 
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize query with target item name when opening
-  useEffect(() => {
-    if (open) {
-      if (targetItem) {
-        setQuery(targetItem.name);
-        executeSearch(targetItem.name);
-      } else {
-        setQuery('');
-        setResults([]);
-        setManualName('');
-        setManualGrams('100');
-        setManualCalories('100');
-        setManualProtein('0');
-        setManualCarbs('0');
-        setManualFat('0');
-      }
+  const executeSearch = useCallback(async (searchTerm: string) => {
+    const q = searchTerm.trim();
+    if (!q) {
+      setResults([]);
+      return;
     }
-  }, [open, targetItem]);
+
+    setIsSearching(true);
+    try {
+      // 1. Search cached items in Dexie
+      const cached = await db.foodsCache.toArray();
+      const localMatches = cached.filter((item) =>
+        item.name.toLowerCase().includes(q.toLowerCase()) ||
+        (item.brand && item.brand.toLowerCase().includes(q.toLowerCase()))
+      );
+
+      // 2. Search offline staples dataset
+      let stapleMatches: FoodItem[] = [];
+      try {
+        stapleMatches = await searchStaples(q, 20);
+      } catch (err) {
+        console.warn('Staples search error:', err);
+      }
+
+      // 3. Search USDA FoodData Central online (resilient to offline/keys)
+      let usdaMatches: FoodItem[] = [];
+      try {
+        usdaMatches = await searchUsdaFoods(q);
+      } catch {
+        // USDA search failure is non-fatal: offline or missing key
+      }
+
+      // Deduplicate by id, prioritize local, then staples, then USDA
+      const seenIds = new Set<string>();
+      const combined: FoodItem[] = [];
+
+      for (const item of [...localMatches, ...stapleMatches, ...usdaMatches]) {
+        if (!seenIds.has(item.id)) {
+          seenIds.add(item.id);
+          combined.push(item);
+        }
+      }
+
+      setResults(combined);
+    } catch (err) {
+      console.error('Error during food verification search:', err);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  const [prevModalKey, setPrevModalKey] = useState<{ open: boolean; targetId: string | null }>({
+    open: false,
+    targetId: targetItem?.id ?? null,
+  });
+
+  if (open !== prevModalKey.open || (targetItem?.id ?? null) !== prevModalKey.targetId) {
+    setPrevModalKey({ open, targetId: targetItem?.id ?? null });
+    if (open) {
+      setQuery(targetItem ? targetItem.name : '');
+      setResults([]);
+      setManualName('');
+      setManualGrams('100');
+      setManualCalories('100');
+      setManualProtein('0');
+      setManualCarbs('0');
+      setManualFat('0');
+    }
+  }
+
+  // Initialize search with target item name when opening
+  useEffect(() => {
+    if (open && targetItem) {
+      const timer = setTimeout(() => {
+        executeSearch(targetItem.name);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [open, targetItem, executeSearch]);
 
   // Escape key handler
   useEffect(() => {
@@ -92,57 +153,6 @@ export function HitlVerificationSwapModal({
       clearTimeout(searchDebounceRef.current);
     }
   }, [open]);
-
-  const executeSearch = async (searchTerm: string) => {
-    const q = searchTerm.trim();
-    if (!q) {
-      setResults([]);
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      // 1. Search cached items in Dexie
-      const cached = await db.foodsCache.toArray();
-      const localMatches = cached.filter((item) =>
-        item.name.toLowerCase().includes(q.toLowerCase()) ||
-        (item.brand && item.brand.toLowerCase().includes(q.toLowerCase()))
-      );
-
-      // 2. Search offline staples dataset
-      let stapleMatches: FoodItem[] = [];
-      try {
-        stapleMatches = await searchStaples(q, 20);
-      } catch (err) {
-        console.warn('Staples search error:', err);
-      }
-
-      // 3. Search USDA FoodData Central online (resilient to offline/keys)
-      let usdaMatches: FoodItem[] = [];
-      try {
-        usdaMatches = await searchUsdaFoods(q);
-      } catch (err) {
-        // USDA search failure is non-fatal: offline or missing key
-      }
-
-      // Deduplicate by id, prioritize local, then staples, then USDA
-      const seenIds = new Set<string>();
-      const combined: FoodItem[] = [];
-
-      for (const item of [...localMatches, ...stapleMatches, ...usdaMatches]) {
-        if (!seenIds.has(item.id)) {
-          seenIds.add(item.id);
-          combined.push(item);
-        }
-      }
-
-      setResults(combined);
-    } catch (err) {
-      console.error('Error during food verification search:', err);
-    } finally {
-      setIsSearching(false);
-    }
-  };
 
   const handleQueryChange = (val: string) => {
     setQuery(val);
@@ -309,7 +319,7 @@ export function HitlVerificationSwapModal({
                       <span className="font-semibold text-xs text-foreground truncate group-hover:text-primary transition-colors">
                         {food.name}
                       </span>
-                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-surface-elevated border border-border text-muted-foreground uppercase font-mono">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated border border-border text-muted-foreground uppercase font-mono">
                         {food.source}
                       </span>
                     </div>

@@ -123,19 +123,7 @@ describe('FoodSearchDrawer component', () => {
   });
 
   test('USDA online tab triggers search and allows logging online result', async () => {
-    const fakeUsdaFood: FoodItem = {
-      id: 'usda:555',
-      source: 'usda',
-      name: 'Wild Alaskan Salmon',
-      basis: 'per100g',
-      servingSize: 100,
-      servingUnit: 'g',
-      nutrientsPerBasis: { calories: 182, protein: 25, carbs: 0, fat: 8, fiber: 0 },
-      micronutrientsPerBasis: { sodiumMg: 60 },
-      updatedAt: 1000,
-    };
-
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: any) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: RequestInfo | URL) => {
       if (String(url).includes('/api/usda/foods/search')) {
         return new Response(
           JSON.stringify({

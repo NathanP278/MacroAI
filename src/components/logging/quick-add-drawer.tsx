@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
-import { X, RefreshCw, Zap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, RefreshCw, Zap, AlertCircle } from 'lucide-react';
 import { db, generateId } from '@/lib/db/macroai-db';
 import { computeMacroCalories } from '@/lib/nutrition/scaling';
 import { useLoggerStore } from '@/stores/logger-store';
@@ -35,6 +35,18 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
   const [calories, setCalories] = useState<string>('0');
   const [isCalorieOverridden, setIsCalorieOverridden] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   const parseSafe = (val: string): number => {
     const num = parseFloat(val);
@@ -75,6 +87,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
     e.preventDefault();
     if (isSaving) return;
     setIsSaving(true);
+    setErrorMessage(null);
 
     try {
       const safeP = parseSafe(protein);
@@ -105,6 +118,9 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
 
       await db.foodLogs.add(entry);
       onClose();
+    } catch (err: unknown) {
+      console.error('Failed to log quick add entry:', err);
+      setErrorMessage('Unable to save log entry offline. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -264,6 +280,17 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
               className="w-24 px-2 py-1 text-xs tabular-nums text-right rounded-lg bg-surface-card border border-border focus:border-border-focus focus:outline-none text-foreground"
             />
           </div>
+
+          {/* Error Message */}
+          {errorMessage && (
+            <div
+              role="alert"
+              className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2"
+            >
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
 
           {/* Submit Button */}
           <button

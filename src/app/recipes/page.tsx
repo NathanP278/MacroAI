@@ -17,7 +17,6 @@ import {
   Edit,
   Utensils,
   Check,
-  Scale,
 } from 'lucide-react';
 
 export default function RecipesPage() {
@@ -29,8 +28,9 @@ export default function RecipesPage() {
   const feedbackTimersRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   React.useEffect(() => {
+    const timers = feedbackTimersRef.current;
     return () => {
-      Object.values(feedbackTimersRef.current).forEach((timer) => clearTimeout(timer));
+      Object.values(timers).forEach((timer) => clearTimeout(timer));
     };
   }, []);
 

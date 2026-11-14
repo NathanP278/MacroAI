@@ -47,7 +47,9 @@ export async function GET(
   }
 
   try {
-    const upstreamRes = await fetch(targetUrl);
+    const upstreamRes = await fetch(targetUrl, {
+      signal: AbortSignal.timeout(8000),
+    });
     if (!upstreamRes.ok) {
       const errorText = await upstreamRes.text().catch(() => '');
       return NextResponse.json(
@@ -55,7 +57,10 @@ export async function GET(
           error: `USDA API upstream returned error status ${upstreamRes.status}`,
           details: errorText,
         },
-        { status: upstreamRes.status }
+        {
+          status: upstreamRes.status,
+          headers: { 'Cache-Control': 'no-store' },
+        }
       );
     }
 
@@ -67,10 +72,21 @@ export async function GET(
       },
     });
   } catch (err: unknown) {
+    const isTimeout =
+      err instanceof Error &&
+      (err.name === 'TimeoutError' || err.name === 'AbortError');
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { error: 'Failed to communicate with USDA API', message },
-      { status: 502 }
+      {
+        error: isTimeout
+          ? 'Upstream USDA request timed out'
+          : 'Failed to communicate with USDA API',
+        message,
+      },
+      {
+        status: isTimeout ? 504 : 502,
+        headers: { 'Cache-Control': 'no-store' },
+      }
     );
   }
 }

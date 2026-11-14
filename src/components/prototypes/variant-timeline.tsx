@@ -13,7 +13,6 @@ import {
   Barcode,
   Search,
   Clock,
-  CheckCircle2,
   Calendar,
   Sparkle,
 } from "lucide-react";

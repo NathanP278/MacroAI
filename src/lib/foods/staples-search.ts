@@ -95,19 +95,23 @@ export async function loadStaples(): Promise<FoodItem[]> {
     }
   }
 
-  // Node.js / jsdom / test environment
-  try {
-    const fs = await import('fs/promises');
-    const path = await import('path');
-    const filePath = path.resolve(process.cwd(), 'public/data/staples-2500.json');
-    const content = await fs.readFile(filePath, 'utf8');
-    const data = JSON.parse(content);
-    cachedStaples = Array.isArray(data) ? data : [];
-    return cachedStaples;
-  } catch (err) {
-    console.warn('Could not read staples file:', err);
-    return [];
+  // Node.js / test environment
+  if (typeof window === 'undefined' || (typeof process !== 'undefined' && process.env.NODE_ENV === 'test')) {
+    try {
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      const filePath = path.resolve(process.cwd(), 'public/data/staples-2500.json');
+      const content = await fs.readFile(filePath, 'utf8');
+      const data = JSON.parse(content);
+      cachedStaples = Array.isArray(data) ? data : [];
+      return cachedStaples;
+    } catch (err) {
+      console.warn('Could not read staples file:', err);
+      return [];
+    }
   }
+
+  return [];
 }
 
 /**

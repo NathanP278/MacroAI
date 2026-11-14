@@ -88,7 +88,7 @@ export default function HomePage() {
   );
 
   const activeGoals = userGoals ?? fallbackGoals;
-  const activeLogs = foodLogs ?? [];
+  const activeLogs = useMemo(() => foodLogs ?? [], [foodLogs]);
 
   const summary = useMemo(
     () => aggregateDailySummary(activeLogs, activeGoals),

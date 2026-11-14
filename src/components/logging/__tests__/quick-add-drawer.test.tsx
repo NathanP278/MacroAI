@@ -144,4 +144,29 @@ describe('QuickAddDrawer and Goals Calculator', () => {
     store.resetDraft();
     expect(useLoggerStore.getState().aiDraft).toBeNull();
   });
+
+  test('closes on Escape key press', () => {
+    const handleClose = vi.fn();
+    render(<QuickAddDrawer open date="2026-11-14" mealSlot="breakfast" onClose={handleClose} />);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(handleClose).toHaveBeenCalledTimes(1);
+  });
+
+  test('displays adherence-neutral error banner if db.foodLogs.add fails', async () => {
+    const handleClose = vi.fn();
+    vi.spyOn(db.foodLogs, 'add').mockRejectedValueOnce(new Error('IndexedDB quota error'));
+
+    render(<QuickAddDrawer open date="2026-11-14" mealSlot="lunch" onClose={handleClose} />);
+
+    fireEvent.change(screen.getByLabelText(/protein/i), { target: { value: '25' } });
+    fireEvent.click(screen.getByRole('button', { name: /log quick add/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(screen.getByText(/unable to save log entry offline/i)).toBeInTheDocument();
+    });
+
+    expect(handleClose).not.toHaveBeenCalled();
+  });
 });

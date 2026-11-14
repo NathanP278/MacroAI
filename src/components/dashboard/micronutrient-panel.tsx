@@ -131,7 +131,7 @@ export function MicronutrientPanel({ micros = {}, className = '' }: Micronutrien
                       </span>
                     </span>
                     <span
-                      className={`text-[10px] font-semibold tabular-nums px-1.5 py-0.2 rounded ${
+                      className={`text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded ${
                         isOver
                           ? 'bg-slate-500/15 text-slate-300'
                           : isNear

@@ -96,8 +96,8 @@ export function AddBarcodeProductModal({
       if (data.fat !== undefined) setFat(String(data.fat));
       if (data.fiber !== undefined) setFiber(String(data.fiber));
       if (data.sodiumMg !== undefined) setSodiumMg(String(data.sodiumMg));
-    } catch (err: any) {
-      setOcrError(err?.message || 'Failed to scan nutrition label.');
+    } catch (err: unknown) {
+      setOcrError(err instanceof Error ? err.message : 'Failed to scan nutrition label.');
     } finally {
       setIsOcrLoading(false);
       if (e.target) e.target.value = '';

@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { parseOffProduct } from '../off-adapter';
-import { lookupBarcodeWaterfall, useBarcodeLookup } from '@/hooks/use-barcode-lookup';
+import { lookupBarcodeWaterfall, useBarcodeLookup, type BarcodeLookupResult } from '@/hooks/use-barcode-lookup';
 import { GET as offRouteHandler } from '@/app/api/off/[barcode]/route';
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db/macroai-db';
@@ -255,6 +255,21 @@ describe('Open Food Facts Adapter & Barcode Waterfall', () => {
       const res = await lookupBarcodeWaterfall('502502502');
       expect(res.status).toBe('offline-miss');
     });
+
+    test('returns offline-miss when /api/off returns 429 rate-limited', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify({ error: 'Too Many Requests' }), {
+          status: 429,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+
+      const res = await lookupBarcodeWaterfall('429429429');
+      expect(res.status).toBe('offline-miss');
+      if (res.status === 'offline-miss') {
+        expect(res.barcode).toBe('429429429');
+      }
+    });
   });
 
   describe('/api/off/[barcode] route handler', () => {
@@ -273,10 +288,10 @@ describe('Open Food Facts Adapter & Barcode Waterfall', () => {
     });
 
     test('forwards request to Open Food Facts with User-Agent header and returns Cache-Control on status 1', async () => {
-      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: any, init?: any) => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: RequestInfo | URL, init?: RequestInit) => {
         const urlStr = String(url);
         expect(urlStr).toBe('https://world.openfoodfacts.org/api/v2/product/737628064502.json');
-        expect(init?.headers?.['User-Agent']).toBe('MacroAI/1.0');
+        expect(new Headers(init?.headers).get('User-Agent')).toBe('MacroAI/1.0');
 
         return new Response(
           JSON.stringify({
@@ -340,14 +355,16 @@ describe('Open Food Facts Adapter & Barcode Waterfall', () => {
       expect(result.current.isLoading).toBe(false);
       expect(result.current.result).toBeNull();
 
-      let lookupRes: any;
+      let lookupRes: BarcodeLookupResult | undefined;
       await act(async () => {
         lookupRes = await result.current.lookup('55555');
       });
 
       expect(result.current.isLoading).toBe(false);
-      expect(lookupRes.status).toBe('hit');
-      expect(lookupRes.item.name).toBe('Hook Almond Milk');
+      expect(lookupRes?.status).toBe('hit');
+      if (lookupRes?.status === 'hit') {
+        expect(lookupRes.item.name).toBe('Hook Almond Milk');
+      }
       expect(result.current.result?.status).toBe('hit');
 
       act(() => {

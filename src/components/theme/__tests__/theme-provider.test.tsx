@@ -1,11 +1,10 @@
 import React from 'react';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { ThemeProvider, useTheme } from '../theme-provider';
 import { ThemeSwitcher } from '../theme-switcher';
 import { BottomNav } from '@/components/shell/bottom-nav';
 import { QuickActionDock } from '@/components/shell/quick-action-dock';
-import { AppShell } from '@/components/shell/app-shell';
 
 function ThemeConsumer() {
   const { theme, setTheme, resolvedTheme } = useTheme();

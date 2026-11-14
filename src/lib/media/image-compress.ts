@@ -26,8 +26,6 @@ export async function compressImageToJpeg(
     ctx.drawImage(bitmap as CanvasImageSource, 0, 0, width, height);
     return canvas.toDataURL('image/jpeg', quality);
   } finally {
-    if (bitmap && typeof (bitmap as any).close === 'function') {
-      (bitmap as any).close();
-    }
+    bitmap.close?.();
   }
 }

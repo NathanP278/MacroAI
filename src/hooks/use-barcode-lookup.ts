@@ -36,12 +36,12 @@ export async function lookupBarcodeWaterfall(rawBarcode: string): Promise<Barcod
   let res: Response;
   try {
     res = await fetch(`/api/off/${encodeURIComponent(barcode)}`);
-  } catch (err) {
+  } catch {
     // Network offline / fetch rejected
     return { status: 'offline-miss', barcode };
   }
 
-  if (res.status >= 500) {
+  if (res.status === 429 || res.status === 408 || res.status >= 500) {
     return { status: 'offline-miss', barcode };
   }
 
@@ -56,7 +56,7 @@ export async function lookupBarcodeWaterfall(rawBarcode: string): Promise<Barcod
     return { status: 'offline-miss', barcode };
   }
 
-  if (data && typeof data === 'object' && (data as any).status === 0) {
+  if (data && typeof data === 'object' && (data as { status?: number }).status === 0) {
     return { status: 'missing', barcode };
   }
 

@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from '../macroai-db';
 import { exportBackupJson, importBackupJson } from '../backup';
 import type { FoodLogEntry, FoodItem, CustomRecipe, UserGoals } from '@/types/nutrition';

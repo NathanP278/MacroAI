@@ -3,8 +3,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 import {
-  AiMacroNutrientsSchema,
-  AiMealItemSchema,
   AiMealScanResponseSchema,
   AiLabelOcrResponseSchema,
   parseAiJsonResponse,
@@ -13,7 +11,6 @@ import {
   getServerAiConfig,
   normalizeChatEndpoint,
   callVisionChatCompletion,
-  AiServiceError,
 } from '../openai-compat';
 import { dynamic, GET as getHealth } from '@/app/api/ai/health/route';
 import { POST as postMealScan } from '@/app/api/ai/meal-scan/route';

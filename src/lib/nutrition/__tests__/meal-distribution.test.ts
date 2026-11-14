@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import React, { act } from 'react';
-import { describe, it, test, expect, beforeEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { db } from '@/lib/db/macroai-db';
 import { distributeRemainingMacros } from '../meal-distribution';
@@ -16,7 +16,7 @@ import { RecipeBuilderModal } from '@/components/recipes/recipe-builder-modal';
 import RecipesPage from '@/app/recipes/page';
 import LogPage from '@/app/log/page';
 import { useLoggerStore } from '@/stores/logger-store';
-import type { UserGoals, FoodLogEntry, CustomRecipe, CustomRecipeIngredient } from '@/types/nutrition';
+import type { UserGoals, FoodLogEntry, CustomRecipeIngredient } from '@/types/nutrition';
 
 describe('Task 12: Fitia-Style Smart Meal Distribution & Copy Yesterday', () => {
   beforeEach(async () => {
@@ -144,7 +144,7 @@ describe('Task 12: Fitia-Style Smart Meal Distribution & Copy Yesterday', () => 
 
   describe('Edge cases in distributeRemainingMacros', () => {
     test('returns empty object when goals or mealSlots are empty', () => {
-      expect(distributeRemainingMacros(null as any, [])).toEqual({});
+      expect(distributeRemainingMacros(null as unknown as UserGoals, [])).toEqual({});
       expect(
         distributeRemainingMacros(
           {
@@ -675,8 +675,8 @@ describe('Task 12: Fitia-Style Smart Meal Distribution & Copy Yesterday', () => 
           micros: {},
         },
       };
-      (eggIng as any).gramsPerUnit = 50; // 50g per egg
-      (eggIng as any).servingSize = 50;
+      eggIng.gramsPerUnit = 50; // 50g per egg
+      eggIng.servingSize = 50;
 
       const totals = calculateRecipeTotals([eggIng]);
       // 2 eggs * 50g = 100g total weight, NOT 2g!

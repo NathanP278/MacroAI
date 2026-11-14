@@ -247,8 +247,8 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
     });
 
     // Mock fetch for /api/ai/meal-scan
-    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (input: any) => {
-      const url = typeof input === 'string' ? input : input.url;
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
       if (url.includes('/api/ai/meal-scan')) {
         return {
           ok: true,
@@ -384,8 +384,8 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
     });
 
     let refineSuccess = true;
-    vi.spyOn(global, 'fetch').mockImplementation(async (input: any) => {
-      const url = typeof input === 'string' ? input : input.url;
+    vi.spyOn(global, 'fetch').mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
       if (url.includes('/api/ai/refine')) {
         if (!refineSuccess) {
           return {

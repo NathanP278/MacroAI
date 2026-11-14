@@ -69,17 +69,21 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
     };
   }, []);
 
+  const handleQueryChange = (val: string) => {
+    setQuery(val);
+    if (!val.trim()) {
+      setUsdaResults([]);
+      setIsUsdaLoading(false);
+      setUsdaError(null);
+    }
+  };
+
   // Debounced search for USDA online tab
   useEffect(() => {
     if (activeTab !== 'usda') return;
 
     const trimmed = query.trim();
-    if (!trimmed) {
-      setUsdaResults([]);
-      setIsUsdaLoading(false);
-      setUsdaError(null);
-      return;
-    }
+    if (!trimmed) return;
 
     if (searchAbortRef.current) {
       searchAbortRef.current.abort();
@@ -87,10 +91,9 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
     const abortController = new AbortController();
     searchAbortRef.current = abortController;
 
-    setIsUsdaLoading(true);
-    setUsdaError(null);
-
     const timer = setTimeout(async () => {
+      setIsUsdaLoading(true);
+      setUsdaError(null);
       try {
         const results = await searchUsdaFoods(trimmed, {
           signal: abortController.signal,
@@ -99,8 +102,8 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
           setUsdaResults(results);
           setIsUsdaLoading(false);
         });
-      } catch (err: any) {
-        if (err?.name === 'AbortError') return;
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') return;
         setUsdaError('USDA search unavailable. Check internet connection or try offline staples.');
         setIsUsdaLoading(false);
       }
@@ -414,14 +417,14 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
                     : 'Search online USDA FoodData Central...'
                 }
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => handleQueryChange(e.target.value)}
                 autoFocus
                 className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground placeholder:text-muted-foreground/50 transition-colors"
               />
               {query && (
                 <button
                   type="button"
-                  onClick={() => setQuery('')}
+                  onClick={() => handleQueryChange('')}
                   aria-label="Clear search query"
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
                 >
@@ -459,7 +462,7 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
                           {item.name}
                         </span>
                         <span
-                          className={`text-[9px] uppercase tracking-wider px-1.5 py-0.2 rounded-md font-mono ${
+                          className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md font-mono ${
                             item.source === 'staple'
                               ? 'bg-emerald-400/10 text-emerald-400 border border-emerald-400/20'
                               : 'bg-sky-400/10 text-sky-400 border border-sky-400/20'

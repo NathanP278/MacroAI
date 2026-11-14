@@ -60,11 +60,16 @@ export function ThemeProvider({
     return defaultTheme;
   });
 
+  const [prevTheme, setPrevTheme] = useState<Theme>(theme);
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(theme));
+
+  if (theme !== prevTheme) {
+    setPrevTheme(theme);
+    setResolvedTheme(resolveTheme(theme));
+  }
 
   useEffect(() => {
     const resolved = resolveTheme(theme);
-    setResolvedTheme(resolved);
     applyThemeClass(resolved);
 
     if (theme === "system" && typeof window !== "undefined" && window.matchMedia) {

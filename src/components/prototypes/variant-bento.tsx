@@ -5,7 +5,6 @@ import {
   normalDayData,
   overTargetDayData,
   mockMealSlots,
-  MealSlotData,
 } from "./mock-data";
 import {
   Plus,

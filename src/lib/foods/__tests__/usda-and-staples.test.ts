@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mapUsdaFoodToFoodItem, searchUsdaFoods, fetchAndCacheUsdaFood } from '../usda-adapter';
+import { mapUsdaFoodToFoodItem, fetchAndCacheUsdaFood } from '../usda-adapter';
 import { filterStaples, searchStaples, loadStaples, setStaplesCache } from '../staples-search';
 import { GET as usdaRouteHandler } from '@/app/api/usda/[...path]/route';
 import { NextRequest } from 'next/server';
@@ -178,7 +178,7 @@ describe('USDA adapter and Staples search', () => {
   });
 
   test('USDA route handler forwards foods/search with enforced dataType and Cache-Control', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: any) => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: RequestInfo | URL) => {
       const urlStr = String(url);
       expect(urlStr).toContain('https://api.nal.usda.gov/fdc/v1/foods/search');
       expect(urlStr).toContain('dataType=Foundation%2CSR+Legacy');

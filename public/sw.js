@@ -17,7 +17,11 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_ASSETS))
+      .then((cache) =>
+        Promise.allSettled(
+          PRECACHE_ASSETS.map((url) => cache.add(url).catch(() => undefined))
+        )
+      )
       .then(() => self.skipWaiting())
   );
 });
@@ -94,7 +98,12 @@ self.addEventListener('fetch', (event) => {
             return cachedResponse;
           });
 
-        return cachedResponse || fetchPromise;
+        if (cachedResponse) {
+          event.waitUntil(fetchPromise);
+          return cachedResponse;
+        }
+
+        return fetchPromise;
       });
     })
   );

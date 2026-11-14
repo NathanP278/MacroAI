@@ -67,6 +67,9 @@ export const CustomRecipeIngredientSchema = z.object({
   nutritionSnapshot: MacroNutrientsSchema.extend({
     micros: MicronutrientsSchema,
   }),
+  gramWeight: z.number().optional(),
+  gramsPerUnit: z.number().optional(),
+  servingSize: z.number().optional(),
 });
 
 export const CustomRecipeSchema = z.object({

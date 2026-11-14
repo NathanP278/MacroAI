@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   ScanBarcode,
   X,
-  Camera,
   CameraOff,
   Search,
   Check,
@@ -28,12 +27,15 @@ export interface BarcodeScannerDrawerProps {
   onClose: () => void;
 }
 
-export function BarcodeScannerDrawer({
-  open,
+function BarcodeScannerContent({
   date,
   mealSlot,
   onClose,
-}: BarcodeScannerDrawerProps) {
+}: {
+  date?: string;
+  mealSlot?: string;
+  onClose: () => void;
+}) {
   const storeDate = useLoggerStore((s) => s.activeDate);
   const storeMealSlot = useLoggerStore((s) => s.activeMealSlot);
 
@@ -60,7 +62,6 @@ export function BarcodeScannerDrawer({
 
   // Keyboard Escape listener
   useEffect(() => {
-    if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
@@ -68,21 +69,7 @@ export function BarcodeScannerDrawer({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose]);
-
-  // Reset all scanner state and locks whenever the drawer closes
-  useEffect(() => {
-    if (!open) {
-      setLookupResult(null);
-      setManualBarcode('');
-      setMissingBarcode('');
-      setIsAddModalOpen(false);
-      setCameraError(null);
-      setIsLookingUp(false);
-      isProcessingScanRef.current = false;
-      isLookingUpRef.current = false;
-    }
-  }, [open]);
+  }, [onClose]);
 
   const handleLookup = async (code: string) => {
     const trimmed = code.trim();
@@ -118,7 +105,7 @@ export function BarcodeScannerDrawer({
 
   // Camera scanner effect
   useEffect(() => {
-    if (!open || lookupResult !== null || isAddModalOpen) {
+    if (lookupResult !== null || isAddModalOpen) {
       return;
     }
 
@@ -128,7 +115,7 @@ export function BarcodeScannerDrawer({
     let isMounted = true;
     let activeStream: MediaStream | null = null;
     let html5Scanner: Html5Qrcode | null = null;
-    let scanInterval: any = null;
+    let scanInterval: ReturnType<typeof setInterval> | null = null;
 
     const stopAllScanning = () => {
       if (scanInterval) {
@@ -139,7 +126,7 @@ export function BarcodeScannerDrawer({
         activeStream.getTracks().forEach((t) => t.stop());
         activeStream = null;
       }
-      if (html5Scanner && (html5Scanner as any).isScanning) {
+      if (html5Scanner && (html5Scanner as { isScanning?: boolean }).isScanning) {
         html5Scanner.stop().catch(() => {});
       }
     };
@@ -168,7 +155,7 @@ export function BarcodeScannerDrawer({
         navigator?.mediaDevices?.getUserMedia
       ) {
         try {
-          const BarcodeDetectorClass = (window as any).BarcodeDetector;
+          const BarcodeDetectorClass = (window as unknown as { BarcodeDetector: new (opts: { formats: string[] }) => { detect: (v: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> } }).BarcodeDetector;
           const detector = new BarcodeDetectorClass({
             formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'qr_code'],
           });
@@ -244,9 +231,7 @@ export function BarcodeScannerDrawer({
       isMounted = false;
       stopAllScanning();
     };
-  }, [open, lookupResult, isAddModalOpen]);
-
-  if (!open) return null;
+  }, [lookupResult, isAddModalOpen]);
 
   const parsedAmount = Math.max(0, parseFloat(amount) || 0);
 
@@ -698,4 +683,14 @@ export function BarcodeScannerDrawer({
       )}
     </>
   );
+}
+
+export function BarcodeScannerDrawer({
+  open,
+  date,
+  mealSlot,
+  onClose,
+}: BarcodeScannerDrawerProps) {
+  if (!open) return null;
+  return <BarcodeScannerContent date={date} mealSlot={mealSlot} onClose={onClose} />;
 }

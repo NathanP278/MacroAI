@@ -22,6 +22,7 @@ import {
   ChefHat,
   Search,
   Check,
+  Loader2,
 } from 'lucide-react';
 
 export interface ModalIngredientRow extends CustomRecipeIngredient {
@@ -39,6 +40,53 @@ export interface RecipeBuilderModalProps {
   onClose: () => void;
   onSaved?: (recipe: CustomRecipe) => void;
   initialRecipe?: CustomRecipe | null;
+}
+
+function mapInitialIngredients(recipe: CustomRecipe): ModalIngredientRow[] {
+  return (recipe.ingredients || []).map((ing) => {
+    const isGram = ing.unit === 'g' || ing.unit === 'ml';
+    const gramsPerUnit =
+      ing.gramsPerUnit || (isGram ? 1 : ing.servingSize || 1);
+    const gramWeight = ing.gramWeight ?? gramsPerUnit * ing.amount;
+    const baseBasis: NutritionBasis =
+      ing.baseBasis || (isGram ? 'per100g' : 'perServing');
+    const baseFactor =
+      baseBasis === 'per100g' || baseBasis === 'per100ml'
+        ? ing.amount > 0
+          ? 100 / ing.amount
+          : 1
+        : ing.amount > 0
+          ? 1 / ing.amount
+          : 1;
+
+    const baseNutrients: MacroNutrients = ing.baseNutrients || {
+      calories: (ing.nutritionSnapshot.calories || 0) * baseFactor,
+      protein: (ing.nutritionSnapshot.protein || 0) * baseFactor,
+      carbs: (ing.nutritionSnapshot.carbs || 0) * baseFactor,
+      fat: (ing.nutritionSnapshot.fat || 0) * baseFactor,
+      fiber: (ing.nutritionSnapshot.fiber || 0) * baseFactor,
+    };
+
+    const baseMicros: Micronutrients = ing.baseMicros || {};
+    if (!ing.baseMicros && ing.nutritionSnapshot.micros) {
+      for (const [k, v] of Object.entries(ing.nutritionSnapshot.micros)) {
+        if (typeof v === 'number') {
+          baseMicros[k] = v * baseFactor;
+        }
+      }
+    }
+
+    return {
+      ...ing,
+      amountStr: String(ing.amount),
+      baseNutrients,
+      baseMicros,
+      baseBasis,
+      servingSize: ing.servingSize,
+      gramsPerUnit,
+      gramWeight,
+    };
+  });
 }
 
 export function RecipeBuilderModal({
@@ -66,57 +114,20 @@ export function RecipeBuilderModal({
   const [isSearching, setIsSearching] = useState(false);
 
   // Initialize or reset state when modal opens or initialRecipe changes
-  useEffect(() => {
+  const [prevModalKey, setPrevModalKey] = useState<{ isOpen: boolean; recipeId: string | null }>({
+    isOpen: false,
+    recipeId: null,
+  });
+
+  const currentRecipeId = initialRecipe?.id ?? null;
+  if (isOpen !== prevModalKey.isOpen || currentRecipeId !== prevModalKey.recipeId) {
+    setPrevModalKey({ isOpen, recipeId: currentRecipeId });
     if (isOpen) {
       if (initialRecipe) {
         setName(initialRecipe.name || '');
         setBasis(initialRecipe.basis || 'perServing');
         setDefaultServings(initialRecipe.defaultServings || 1);
-        const mapped: ModalIngredientRow[] = (initialRecipe.ingredients || []).map((ing) => {
-          const isGram = ing.unit === 'g' || ing.unit === 'ml';
-          const gramsPerUnit =
-            (ing as any).gramsPerUnit || (isGram ? 1 : (ing as any).servingSize || 1);
-          const gramWeight = (ing as any).gramWeight ?? gramsPerUnit * ing.amount;
-          const baseBasis: NutritionBasis =
-            (ing as any).baseBasis || (isGram ? 'per100g' : 'perServing');
-          const baseFactor =
-            baseBasis === 'per100g' || baseBasis === 'per100ml'
-              ? ing.amount > 0
-                ? 100 / ing.amount
-                : 1
-              : ing.amount > 0
-                ? 1 / ing.amount
-                : 1;
-
-          const baseNutrients: MacroNutrients = (ing as any).baseNutrients || {
-            calories: (ing.nutritionSnapshot.calories || 0) * baseFactor,
-            protein: (ing.nutritionSnapshot.protein || 0) * baseFactor,
-            carbs: (ing.nutritionSnapshot.carbs || 0) * baseFactor,
-            fat: (ing.nutritionSnapshot.fat || 0) * baseFactor,
-            fiber: (ing.nutritionSnapshot.fiber || 0) * baseFactor,
-          };
-
-          const baseMicros: Micronutrients = (ing as any).baseMicros || {};
-          if (!(ing as any).baseMicros && ing.nutritionSnapshot.micros) {
-            for (const [k, v] of Object.entries(ing.nutritionSnapshot.micros)) {
-              if (typeof v === 'number') {
-                baseMicros[k] = v * baseFactor;
-              }
-            }
-          }
-
-          return {
-            ...ing,
-            amountStr: String(ing.amount),
-            baseNutrients,
-            baseMicros,
-            baseBasis,
-            servingSize: (ing as any).servingSize,
-            gramsPerUnit,
-            gramWeight,
-          };
-        });
-        setIngredients(mapped);
+        setIngredients(mapInitialIngredients(initialRecipe));
       } else {
         setName('');
         setBasis('perServing');
@@ -132,7 +143,17 @@ export function RecipeBuilderModal({
       setSearchQuery('');
       setSearchResults([]);
     }
-  }, [isOpen, initialRecipe]);
+  }
+
+  const handleSearchQueryChange = (val: string) => {
+    setSearchQuery(val);
+    if (!val.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+    } else {
+      setIsSearching(true);
+    }
+  };
 
   // Accessible Escape key listener
   useEffect(() => {
@@ -149,12 +170,8 @@ export function RecipeBuilderModal({
   // Live staple search
   useEffect(() => {
     const q = searchQuery.trim();
-    if (!q) {
-      setSearchResults([]);
-      return;
-    }
+    if (!q) return;
     let cancelled = false;
-    setIsSearching(true);
     searchStaples(q, 10)
       .then((items) => {
         if (!cancelled) {
@@ -562,9 +579,12 @@ export function RecipeBuilderModal({
                 type="text"
                 placeholder="Search foods to add as ingredient..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-surface-sub border border-border rounded-xl pl-8 pr-3 py-1.5 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-amber-400"
+                onChange={(e) => handleSearchQueryChange(e.target.value)}
+                className="w-full bg-surface-sub border border-border rounded-xl pl-8 pr-8 py-1.5 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-amber-400"
               />
+              {isSearching && (
+                <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin absolute right-3 top-1/2 -translate-y-1/2" />
+              )}
             </div>
 
             {searchResults.length > 0 && (

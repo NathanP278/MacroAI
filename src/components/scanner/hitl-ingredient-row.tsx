@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Trash2, CheckCircle2, HelpCircle, RefreshCw } from 'lucide-react';
 import type { AiDraftItem } from '@/stores/logger-store';
 import { scaleNutrition } from '@/lib/nutrition/scaling';
@@ -23,25 +23,27 @@ export function HitlIngredientRow({
   onOpenVerifySwap,
 }: HitlIngredientRowProps) {
   // Baseline initial grams for non-compounding multiplier calculation
-  const baseGramsRef = useRef<number>(item.grams > 0 ? item.grams : 100);
-  const prevIdRef = useRef(item.id);
-  const prevNameRef = useRef(item.name);
-  const prevRevisionRef = useRef(draftRevision);
+  const [tracking, setTracking] = useState({
+    id: item.id,
+    name: item.name,
+    draftRevision,
+  });
+  const [baselineGrams, setBaselineGrams] = useState<number>(
+    item.grams > 0 ? item.grams : 100
+  );
 
-  useEffect(() => {
-    // Unconditionally sync baseline if row mounts, item identity/name changes (e.g. food swap),
-    // or draftRevision updates (e.g. After AI refine)
-    if (
-      item.id !== prevIdRef.current ||
-      item.name !== prevNameRef.current ||
-      draftRevision !== prevRevisionRef.current
-    ) {
-      baseGramsRef.current = item.grams > 0 ? item.grams : 100;
-      prevIdRef.current = item.id;
-      prevNameRef.current = item.name;
-      prevRevisionRef.current = draftRevision;
-    }
-  }, [item.id, item.name, item.grams, draftRevision]);
+  if (
+    item.id !== tracking.id ||
+    item.name !== tracking.name ||
+    draftRevision !== tracking.draftRevision
+  ) {
+    setTracking({
+      id: item.id,
+      name: item.name,
+      draftRevision,
+    });
+    setBaselineGrams(item.grams > 0 ? item.grams : 100);
+  }
 
   const { macros } = scaleNutrition(
     item.per100g,
@@ -51,7 +53,7 @@ export function HitlIngredientRow({
   );
 
   const handleMultiplierClick = (m: number) => {
-    const base = baseGramsRef.current > 0 ? baseGramsRef.current : 100;
+    const base = baselineGrams > 0 ? baselineGrams : 100;
     const newGrams = Math.round(base * m);
     onChangeGrams(item.id, newGrams);
   };
@@ -69,7 +71,7 @@ export function HitlIngredientRow({
   const maxSlider = Math.max(
     500,
     Math.round(item.grams * 2),
-    Math.round((baseGramsRef.current || 100) * 2.5)
+    Math.round((baselineGrams || 100) * 2.5)
   );
 
   return (
@@ -175,7 +177,7 @@ export function HitlIngredientRow({
       <div className="flex items-center gap-1.5 pt-0.5">
         <span className="text-[10px] text-muted-foreground font-medium mr-1">Scale:</span>
         {MULTIPLIERS.map((m) => {
-          const targetGrams = Math.round((baseGramsRef.current || 100) * m);
+          const targetGrams = Math.round((baselineGrams || 100) * m);
           const isSelected = item.grams === targetGrams;
           return (
             <button

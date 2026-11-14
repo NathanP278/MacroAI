@@ -67,6 +67,12 @@ export interface CustomRecipeIngredient {
   amount: number;
   unit: string;
   nutritionSnapshot: MacroNutrients & { micros: Micronutrients };
+  gramWeight?: number;
+  gramsPerUnit?: number;
+  servingSize?: number;
+  baseBasis?: NutritionBasis;
+  baseNutrients?: MacroNutrients;
+  baseMicros?: Micronutrients;
 }
 
 export interface CustomRecipe {

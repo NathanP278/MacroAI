@@ -26,12 +26,7 @@ const NAV_ITEMS_RIGHT: NavItem[] = [
 ];
 
 export function BottomNav({ onOpenQuickActions }: BottomNavProps) {
-  let pathname = "/";
-  try {
-    pathname = usePathname() || "/";
-  } catch {
-    pathname = "/";
-  }
+  const pathname = usePathname() ?? "/";
 
   const isItemActive = (href: string) => {
     if (href === "/") {
@@ -76,7 +71,7 @@ export function BottomNav({ onOpenQuickActions }: BottomNavProps) {
             type="button"
             onClick={onOpenQuickActions}
             aria-label="Open quick actions"
-            className="w-13 h-13 rounded-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-neutral-950 flex items-center justify-center shadow-lg shadow-amber-400/25 border-2 border-background transition-all focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-background"
+            className="w-[52px] h-[52px] rounded-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-neutral-950 flex items-center justify-center shadow-lg shadow-amber-400/25 border-2 border-background transition-all focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-background"
           >
             <Plus className="w-6 h-6 stroke-[2.5]" />
           </button>

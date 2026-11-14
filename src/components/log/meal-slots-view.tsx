@@ -7,7 +7,7 @@ import { useLoggerStore } from '@/stores/logger-store';
 import { distributeRemainingMacros } from '@/lib/nutrition/meal-distribution';
 import { copyYesterdayMeal, offsetIsoDate } from '@/lib/recipes/recipe-builder';
 import { DEFAULT_MEAL_SLOTS, DEFAULT_RDA_MICROS } from '@/lib/nutrition/goals';
-import type { UserGoals, FoodLogEntry } from '@/types/nutrition';
+import type { UserGoals } from '@/types/nutrition';
 import { Plus, RotateCcw, Trash2, Sparkles, Utensils, Check } from 'lucide-react';
 
 export function MealSlotsView() {
@@ -17,8 +17,9 @@ export function MealSlotsView() {
   const feedbackTimersRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   React.useEffect(() => {
+    const timers = feedbackTimersRef.current;
     return () => {
-      Object.values(feedbackTimersRef.current).forEach((timer) => clearTimeout(timer));
+      Object.values(timers).forEach((timer) => clearTimeout(timer));
     };
   }, []);
 
@@ -228,7 +229,7 @@ export function MealSlotsView() {
                     className="flex items-center gap-1.5 text-xs text-amber-400/90 hover:text-amber-300 font-medium transition-colors"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Copy Yesterday's {slot.name}</span>
+                    <span>Copy Yesterday&apos;s {slot.name}</span>
                     <span className="text-[10px] text-muted-foreground font-mono">
                       ({yesterdaySlotLogs.length})
                     </span>

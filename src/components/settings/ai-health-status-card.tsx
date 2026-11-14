@@ -48,7 +48,10 @@ export function AiHealthStatusCard() {
   };
 
   useEffect(() => {
-    checkHealth();
+    const timer = setTimeout(() => {
+      checkHealth();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   return (

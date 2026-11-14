@@ -29,6 +29,7 @@ export async function GET(
       headers: {
         'User-Agent': 'MacroAI/1.0',
       },
+      signal: AbortSignal.timeout(8000),
     });
 
     if (!upstreamRes.ok) {
@@ -47,7 +48,7 @@ export async function GET(
 
     const data = await upstreamRes.json();
 
-    if (data && typeof data === 'object' && (data as any).status === 1) {
+    if (data && typeof data === 'object' && (data as { status?: number }).status === 1) {
       return NextResponse.json(data, {
         status: 200,
         headers: {
@@ -64,11 +65,19 @@ export async function GET(
       },
     });
   } catch (err: unknown) {
+    const isTimeout =
+      err instanceof Error &&
+      (err.name === 'TimeoutError' || err.name === 'AbortError');
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { error: 'Failed to communicate with Open Food Facts API', message },
       {
-        status: 502,
+        error: isTimeout
+          ? 'Upstream Open Food Facts request timed out'
+          : 'Failed to communicate with Open Food Facts API',
+        message,
+      },
+      {
+        status: isTimeout ? 504 : 502,
         headers: { 'Cache-Control': 'no-store' },
       }
     );

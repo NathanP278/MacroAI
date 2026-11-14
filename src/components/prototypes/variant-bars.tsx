@@ -133,7 +133,7 @@ export function VariantBars({ isOverTarget }: VariantProps) {
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-slate-200">{n.name}</span>
-                    <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${n.borderClass} border bg-white/[0.02] ${n.textClass}`}>
+                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${n.borderClass} border bg-white/[0.02] ${n.textClass}`}>
                       {percent}%
                     </span>
                   </div>

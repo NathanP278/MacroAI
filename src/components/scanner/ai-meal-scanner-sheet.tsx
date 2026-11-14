@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Camera,
   Upload,
@@ -64,32 +64,21 @@ export function AiMealScannerSheet({
   const [draftRevision, setDraftRevision] = useState(0);
 
   // Sync draft data into local stage 1 state if present
-  useEffect(() => {
-    if (aiDraft) {
-      if (aiDraft.imageDataUrl) {
-        setImageDataUrl(aiDraft.imageDataUrl);
-      }
-      if (aiDraft.contextPrompt) {
-        setContextPrompt(aiDraft.contextPrompt);
-      }
+  const [prevDraft, setPrevDraft] = useState(aiDraft);
+  if (aiDraft !== prevDraft) {
+    setPrevDraft(aiDraft);
+    if (aiDraft?.imageDataUrl) {
+      setImageDataUrl(aiDraft.imageDataUrl);
     }
-  }, [aiDraft]);
-
-  // Escape key listener to close sheet (guarded when swap modal is open)
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (isSwapModalOpen) return;
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, isSwapModalOpen, onClose]);
+    if (aiDraft?.contextPrompt) {
+      setContextPrompt(aiDraft.contextPrompt);
+    }
+  }
 
   // Reset transient local state when sheet closes
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (!open) {
       setIsAnalyzing(false);
       setIsRefining(false);
@@ -105,7 +94,20 @@ export function AiMealScannerSheet({
         setContextPrompt('');
       }
     }
-  }, [open, aiDraft]);
+  }
+
+  // Escape key listener to close sheet (guarded when swap modal is open)
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isSwapModalOpen) return;
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, isSwapModalOpen, onClose]);
 
   if (!open) return null;
 
@@ -155,7 +157,7 @@ export function AiMealScannerSheet({
         throw new Error('No food items detected in image. Please try again or add items manually.');
       }
 
-      const itemsWithIds: AiDraftItem[] = data.items.map((it: any) => ({
+      const itemsWithIds: AiDraftItem[] = data.items.map((it: Partial<AiDraftItem>) => ({
         id: it.id || generateId(),
         name: it.name || 'Unknown food',
         grams: typeof it.grams === 'number' && it.grams > 0 ? it.grams : 100,
@@ -283,7 +285,7 @@ export function AiMealScannerSheet({
         throw new Error('Invalid response received from refinement service');
       }
 
-      const refinedItems: AiDraftItem[] = data.items.map((it: any) => ({
+      const refinedItems: AiDraftItem[] = data.items.map((it: Partial<AiDraftItem>) => ({
         id: it.id || generateId(),
         name: it.name || 'Refined item',
         grams: typeof it.grams === 'number' && it.grams > 0 ? it.grams : 100,
@@ -593,6 +595,12 @@ export function AiMealScannerSheet({
                     <span className="block font-bold text-foreground">{Math.round(totalFat * 10) / 10}g</span>
                     <span className="text-[10px] uppercase">Fat</span>
                   </div>
+                  {totalFiber > 0 && (
+                    <div>
+                      <span className="block font-bold text-foreground">{Math.round(totalFiber * 10) / 10}g</span>
+                      <span className="text-[10px] uppercase">Fib</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

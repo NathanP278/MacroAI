@@ -61,16 +61,16 @@ export function calculateRecipeTotals(
     let weight = 0;
     if (gramWeights && typeof gramWeights[i] === 'number' && Number.isFinite(gramWeights[i])) {
       weight = gramWeights[i];
-    } else if (typeof (ing as any).gramWeight === 'number' && Number.isFinite((ing as any).gramWeight)) {
-      weight = (ing as any).gramWeight;
-    } else if (typeof (ing as any).gramsPerUnit === 'number' && Number.isFinite((ing as any).gramsPerUnit)) {
-      weight = (ing as any).gramsPerUnit * (Number(ing.amount) || 0);
+    } else if (typeof ing.gramWeight === 'number' && Number.isFinite(ing.gramWeight)) {
+      weight = ing.gramWeight;
+    } else if (typeof ing.gramsPerUnit === 'number' && Number.isFinite(ing.gramsPerUnit)) {
+      weight = ing.gramsPerUnit * (Number(ing.amount) || 0);
     } else if (
-      typeof (ing as any).servingSize === 'number' &&
-      (ing as any).servingSize > 0 &&
+      typeof ing.servingSize === 'number' &&
+      ing.servingSize > 0 &&
       (ing.unit === 'serving' || ing.unit === 'servings' || ing.unit === 'srv')
     ) {
-      weight = (ing as any).servingSize * (Number(ing.amount) || 0);
+      weight = ing.servingSize * (Number(ing.amount) || 0);
     } else {
       weight = Number(ing.amount) || 0;
     }

@@ -5,7 +5,7 @@ import { useTheme, Theme } from "./theme-provider";
 import { Moon, Sun, Laptop } from "lucide-react";
 
 export function ThemeSwitcher() {
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   const options: { value: Theme; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { value: "dark", label: "Dark", icon: Moon },
