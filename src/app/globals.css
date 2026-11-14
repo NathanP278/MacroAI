@@ -35,15 +35,28 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   
-  /* MacroFactor-inspired custom tokens */
+  /* MacroFactor-inspired surface tokens */
   --color-canvas: var(--canvas);
   --color-tile: var(--tile);
   --color-tile-sub: var(--tile-sub);
+  --color-surface-canvas: var(--surface-canvas);
+  --color-surface-card: var(--surface-card);
+  --color-surface-sub: var(--surface-sub);
+  --color-surface-elevated: var(--surface-elevated);
+
+  /* Adherence-neutral nutrient colors */
   --color-calorie: var(--calorie);
   --color-protein: var(--protein);
   --color-carbs: var(--carbs);
   --color-fat: var(--fat);
   --color-fiber: var(--fiber);
+
+  --color-macro-calories: var(--macro-calories);
+  --color-macro-protein: var(--macro-protein);
+  --color-macro-carbs: var(--macro-carbs);
+  --color-macro-fat: var(--macro-fat);
+  --color-macro-fiber: var(--macro-fiber);
+  --color-neutral-over: var(--neutral-over);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -76,6 +89,13 @@
   --radius: 0.75rem;
 
   /* MacroFactor dark surfaces */
+  --surface-canvas: #121316;
+  --surface-card: #1b1d22;
+  --surface-sub: #16181d;
+  --surface-elevated: #252830;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(255, 255, 255, 0.18);
+
   --canvas: #121316;
   --tile: #1b1d22;
   --tile-sub: #16181d;
@@ -86,6 +106,13 @@
   --carbs: #34d399;
   --fat: #fb7185;
   --fiber: #c084fc;
+
+  --macro-calories: #f59e0b;
+  --macro-protein: #38bdf8;
+  --macro-carbs: #34d399;
+  --macro-fat: #fb7185;
+  --macro-fiber: #c084fc;
+  --neutral-over: #94a3b8;
 }
 
 .light {
@@ -108,6 +135,13 @@
   --input: rgba(0, 0, 0, 0.12);
   --ring: #0284c7;
 
+  --surface-canvas: #f8fafc;
+  --surface-card: #ffffff;
+  --surface-sub: #f1f5f9;
+  --surface-elevated: #ffffff;
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border-focus: rgba(0, 0, 0, 0.18);
+
   --canvas: #f8fafc;
   --tile: #ffffff;
   --tile-sub: #f1f5f9;
@@ -117,6 +151,13 @@
   --carbs: #059669;
   --fat: #e11d48;
   --fiber: #9333ea;
+
+  --macro-calories: #d97706;
+  --macro-protein: #0284c7;
+  --macro-carbs: #059669;
+  --macro-fat: #e11d48;
+  --macro-fiber: #9333ea;
+  --neutral-over: #64748b;
 }
 
 @layer base {
@@ -130,5 +171,11 @@
   html {
     @apply font-sans;
     color-scheme: dark;
+  }
+}
+
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 }
