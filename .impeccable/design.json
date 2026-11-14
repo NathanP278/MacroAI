@@ -1,0 +1,268 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-15T02:25:00Z",
+  "title": "Design System: MacroAI",
+  "extensions": {
+    "colorMeta": {
+      "cornflower-calories": {
+        "role": "primary",
+        "displayName": "Cornflower Calories",
+        "canonical": "#6c8eff",
+        "tonalRamp": ["#161d36", "#212e54", "#31467d", "#4462ad", "#6c8eff", "#8ea8ff", "#b5c6ff", "#dfe7ff"]
+      },
+      "coral-protein": {
+        "role": "secondary",
+        "displayName": "Coral Protein",
+        "canonical": "#e56b4e",
+        "tonalRamp": ["#331712", "#522319", "#7c3424", "#b04c36", "#e56b4e", "#ed8b74", "#f5b3a3", "#fbe0da"]
+      },
+      "warm-gold-fat": {
+        "role": "secondary",
+        "displayName": "Warm Gold Fat",
+        "canonical": "#e8c547",
+        "tonalRamp": ["#30280d", "#4d4013", "#78641d", "#ad912b", "#e8c547", "#efd473", "#f6e4a3", "#fbf4d8"]
+      },
+      "mint-emerald-carbs": {
+        "role": "secondary",
+        "displayName": "Mint Emerald Carbs",
+        "canonical": "#4caf79",
+        "tonalRamp": ["#10261b", "#183d2b", "#245c40", "#35855c", "#4caf79", "#72c498", "#a1dab9", "#d6f2e2"]
+      },
+      "lavender-fiber": {
+        "role": "tertiary",
+        "displayName": "Lavender Fiber",
+        "canonical": "#9f85ff",
+        "tonalRamp": ["#201a38", "#322859", "#4b3c87", "#6e58c4", "#9f85ff", "#b7a3ff", "#d2c6ff", "#ece7ff"]
+      },
+      "neutral-surplus": {
+        "role": "neutral",
+        "displayName": "Neutral Surplus Slate",
+        "canonical": "#94a3b8",
+        "tonalRamp": ["#181d24", "#27303d", "#3d4a5e", "#5b6d87", "#94a3b8", "#aebecf", "#cbd6e2", "#e7edf3"]
+      },
+      "obsidian-canvas": {
+        "role": "neutral",
+        "displayName": "Obsidian Canvas",
+        "canonical": "#141416",
+        "tonalRamp": ["#0a0a0b", "#141416", "#1e1e21", "#2e2e33", "#48484f", "#73737d", "#b0b0ba", "#ededf2"]
+      },
+      "obsidian-card": {
+        "role": "neutral",
+        "displayName": "Matte Tile Card",
+        "canonical": "#1c1c1f",
+        "tonalRamp": ["#101012", "#1c1c1f", "#27272b", "#37373d", "#52525b", "#7d7d87", "#b8b8c2", "#f0f0f4"]
+      },
+      "obsidian-well": {
+        "role": "neutral",
+        "displayName": "Recessed Well",
+        "canonical": "#2a2a30",
+        "tonalRamp": ["#16161a", "#222228", "#2a2a30", "#3d3d46", "#5a5a66", "#838391", "#babac4", "#ececf0"]
+      },
+      "obsidian-elevated": {
+        "role": "neutral",
+        "displayName": "Elevated Sheet",
+        "canonical": "#28282d",
+        "tonalRamp": ["#151518", "#202024", "#28282d", "#3b3b42", "#585862", "#81818e", "#b9b9c3", "#ececf0"]
+      },
+      "obsidian-hairline": {
+        "role": "neutral",
+        "displayName": "Obsidian Hairline",
+        "canonical": "rgba(255, 255, 255, 0.06)",
+        "tonalRamp": ["#141416", "#1a1a1d", "#232327", "#323238", "#4d4d55", "#767680", "#b2b2bc", "#ededf2"]
+      },
+      "ink-primary": {
+        "role": "primary",
+        "displayName": "High-Contrast Ivory",
+        "canonical": "#f5f5f7",
+        "tonalRamp": ["#1a1a1c", "#2e2e33", "#4a4a52", "#74747e", "#a9a9b2", "#d4d4dc", "#ebebf0", "#f5f5f7"]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Slate Muted Ink",
+        "canonical": "#8e8e93",
+        "tonalRamp": ["#18181a", "#2b2b2e", "#46464a", "#69696f", "#8e8e93", "#ababb0", "#ccccd0", "#ededef"]
+      },
+      "light-canvas": {
+        "role": "neutral",
+        "displayName": "Light Canvas",
+        "canonical": "#f4f4f6",
+        "tonalRamp": ["#202024", "#404047", "#686872", "#94949e", "#bdbdc4", "#dcdce0", "#ececf0", "#f4f4f6"]
+      },
+      "light-card": {
+        "role": "neutral",
+        "displayName": "Light Surface Card",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#242426", "#46464a", "#6e6e73", "#98989d", "#c2c2c7", "#e0e0e5", "#f2f2f7", "#ffffff"]
+      },
+      "light-well": {
+        "role": "neutral",
+        "displayName": "Light Recessed Well",
+        "canonical": "#ebebf0",
+        "tonalRamp": ["#1f1f24", "#3e3e45", "#62626c", "#8c8c96", "#b5b5bf", "#d4d4dc", "#e5e5ec", "#ebebf0"]
+      },
+      "light-ink": {
+        "role": "neutral",
+        "displayName": "Light Primary Ink",
+        "canonical": "#141416",
+        "tonalRamp": ["#141416", "#232327", "#38383e", "#54545c", "#787882", "#a2a2ac", "#ceced6", "#f0f0f4"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display Telemetry",
+        "purpose": "Primary calorie counter inside the Daily Nutrition horseshoe arc."
+      },
+      "headline": {
+        "displayName": "Dashboard Headline",
+        "purpose": "Top-level view title paired with uppercase date kicker."
+      },
+      "title": {
+        "displayName": "Card Title",
+        "purpose": "Bento section headings and card titles."
+      },
+      "body": {
+        "displayName": "Body Copy",
+        "purpose": "Tile headings, meal rows, and micronutrient labels."
+      },
+      "label": {
+        "displayName": "Micro Label",
+        "purpose": "Tabular macro fractions, uppercase date header, and 11px telemetry sublabels."
+      },
+      "caption": {
+        "displayName": "Dock & Matrix Caption",
+        "purpose": "10px bottom navigation labels, 7-day day letters, and compact card metadata."
+      }
+    },
+    "shadows": [
+      {
+        "name": "floating-search-pill",
+        "value": "0 8px 24px rgba(0, 0, 0, 0.28)",
+        "purpose": "Lifts the pinned Search for a food strip gently above scrolling content."
+      },
+      {
+        "name": "modal-dock-sheet",
+        "value": "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+        "purpose": "Separates bottom-anchored Quick Action modal drawers from the dimmed backdrop."
+      }
+    ],
+    "motion": [
+      {
+        "name": "gauge-ease-out",
+        "value": "cubic-bezier(0, 0, 0.2, 1)",
+        "purpose": "300ms fill transitions on horseshoe arc and calorie bar fills (disabled under prefers-reduced-motion)."
+      },
+      {
+        "name": "pill-tap-press",
+        "value": "150ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Crisp color and active scale feedback on segmented pills, tile hovers, and centered FAB."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Segmented Pill Toggle",
+      "kind": "chip",
+      "refersTo": "button-primary",
+      "description": "High-contrast monochrome toggle switch for Today/7-Day views and Consumed/Remaining telemetry modes.",
+      "html": "<div class=\"ds-pill-group\" role=\"group\" aria-label=\"Display mode\"><button type=\"button\" class=\"ds-pill ds-pill-active\" aria-pressed=\"true\">Consumed</button><button type=\"button\" class=\"ds-pill\" aria-pressed=\"false\">Remaining</button></div>",
+      "css": ".ds-pill-group { display: inline-flex; align-items: center; gap: 2px; background: var(--surface-sub, #2a2a30); padding: 4px; border-radius: 9999px; font-family: var(--font-sans, system-ui, sans-serif); } .ds-pill { border: 0; background: transparent; color: var(--muted-foreground, #8e8e93); font-size: 12px; font-weight: 500; padding: 6px 20px; border-radius: 9999px; cursor: pointer; transition: color 0.15s ease, background-color 0.15s ease; } .ds-pill:hover { color: var(--foreground, #f5f5f7); } .ds-pill:focus-visible { outline: 2px solid var(--ring, #6c8eff); outline-offset: 2px; } .ds-pill-active, .ds-pill-active:hover { background: var(--foreground, #f5f5f7); color: var(--background, #141416); font-weight: 600; }"
+    },
+    {
+      "name": "Center Quick Action FAB",
+      "kind": "button",
+      "refersTo": "nav-fab",
+      "description": "Solid monochrome circular plus button centered inside the bottom navigation bar.",
+      "html": "<button type=\"button\" class=\"ds-fab\" aria-label=\"Open quick actions\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12h14\"/><path d=\"M12 5v14\"/></svg></button>",
+      "css": ".ds-fab { width: 44px; height: 44px; border-radius: 9999px; border: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--foreground, #f5f5f7); color: var(--background, #141416); cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.2); transition: opacity 0.15s ease, transform 0.12s ease; } .ds-fab:hover { opacity: 0.9; } .ds-fab:active { transform: scale(0.95); } .ds-fab:focus-visible { outline: 2px solid var(--ring, #6c8eff); outline-offset: 2px; }"
+    },
+    {
+      "name": "Daily Nutrition Horseshoe Card",
+      "kind": "custom",
+      "refersTo": "card-bento",
+      "description": "Primary hero telemetry card pairing an open 240-degree Calorie horseshoe arc with 3-column macro progress bars.",
+      "html": "<section class=\"ds-hero-card\"><div class=\"ds-hero-head\"><h2 class=\"ds-hero-title\">Daily Nutrition</h2><div class=\"ds-mini-tabs\"><span class=\"ds-mini-tab ds-mini-tab-active\">Today</span><span class=\"ds-mini-tab\">7-Day</span></div></div><div class=\"ds-arc-row\"><div class=\"ds-flank\"><div class=\"ds-flank-val\">535</div><div class=\"ds-flank-lbl\">Remaining</div></div><div class=\"ds-arc-wrap\"><svg viewBox=\"0 0 168 168\" width=\"136\" height=\"124\"><circle cx=\"84\" cy=\"88\" r=\"66\" fill=\"none\" stroke=\"var(--surface-sub, #2a2a30)\" stroke-width=\"9\" stroke-dasharray=\"276.46 414.69\" stroke-linecap=\"round\" transform=\"rotate(150 84 88)\"/><circle cx=\"84\" cy=\"88\" r=\"66\" fill=\"none\" stroke=\"var(--macro-calories, #6c8eff)\" stroke-width=\"9\" stroke-dasharray=\"220.5 414.69\" stroke-linecap=\"round\" transform=\"rotate(150 84 88)\"/></svg><div class=\"ds-arc-center\"><span class=\"ds-arc-val\">2,108</span><span class=\"ds-arc-lbl\">Consumed</span></div></div><div class=\"ds-flank\"><div class=\"ds-flank-val\">2,643</div><div class=\"ds-flank-lbl\">Target</div></div></div><div class=\"ds-macro-grid\"><div class=\"ds-macro-col\"><span class=\"ds-macro-name\">Protein</span><div class=\"ds-track\"><div class=\"ds-fill\" style=\"width:82%;background:var(--macro-protein,#e56b4e)\"></div></div><span class=\"ds-macro-num\">103 / 126g</span></div><div class=\"ds-macro-col\"><span class=\"ds-macro-name\">Fat</span><div class=\"ds-track\"><div class=\"ds-fill\" style=\"width:100%;background:var(--macro-fat,#e8c547)\"></div></div><span class=\"ds-macro-num\">94 / 58g</span></div><div class=\"ds-macro-col\"><span class=\"ds-macro-name\">Carbs</span><div class=\"ds-track\"><div class=\"ds-fill\" style=\"width:54%;background:var(--macro-carbs,#4caf79)\"></div></div><span class=\"ds-macro-num\">218 / 403g</span></div></div></section>",
+      "css": ".ds-hero-card { background: var(--surface-card, #1c1c1f); color: var(--foreground, #f5f5f7); border-radius: 16px; padding: 20px; font-family: var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; display: flex; flex-direction: column; gap: 16px; } .ds-hero-head { display: flex; align-items: center; justify-content: space-between; } .ds-hero-title { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -0.015em; } .ds-mini-tabs { display: flex; gap: 4px; background: var(--surface-sub, #2a2a30); padding: 4px 6px; border-radius: 9999px; font-size: 11px; } .ds-mini-tab { padding: 2px 8px; border-radius: 9999px; color: var(--muted-foreground, #8e8e93); font-weight: 500; } .ds-mini-tab-active { background: var(--foreground, #f5f5f7); color: var(--background, #141416); font-weight: 600; } .ds-arc-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; } .ds-flank { text-align: center; } .ds-flank-val { font-size: 18px; font-weight: 700; } .ds-flank-lbl { font-size: 11px; color: var(--muted-foreground, #8e8e93); } .ds-arc-wrap { position: relative; display: flex; align-items: center; justify-content: center; width: 136px; height: 124px; } .ds-arc-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 8px; } .ds-arc-val { font-size: 30px; font-weight: 700; line-height: 1.1; } .ds-arc-lbl { font-size: 12px; color: var(--muted-foreground, #8e8e93); } .ds-macro-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } .ds-macro-col { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; } .ds-macro-name { font-size: 11px; color: var(--muted-foreground, #8e8e93); } .ds-track { width: 100%; height: 6px; border-radius: 9999px; background: var(--surface-sub, #2a2a30); overflow: hidden; } .ds-fill { height: 100%; border-radius: 9999px; } .ds-macro-num { font-size: 11px; font-weight: 600; white-space: nowrap; }"
+    },
+    {
+      "name": "Calories Target Notch Tile",
+      "kind": "card",
+      "refersTo": "card-bento",
+      "description": "Compact analytics bento tile with a Cornflower Blue horizontal energy bar and vertical white target tick.",
+      "html": "<a href=\"#\" class=\"ds-bento-tile\"><div><div class=\"ds-tile-title\">Calories</div><div class=\"ds-tile-sub\">Today</div></div><div class=\"ds-notch-track\"><div class=\"ds-notch-fill\" style=\"width:72%\"></div><span class=\"ds-notch-tick\" style=\"left:87%\"></span></div><div class=\"ds-tile-foot\"><span class=\"ds-tile-metric\">2,108 <small>kcal</small></span><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m9 18 6-6-6-6\"/></svg></div></a>",
+      "css": ".ds-bento-tile { display: flex; flex-direction: column; justify-content: space-between; gap: 16px; padding: 14px; border-radius: 16px; background: var(--surface-card, #1c1c1f); color: var(--foreground, #f5f5f7); text-decoration: none; font-family: var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; transition: background-color 0.15s ease; } .ds-bento-tile:hover { background: var(--surface-sub, #2a2a30); } .ds-bento-tile:focus-visible { outline: 2px solid var(--ring, #6c8eff); outline-offset: 2px; } .ds-tile-title { font-size: 14px; font-weight: 600; } .ds-tile-sub { font-size: 11px; color: var(--muted-foreground, #8e8e93); } .ds-notch-track { position: relative; width: 100%; height: 14px; border-radius: 3px; background: var(--surface-sub, #2a2a30); overflow: hidden; } .ds-notch-fill { height: 100%; background: var(--macro-calories, #6c8eff); border-radius: 3px; } .ds-notch-tick { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--foreground, #f5f5f7); opacity: 0.78; } .ds-tile-foot { display: flex; align-items: center; justify-content: space-between; color: var(--muted-foreground, #8e8e93); } .ds-tile-metric { font-size: 14px; font-weight: 700; color: var(--foreground, #f5f5f7); } .ds-tile-metric small { font-size: 12px; font-weight: 400; color: var(--muted-foreground, #8e8e93); }"
+    },
+    {
+      "name": "Food Logging 30-Day Dot Matrix",
+      "kind": "card",
+      "refersTo": "card-bento",
+      "description": "Habits tile plotting the last 30 logging days as a 10x3 grid of Cornflower Blue active squares over matte wells.",
+      "html": "<div class=\"ds-habit-tile\"><div><div class=\"ds-tile-title\">Food Logging</div><div class=\"ds-tile-sub\">Last 30 Days</div></div><div class=\"ds-dot-grid\"><span class=\"ds-dot ds-dot-on\"></span><span class=\"ds-dot ds-dot-on\"></span><span class=\"ds-dot\"></span><span class=\"ds-dot ds-dot-on\"></span><span class=\"ds-dot ds-dot-on\"></span><span class=\"ds-dot ds-dot-on\"></span><span class=\"ds-dot ds-dot-on\"></span><span class=\"ds-dot ds-dot-on\"></span><span class=\"ds-dot ds-dot-on\"></span><span class=\"ds-dot ds-dot-on\"></span></div><div class=\"ds-habit-foot\"><strong>7/7</strong> this week</div></div>",
+      "css": ".ds-habit-tile { display: flex; flex-direction: column; justify-content: space-between; gap: 12px; padding: 14px; border-radius: 16px; background: var(--surface-card, #1c1c1f); color: var(--foreground, #f5f5f7); font-family: var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; } .ds-dot-grid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; } .ds-dot { aspect-ratio: 1; border-radius: 3px; background: var(--surface-sub, #2a2a30); } .ds-dot-on { background: var(--macro-calories, #6c8eff); } .ds-habit-foot { font-size: 12px; color: var(--muted-foreground, #8e8e93); } .ds-habit-foot strong { font-size: 14px; color: var(--foreground, #f5f5f7); }"
+    },
+    {
+      "name": "Persistent Quick Search Strip",
+      "kind": "input",
+      "refersTo": "input-search-dock",
+      "description": "Floating glass-obsidian search launcher above the bottom dock with barcode and AI meal scan triggers.",
+      "html": "<div class=\"ds-search-strip\"><button type=\"button\" class=\"ds-search-trigger\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg><span>Search for a food</span></button><div class=\"ds-search-actions\"><button type=\"button\" class=\"ds-search-icon-btn\" aria-label=\"Barcode camera\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M3 7V5a2 2 0 0 1 2-2h2\"/><path d=\"M17 3h2a2 2 0 0 1 2 2v2\"/><path d=\"M21 17v2a2 2 0 0 1-2 2h-2\"/><path d=\"M7 21H5a2 2 0 0 1-2-2v-2\"/><path d=\"M8 7v10\"/><path d=\"M12 7v10\"/><path d=\"M17 7v10\"/></svg></button><button type=\"button\" class=\"ds-search-icon-btn ds-search-ai\" aria-label=\"AI photo scan\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z\"/></svg></button></div></div>",
+      "css": ".ds-search-strip { height: 44px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--border, rgba(255,255,255,0.06)); background: color-mix(in srgb, var(--surface-card, #1c1c1f) 95%, transparent); backdrop-filter: blur(12px); box-shadow: 0 8px 24px rgba(0,0,0,0.28); display: flex; align-items: center; gap: 8px; font-family: var(--font-sans, system-ui, sans-serif); } .ds-search-trigger { flex: 1; height: 100%; border: 0; background: transparent; color: var(--muted-foreground, #8e8e93); display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 500; cursor: pointer; text-align: left; } .ds-search-trigger:hover { color: var(--foreground, #f5f5f7); } .ds-search-trigger:focus-visible, .ds-search-icon-btn:focus-visible { outline: 2px solid var(--ring, #6c8eff); outline-offset: 1px; } .ds-search-actions { display: flex; align-items: center; gap: 4px; } .ds-search-icon-btn { width: 32px; height: 32px; border-radius: 12px; border: 0; background: transparent; color: var(--muted-foreground, #8e8e93); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background-color 0.15s ease, color 0.15s ease; } .ds-search-icon-btn:hover { background: var(--surface-sub, #2a2a30); color: var(--foreground, #f5f5f7); } .ds-search-ai { color: var(--macro-calories, #6c8eff); }"
+    },
+    {
+      "name": "Bottom Navigation Bar",
+      "kind": "nav",
+      "refersTo": "nav-fab",
+      "description": "Docked monochrome four-tab bar anchored around the centered solid white quick-action button.",
+      "html": "<nav class=\"ds-bottom-nav\" aria-label=\"Bottom Navigation\"><a href=\"#\" class=\"ds-nav-item ds-nav-active\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.25\"><rect width=\"7\" height=\"7\" x=\"3\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"7\" x=\"14\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"7\" x=\"14\" y=\"14\" rx=\"1\"/><rect width=\"7\" height=\"7\" x=\"3\" y=\"14\" rx=\"1\"/></svg><span>Dashboard</span></a><a href=\"#\" class=\"ds-nav-item\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><path d=\"M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z\"/><path d=\"M10 2c1 .5 2 2 2 5\"/></svg><span>Food Log</span></a><button type=\"button\" class=\"ds-fab\" aria-label=\"Open quick actions\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\"><path d=\"M5 12h14\"/><path d=\"M12 5v14\"/></svg></button><a href=\"#\" class=\"ds-nav-item\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><path d=\"m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8\"/><path d=\"M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7\"/><path d=\"m2.1 21.8 6.4-6.3\"/><path d=\"m19 5-7 7\"/></svg><span>Recipes</span></a><a href=\"#\" class=\"ds-nav-item\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><path d=\"M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg><span>Settings</span></a></nav>",
+      "css": ".ds-bottom-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 16px; border-top: 1px solid var(--border, rgba(255,255,255,0.06)); background: color-mix(in srgb, var(--surface-card, #1c1c1f) 95%, transparent); backdrop-filter: blur(12px); font-family: var(--font-sans, system-ui, sans-serif); } .ds-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; text-decoration: none; color: var(--muted-foreground, #8e8e93); font-size: 10px; transition: color 0.15s ease; } .ds-nav-item:hover { color: var(--foreground, #f5f5f7); } .ds-nav-active { color: var(--foreground, #f5f5f7); font-weight: 600; } .ds-fab { width: 44px; height: 44px; border-radius: 9999px; border: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--foreground, #f5f5f7); color: var(--background, #141416); cursor: pointer; flex-shrink: 0; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Calibration Cockpit",
+    "overview": "MacroAI behaves like a calibrated nutrition instrument built for four to eight fast check-ins every day. Rather than greeting the user with loud hero banners, glowing neon gradients, or narrow artificial phone bezels, every view rests on matte obsidian slabs (`#141416` canvas, `#1c1c1f` cards) where typography and clean vector progress tracks carry all visual weight.\n\nColor exists almost exclusively to separate macronutrients cleanly on a single glance: Cornflower Blue for energy, Coral for protein, Warm Gold for fat, and Mint Emerald for carbohydrates. Interface chrome—active toggle pills, quick-action buttons, icons, and navigation tabs—stays strictly monochrome (`#f5f5f7` active on matte charcoal) so data fills stay unmistakable.",
+    "keyCharacteristics": [
+      "Matte obsidian tonal surfaces separated by value step (`#141416` -> `#1c1c1f` -> `#2a2a30`) rather than heavy borders or drop shadows.",
+      "Adherence neutrality across every target state: over-target calories and macros display calm `+delta` labels in cool slate (`#94a3b8`) and never red warning chrome.",
+      "Mobile-first thumb-zone ergonomics (`Search for a food` strip + centered white `+` dock) expanding smoothly into a multi-column `max-w-6xl` bento grid on tablets and laptops."
+    ],
+    "rules": [
+      {
+        "name": "The Adherence Neutrality Rule",
+        "body": "Nutrient fills keep their assigned hue (`--macro-calories`, `--macro-protein`, `--macro-carbs`, `--macro-fat`) and surplus states use neutral copy (`+N`, `Surplus`) in `--foreground` or `--neutral-over` (`#94a3b8`), never red alerts or punitive badges.",
+        "section": "colors"
+      },
+      {
+        "name": "The Monochrome Chrome Rule",
+        "body": "Interactive buttons, tabs, segmented controls, and navigation indicators use foreground/background inversion (`#f5f5f7` / `#141416` in dark mode) instead of colored UI chrome, reserving chroma for nutrition telemetry.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Lock Rule",
+        "body": "Apply `tabular-nums` to all numeric containers (calories, macro fractions, budgets, micronutrient readouts) so toggling display modes or scrolling meal lists keeps decimal and unit baselines locked.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tonal Slab Rule",
+        "body": "Dashboard cards rest flat on `#141416` using `#1c1c1f` fill alone; reserve blurs and drop shadows exclusively for pinned bottom strips and modal sheets.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do enforce **The Adherence Neutrality Rule**: render over-target values with neutral `+N` / `Surplus` labels and slate accents (`#94a3b8`), keeping nutrient colors steady.",
+      "Do enforce **The Tabular Lock Rule**: include `tabular-nums` on every numeric KPI, macro fraction, calorie total, and budget readout.",
+      "Do set `min-w-0` on horizontal grid/flex children and `min-inline-size: 0` on native `<progress>` controls so multi-column macro strips never overflow 390px viewports.",
+      "Do pair monochrome active UI (`#f5f5f7` pills & FAB) exclusively with matte `#141416` / `#1c1c1f` / `#2a2a30` surfaces on primary tracking screens."
+    ],
+    "donts": [
+      "Don't turn calories, progress tracks, badges, or borders red (`#ef4444` / destructive alarms) when a user logs above daily targets.",
+      "Don't constrain desktop viewports inside a narrow vertical phone box (`430px` centered frame); allow the `max-w-6xl` 12-column bento grid to expand naturally.",
+      "Don't invent custom gradients, colored glow halos, or eyebrow kickers on cards where flat tonal contrast and clean type suffice.",
+      "Don't render the floating `Search for a food` bottom strip over non-logging settings screens (`/settings`, `/recipes`)."
+    ]
+  }
+}

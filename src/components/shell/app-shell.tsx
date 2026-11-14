@@ -39,19 +39,19 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col items-center">
-      {/* Mobile-first centered frame container */}
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Dynamic responsive workspace: mobile-first full bleed, expands gracefully on tablets & laptops */}
       <div
         data-testid="app-shell-container"
-        className="w-full max-w-[430px] min-h-screen flex flex-col relative pb-24 shadow-2xl bg-background border-x border-border"
+        className="w-full max-w-6xl mx-auto min-h-screen flex flex-col relative pb-36"
       >
-        {/* Main page content area */}
-        <main className="flex-1 flex flex-col w-full">
-          {children}
-        </main>
+        <main className="flex-1 flex flex-col w-full">{children}</main>
 
-        {/* Fixed bottom navigation */}
-        <BottomNav onOpenQuickActions={() => setIsDockOpen(true)} />
+        {/* Persistent quick search strip + fixed bottom navigation */}
+        <BottomNav
+          onOpenQuickActions={() => setIsDockOpen(true)}
+          onDirectAction={handleAction}
+        />
 
         {/* Quick action overlay dock */}
         {isDockOpen && (

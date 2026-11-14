@@ -8,19 +8,15 @@ import { useLoggerStore } from '@/stores/logger-store';
 import { DEFAULT_MEAL_SLOTS, DEFAULT_RDA_MICROS } from '@/lib/nutrition/goals';
 import { aggregateDailySummary } from '@/lib/nutrition/daily-summary';
 import { distributeRemainingMacros } from '@/lib/nutrition/meal-distribution';
-import { MacroBentoGrid } from '@/components/dashboard/macro-bento-grid';
+import { MacroBentoGrid, type DayNutritionPoint } from '@/components/dashboard/macro-bento-grid';
+import {
+  HabitsAnalyticsGrid,
+  type LoggedDayDot,
+} from '@/components/dashboard/habits-analytics-grid';
 import { MicronutrientPanel } from '@/components/dashboard/micronutrient-panel';
 import { AppShell } from '@/components/shell/app-shell';
-import type { UserGoals } from '@/types/nutrition';
-import {
-  ArrowUpRight,
-  ChevronLeft,
-  ChevronRight,
-  Layers,
-  Plus,
-  RotateCcw,
-  TrendingUp,
-} from 'lucide-react';
+import type { FoodLogEntry, UserGoals } from '@/types/nutrition';
+import { ChevronLeft, ChevronRight, Plus, RotateCcw } from 'lucide-react';
 
 function getTodayIsoDate(): string {
   const d = new Date();
@@ -40,20 +36,20 @@ function offsetIsoDate(iso: string, dayOffset: number): string {
   return `${nextY}-${nextM}-${nextD}`;
 }
 
-function formatDisplayDate(iso: string): { label: string; sub: string; isToday: boolean } {
+function formatUpperHeaderDate(iso: string): { kicker: string; isToday: boolean } {
   const today = getTodayIsoDate();
   const isToday = iso === today;
   const [y, m, d] = iso.split('-').map(Number);
   const dateObj = new Date(y, m - 1, d);
-  const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-  const monthName = dateObj.toLocaleDateString('en-US', { month: 'short' });
-  const dayNum = dateObj.getDate();
+  const formatted = dateObj
+    .toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    })
+    .toUpperCase();
 
-  return {
-    label: isToday ? 'Today' : `${dayName}, ${monthName} ${dayNum}`,
-    sub: isToday ? `${dayName}, ${monthName} ${dayNum}` : `${y}`,
-    isToday,
-  };
+  return { kicker: formatted, isToday };
 }
 
 function formatSlotTime(timestamps: number[]): string | null {
@@ -68,15 +64,19 @@ export default function HomePage() {
   const setActiveDate = useLoggerStore((s) => s.setActiveDate);
   const openSheet = useLoggerStore((s) => s.openSheet);
 
-  const foodLogs = useLiveQuery(
-    () => db.foodLogs.where('date').equals(activeDate).toArray(),
-    [activeDate]
+  const windowStartDate = useMemo(() => offsetIsoDate(activeDate, -29), [activeDate]);
+
+  // Query 30 days ending on activeDate so daily metrics, 7-day stacked bars, and 30-day logging heatmap stay synced
+  const rangeLogs = useLiveQuery(
+    () =>
+      db.foodLogs
+        .where('date')
+        .between(windowStartDate, activeDate, true, true)
+        .toArray(),
+    [windowStartDate, activeDate]
   );
 
-  const userGoals = useLiveQuery(
-    () => db.userGoals.get('active'),
-    []
-  );
+  const userGoals = useLiveQuery(() => db.userGoals.get('active'), []);
 
   const fallbackGoals: UserGoals = useMemo(
     () => ({
@@ -94,7 +94,24 @@ export default function HomePage() {
   );
 
   const activeGoals = userGoals ?? fallbackGoals;
-  const activeLogs = useMemo(() => foodLogs ?? [], [foodLogs]);
+
+  const logsByDate = useMemo(() => {
+    const grouped = new Map<string, FoodLogEntry[]>();
+    for (const entry of rangeLogs ?? []) {
+      const bucket = grouped.get(entry.date);
+      if (bucket) {
+        bucket.push(entry);
+      } else {
+        grouped.set(entry.date, [entry]);
+      }
+    }
+    return grouped;
+  }, [rangeLogs]);
+
+  const activeLogs = useMemo(
+    () => logsByDate.get(activeDate) ?? [],
+    [logsByDate, activeDate]
+  );
 
   const summary = useMemo(
     () => aggregateDailySummary(activeLogs, activeGoals),
@@ -126,7 +143,65 @@ export default function HomePage() {
         fat: summary.fat.remaining,
       };
 
-  const dateInfo = formatDisplayDate(activeDate);
+  // Build 7-day sequence ending on activeDate (Pics 3 & 4)
+  const weeklyDays: DayNutritionPoint[] = useMemo(() => {
+    const days: DayNutritionPoint[] = [];
+    for (let i = -6; i <= 0; i++) {
+      const iso = offsetIsoDate(activeDate, i);
+      const dayEntries = logsByDate.get(iso) ?? [];
+      const [y, m, d] = iso.split('-').map(Number);
+      const dayLetter = new Date(y, m - 1, d)
+        .toLocaleDateString('en-US', { weekday: 'narrow' })
+        .toUpperCase();
+
+      let cal = 0;
+      let pro = 0;
+      let fat = 0;
+      let carbs = 0;
+      for (const e of dayEntries) {
+        cal += Number(e.nutritionSnapshot?.calories) || 0;
+        pro += Number(e.nutritionSnapshot?.protein) || 0;
+        fat += Number(e.nutritionSnapshot?.fat) || 0;
+        carbs += Number(e.nutritionSnapshot?.carbs) || 0;
+      }
+
+      days.push({
+        date: iso,
+        dayLetter,
+        calories: Math.round(cal),
+        protein: Math.round(pro),
+        fat: Math.round(fat),
+        carbs: Math.round(carbs),
+        caloriesTarget: activeGoals.dailyCalories,
+        proteinTarget: activeGoals.proteinG,
+        fatTarget: activeGoals.fatG,
+        carbsTarget: activeGoals.carbsG,
+        isSelected: iso === activeDate,
+      });
+    }
+    return days;
+  }, [activeDate, logsByDate, activeGoals]);
+
+  // Build 30-day logging dots ending on activeDate (Pic 1 Habits)
+  const thirtyDayDots: LoggedDayDot[] = useMemo(() => {
+    const dots: LoggedDayDot[] = [];
+    for (let i = -29; i <= 0; i++) {
+      const iso = offsetIsoDate(activeDate, i);
+      const entries = logsByDate.get(iso) ?? [];
+      const cal = entries.reduce(
+        (sum, e) => sum + (Number(e.nutritionSnapshot?.calories) || 0),
+        0
+      );
+      dots.push({
+        date: iso,
+        hasLogs: entries.length > 0,
+        calories: Math.round(cal),
+      });
+    }
+    return dots;
+  }, [activeDate, logsByDate]);
+
+  const dateInfo = formatUpperHeaderDate(activeDate);
 
   const handlePrevDay = () => setActiveDate(offsetIsoDate(activeDate, -1));
   const handleNextDay = () => setActiveDate(offsetIsoDate(activeDate, 1));
@@ -134,223 +209,184 @@ export default function HomePage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-4 p-4">
-        {/* Top Bar & Date Navigation */}
-        <header className="flex flex-col gap-2.5 pt-1">
-          <div className="flex items-center justify-between px-0.5">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-amber-500 dark:text-amber-400" aria-hidden="true" />
-              <h1 className="text-sm font-bold tracking-tight text-foreground">
-                MacroAI
+      <div className="flex flex-col gap-5 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
+        {/* Clean MacroFactor Header (Pics 1 & 4) */}
+        <header className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground">
+              {dateInfo.kicker}
+            </p>
+            <div className="flex items-baseline gap-2.5 mt-0.5">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                Dashboard
               </h1>
+              <span className="text-xs font-medium text-muted-foreground hidden sm:inline">
+                MacroAI
+              </span>
             </div>
-            <span className="text-[11px] font-mono text-muted-foreground">
-              Target Mode: Active
-            </span>
           </div>
 
-          {/* Compact Date Switcher Pill */}
-          <div className="bg-card border border-border rounded-2xl p-1.5 flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-1 shrink-0">
+            {!dateInfo.isToday && (
+              <button
+                type="button"
+                onClick={handleToday}
+                className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-surface-sub text-foreground hover:bg-surface-elevated transition-colors flex items-center gap-1 mr-1"
+              >
+                <RotateCcw className="w-3 h-3" aria-hidden="true" />
+                Today
+              </button>
+            )}
             <button
               type="button"
               onClick={handlePrevDay}
               aria-label="Previous day"
-              className="p-1.5 rounded-xl hover:bg-surface-sub text-muted-foreground hover:text-foreground transition-colors"
+              className="w-9 h-9 rounded-full flex items-center justify-center bg-card hover:bg-surface-sub text-muted-foreground hover:text-foreground transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-
-            <div className="flex items-center gap-2">
-              <div className="text-center">
-                <span className="text-xs font-bold text-foreground tracking-tight">
-                  {dateInfo.label}
-                </span>
-                <span className="text-[10px] text-muted-foreground ml-1.5 font-mono">
-                  {dateInfo.sub}
-                </span>
-              </div>
-              {!dateInfo.isToday && (
-                <button
-                  type="button"
-                  onClick={handleToday}
-                  className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-amber-400/10 text-amber-500 dark:text-amber-400 hover:bg-amber-400/20 transition-colors flex items-center gap-1"
-                >
-                  <RotateCcw className="w-2.5 h-2.5" />
-                  Today
-                </button>
-              )}
-            </div>
-
             <button
               type="button"
               onClick={handleNextDay}
               aria-label="Next day"
-              className="p-1.5 rounded-xl hover:bg-surface-sub text-muted-foreground hover:text-foreground transition-colors"
+              className="w-9 h-9 rounded-full flex items-center justify-center bg-card hover:bg-surface-sub text-muted-foreground hover:text-foreground transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </header>
 
-        {/* Macro Bars Hero & Breakdown */}
-        <MacroBentoGrid summary={summary} />
+        {/* Top Responsive Bento Workspace: Hero (left) + Insights & Habits (right on tablet/laptop) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+          <div className="lg:col-span-5">
+            <MacroBentoGrid
+              summary={summary}
+              weeklyDays={weeklyDays}
+              onSelectDate={setActiveDate}
+            />
+          </div>
 
-        {/* Dynamic Fitia-style Remaining Meal Allocation */}
-        <section
-          aria-label="Remaining Meal Allocation"
-          className="rounded-2xl bg-surface-sub border border-border p-4 space-y-3"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-purple-500 dark:text-purple-400" aria-hidden="true" />
-              <h2 className="text-xs font-semibold text-foreground">
-                Remaining Meal Allocation
+          <div className="lg:col-span-7">
+            <HabitsAnalyticsGrid
+              summary={summary}
+              weeklyDays={weeklyDays}
+              thirtyDayDots={thirtyDayDots}
+              nextSlotName={nextUnloggedSlot?.name ?? null}
+              nextSlotBudget={allocationTarget}
+              onSelectDate={setActiveDate}
+            />
+          </div>
+        </div>
+
+        {/* Bottom Workspace: Logged Entries + Micronutrient Targets */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+          {/* Logged Entries Section */}
+          <section className="lg:col-span-7 space-y-2.5">
+            <div className="flex items-center justify-between px-0.5">
+              <h2 className="text-base font-bold tracking-tight text-foreground">
+                Logged Entries
               </h2>
+              <Link
+                href="/log"
+                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                See All
+              </Link>
             </div>
-            <Link
-              href="/log"
-              aria-label="View meal allocation in log"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowUpRight className="w-4 h-4" />
-            </Link>
-          </div>
 
-          <p className="text-xs text-muted-foreground">
-            {nextUnloggedSlot
-              ? `Dynamically distributed budget for upcoming ${nextUnloggedSlot.name}:`
-              : 'All configured meal slots logged. Remaining daily balance:'}
-          </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5">
+              {mealSlots.map((slot) => {
+                const slotLogs = activeLogs.filter((entry) => entry.mealSlot === slot.id);
+                const slotTotals = slotLogs.reduce(
+                  (acc, entry) => ({
+                    calories: acc.calories + (entry.nutritionSnapshot?.calories ?? 0),
+                    protein: acc.protein + (entry.nutritionSnapshot?.protein ?? 0),
+                    carbs: acc.carbs + (entry.nutritionSnapshot?.carbs ?? 0),
+                    fat: acc.fat + (entry.nutritionSnapshot?.fat ?? 0),
+                  }),
+                  { calories: 0, protein: 0, carbs: 0, fat: 0 }
+                );
+                const latestTime = formatSlotTime(slotLogs.map((l) => l.createdAt));
+                const slotBudget = distributedBudgets[slot.id];
 
-          <div className="grid grid-cols-4 gap-2 text-center">
-            <div className="p-2 rounded-xl bg-card border border-border">
-              <div className="text-[10px] text-muted-foreground">Calories</div>
-              <div className="font-mono font-bold text-xs tabular-nums text-amber-500 dark:text-amber-400">
-                {allocationTarget.calories}
-              </div>
-            </div>
-            <div className="p-2 rounded-xl bg-card border border-border">
-              <div className="text-[10px] text-muted-foreground">Protein</div>
-              <div className="font-mono font-bold text-xs tabular-nums text-sky-500 dark:text-sky-400">
-                {allocationTarget.protein}g
-              </div>
-            </div>
-            <div className="p-2 rounded-xl bg-card border border-border">
-              <div className="text-[10px] text-muted-foreground">Carbs</div>
-              <div className="font-mono font-bold text-xs tabular-nums text-emerald-500 dark:text-emerald-400">
-                {allocationTarget.carbs}g
-              </div>
-            </div>
-            <div className="p-2 rounded-xl bg-card border border-border">
-              <div className="text-[10px] text-muted-foreground">Fat</div>
-              <div className="font-mono font-bold text-xs tabular-nums text-rose-500 dark:text-rose-400">
-                {allocationTarget.fat}g
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Logged Entries Section */}
-        <section className="space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Logged Entries
-            </h2>
-            <Link
-              href="/log"
-              className="text-[11px] font-medium text-amber-500 dark:text-amber-400 hover:opacity-80 flex items-center gap-0.5 transition-opacity"
-            >
-              View Log <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <div className="space-y-2">
-            {mealSlots.map((slot) => {
-              const slotLogs = activeLogs.filter((entry) => entry.mealSlot === slot.id);
-              const slotTotals = slotLogs.reduce(
-                (acc, entry) => ({
-                  calories: acc.calories + (entry.nutritionSnapshot?.calories ?? 0),
-                  protein: acc.protein + (entry.nutritionSnapshot?.protein ?? 0),
-                  carbs: acc.carbs + (entry.nutritionSnapshot?.carbs ?? 0),
-                  fat: acc.fat + (entry.nutritionSnapshot?.fat ?? 0),
-                }),
-                { calories: 0, protein: 0, carbs: 0, fat: 0 }
-              );
-              const latestTime = formatSlotTime(slotLogs.map((l) => l.createdAt));
-              const slotBudget = distributedBudgets[slot.id];
-
-              return (
-                <div
-                  key={slot.id}
-                  className="p-3.5 rounded-xl bg-card border border-border space-y-2.5 shadow-xs"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-foreground truncate">
-                        {slot.name}
-                      </div>
-                      <div className="text-[11px] font-mono text-muted-foreground">
-                        {slotLogs.length > 0
-                          ? `${latestTime ? `${latestTime} • ` : ''}${slotLogs.length} ${
-                              slotLogs.length === 1 ? 'item' : 'items'
-                            }`
-                          : `Unlogged${
-                              slotBudget ? ` • ${slotBudget.calories} kcal budget` : ''
-                            }`}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2.5 shrink-0">
-                      <div className="text-right">
-                        <div className="text-sm font-bold font-mono tabular-nums text-amber-500 dark:text-amber-400">
-                          {Math.round(slotTotals.calories)} kcal
+                return (
+                  <div
+                    key={slot.id}
+                    className="p-4 rounded-2xl bg-card space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-foreground truncate">
+                          {slot.name}
                         </div>
-                        <div className="text-[10px] font-mono tabular-nums text-muted-foreground">
-                          P {Math.round(slotTotals.protein)}g • C {Math.round(slotTotals.carbs)}g • F{' '}
-                          {Math.round(slotTotals.fat)}g
+                        <div className="text-xs text-muted-foreground tabular-nums">
+                          {slotLogs.length > 0
+                            ? `${latestTime ? `${latestTime} · ` : ''}${slotLogs.length} ${
+                                slotLogs.length === 1 ? 'item' : 'items'
+                              }`
+                            : `Unlogged${
+                                slotBudget ? ` · ${slotBudget.calories} kcal budget` : ''
+                              }`}
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => openSheet('search', slot.id)}
-                        aria-label={`Add food to ${slot.name}`}
-                        className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-sub transition-colors border border-border/60 hover:border-border"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right tabular-nums">
+                          <div
+                            className="text-sm font-bold"
+                            style={{ color: 'var(--macro-calories)' }}
+                          >
+                            {Math.round(slotTotals.calories)} kcal
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">
+                            P {Math.round(slotTotals.protein)}g · C {Math.round(slotTotals.carbs)}g · F{' '}
+                            {Math.round(slotTotals.fat)}g
+                          </div>
+                        </div>
 
-                  {slotLogs.length > 0 && (
-                    <div className="space-y-1.5">
-                      {slotLogs.map((log) => (
-                        <div
-                          key={log.id}
-                          className="flex items-center justify-between text-xs py-1 px-2.5 rounded-lg bg-surface-sub border border-border/50"
+                        <button
+                          type="button"
+                          onClick={() => openSheet('search', slot.id)}
+                          aria-label={`Add food to ${slot.name}`}
+                          className="w-8 h-8 rounded-full flex items-center justify-center bg-surface-sub hover:bg-surface-elevated text-foreground transition-colors"
                         >
-                          <span className="text-foreground truncate max-w-[200px] text-[11px]">
-                            {log.name}{' '}
-                            <span className="text-muted-foreground text-[10px]">
-                              ({Math.round(log.amount)}
-                              {log.unit})
-                            </span>
-                          </span>
-                          <span className="text-muted-foreground tabular-nums font-mono text-[11px]">
-                            {Math.round(log.nutritionSnapshot.calories)} kcal
-                          </span>
-                        </div>
-                      ))}
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
 
-        {/* Micronutrient Targets Panel */}
-        <MicronutrientPanel micros={summary.micros} />
+                    {slotLogs.length > 0 && (
+                      <div className="space-y-1 pt-1 border-t border-border/60">
+                        {slotLogs.map((log) => (
+                          <div
+                            key={log.id}
+                            className="flex items-center justify-between text-xs py-1 text-foreground"
+                          >
+                            <span className="truncate pr-2">
+                              {log.name}{' '}
+                              <span className="text-muted-foreground text-[11px]">
+                                ({Math.round(log.amount)}
+                                {log.unit})
+                              </span>
+                            </span>
+                            <span className="text-muted-foreground tabular-nums shrink-0">
+                              {Math.round(log.nutritionSnapshot.calories)} kcal
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Micronutrient Targets Panel */}
+          <div className="lg:col-span-5">
+            <MicronutrientPanel micros={summary.micros} />
+          </div>
+        </div>
       </div>
     </AppShell>
   );

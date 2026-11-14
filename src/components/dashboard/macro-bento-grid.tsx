@@ -1,187 +1,441 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import type { DailySummary, MacroMetric } from '@/lib/nutrition/daily-summary';
-import { SlidersHorizontal } from 'lucide-react';
+
+export interface DayNutritionPoint {
+  date: string;
+  dayLetter: string;
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  caloriesTarget: number;
+  proteinTarget: number;
+  fatTarget: number;
+  carbsTarget: number;
+  isSelected?: boolean;
+}
 
 export interface MacroBentoGridProps {
   summary: DailySummary;
+  weeklyDays?: DayNutritionPoint[];
+  onSelectDate?: (isoDate: string) => void;
   className?: string;
 }
 
-interface MacroBarRowProps {
-  label: string;
-  unit: string;
-  metric: MacroMetric;
-  badgeTextClass: string;
-  fillCssVar: string;
+type DisplayMode = 'consumed' | 'remaining';
+type HeroView = 'daily' | 'weekly';
+
+function formatMacroReadout(metric: MacroMetric, mode: DisplayMode): string {
+  if (mode === 'consumed') {
+    return `${metric.consumed} / ${metric.target}g`;
+  }
+  if (metric.overTarget) {
+    return `+${metric.delta} / ${metric.target}g`;
+  }
+  return `${metric.remaining} / ${metric.target}g`;
 }
 
-function MacroBarRow({
+function MacroColumnBar({
   label,
-  unit,
   metric,
-  badgeTextClass,
-  fillCssVar,
-}: MacroBarRowProps) {
-  const pillClass = metric.overTarget ? 'text-muted-foreground' : badgeTextClass;
-
+  fillVar,
+  mode,
+}: {
+  label: string;
+  metric: MacroMetric;
+  fillVar: string;
+  mode: DisplayMode;
+}) {
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-xs gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="font-semibold text-foreground text-[13px] truncate">
-            {label}
-          </span>
-          <span
-            className={`text-[10px] font-mono font-medium tabular-nums px-1.5 py-0.5 rounded bg-surface-sub border border-border ${pillClass}`}
-          >
-            {metric.rawPercent}%
-          </span>
-        </div>
-
-        <div className="font-mono tabular-nums text-xs shrink-0">
-          <strong className="text-foreground">
-            {metric.consumed.toLocaleString()}
-            {unit}
-          </strong>
-          <span className="text-muted-foreground">
-            {' / '}
-            {metric.target.toLocaleString()}
-            {unit}
-          </span>
-        </div>
-      </div>
-
+    <div className="flex flex-col items-center gap-1.5 min-w-0">
+      <span className="text-[11px] font-medium text-muted-foreground truncate">
+        {label}
+      </span>
       <progress
-        className="macro-progress w-full h-2 block"
+        className="macro-progress w-full h-1.5 block"
         max={100}
         value={Math.min(100, Math.max(0, metric.percent))}
         aria-label={`${label} progress`}
         style={
           {
-            '--progress-bar-fill': metric.overTarget ? 'var(--neutral-over)' : fillCssVar,
+            '--progress-bar-fill': fillVar,
             '--progress-bar-track': 'var(--surface-sub)',
           } as React.CSSProperties
         }
       />
-
-      <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground tabular-nums">
-        <span>{metric.rawPercent}% fulfilled</span>
-        <span>
-          {metric.overTarget
-            ? `+${metric.delta.toLocaleString()}${unit} over target`
-            : `${metric.remaining.toLocaleString()}${unit} left`}
-        </span>
-      </div>
+      <span className="text-[11px] font-semibold tabular-nums text-foreground whitespace-nowrap">
+        {formatMacroReadout(metric, mode)}
+      </span>
     </div>
   );
 }
 
 /**
- * Macro Bars Summary Module (Daily Energy Target + Macronutrient Breakdown).
- * Displays MacroFactor-inspired horizontal progress telemetry with strict
- * adherence-neutrality and light/dark semantic token support.
+ * MacroFactor-inspired Hero Card:
+ * Slide 0: Daily Nutrition semicircular arc gauge + Protein/Fat/Carbs slim bars + Consumed/Remaining toggle (Pic 1).
+ * Slide 1: 7-Day Nutrition & Targets multi-bar column matrix (Pic 4).
  */
-export function MacroBentoGrid({ summary, className = '' }: MacroBentoGridProps) {
+export function MacroBentoGrid({
+  summary,
+  weeklyDays = [],
+  onSelectDate,
+  className = '',
+}: MacroBentoGridProps) {
+  const [mode, setMode] = useState<DisplayMode>('consumed');
+  const [heroView, setHeroView] = useState<HeroView>('daily');
+
   const { calories, protein, carbs, fat, fiber } = summary;
+
+  // Semicircular 240-deg open horseshoe arc (bottom gap from 30deg to 150deg)
+  const size = 168;
+  const cx = size / 2;
+  const cy = size / 2 + 4;
+  const radius = 66;
+  const strokeWidth = 9;
+  const circumference = 2 * Math.PI * radius;
+  const arcSpan = circumference * (240 / 360);
+  const clampedPercent = Math.min(100, Math.max(0, calories.percent));
+  const activeSpan = arcSpan * (clampedPercent / 100);
+
+  const centerPrimaryValue =
+    mode === 'consumed'
+      ? calories.consumed
+      : calories.overTarget
+      ? `+${calories.delta}`
+      : calories.remaining;
+
+  const centerSubLabel =
+    mode === 'consumed'
+      ? 'Consumed'
+      : calories.overTarget
+      ? 'Surplus'
+      : 'Remaining';
+
+  const leftFlankValue = calories.overTarget ? `+${calories.delta}` : calories.remaining;
+  const leftFlankLabel = calories.overTarget ? 'Surplus' : 'Remaining';
 
   return (
     <section
-      aria-label="Daily energy and macronutrient bars"
-      className={`space-y-4 ${className}`}
+      aria-label="Daily Nutrition Summary"
+      className={`rounded-2xl bg-card p-4 sm:p-5 space-y-4 min-w-0 ${className}`}
     >
-      {/* Headline Daily Energy Target Banner */}
-      <div className="rounded-2xl bg-card border border-border p-4 shadow-xs">
-        <div className="flex items-center justify-between gap-2 mb-1.5">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Daily Energy Target
-          </span>
-          <span
-            className={`text-xs font-mono font-medium tabular-nums ${
-              calories.overTarget
-                ? 'text-muted-foreground'
-                : 'text-amber-500 dark:text-amber-400'
+      {/* Top Card Header + Slide Switcher Dots (Pics 1 & 4) */}
+      <div className="flex items-center justify-between gap-2 min-w-0">
+        <h2 className="text-base font-bold tracking-tight text-foreground truncate">
+          {heroView === 'daily' ? 'Daily Nutrition' : 'Nutrition & Targets'}
+        </h2>
+
+        <div
+          role="tablist"
+          aria-label="Nutrition hero view"
+          className="flex items-center gap-1 bg-surface-sub/90 px-1.5 py-1 rounded-full shrink-0"
+        >
+          <button
+            type="button"
+            role="tab"
+            id="hero-daily-tab"
+            aria-selected={heroView === 'daily'}
+            onClick={() => setHeroView('daily')}
+            className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors ${
+              heroView === 'daily'
+                ? 'bg-foreground text-background font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {calories.overTarget
-              ? `+${calories.delta.toLocaleString()} kcal surplus`
-              : `${calories.remaining.toLocaleString()} kcal remaining`}
-          </span>
+            Today
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="hero-weekly-tab"
+            aria-selected={heroView === 'weekly'}
+            onClick={() => setHeroView('weekly')}
+            className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors ${
+              heroView === 'weekly'
+                ? 'bg-foreground text-background font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            7-Day
+          </button>
         </div>
-
-        <div className="flex items-baseline gap-1.5 mb-3">
-          <span className="text-3xl font-extrabold tracking-tight text-foreground tabular-nums">
-            {calories.consumed.toLocaleString()}
-          </span>
-          <span className="text-xs font-mono text-muted-foreground tabular-nums">
-            / {calories.target.toLocaleString()} kcal
-          </span>
-        </div>
-
-        <progress
-          className="macro-progress w-full h-2.5 block"
-          max={100}
-          value={Math.min(100, Math.max(0, calories.percent))}
-          aria-label="Daily energy target progress"
-          style={
-            {
-              '--progress-bar-fill': calories.overTarget
-                ? 'var(--neutral-over)'
-                : 'var(--macro-calories)',
-              '--progress-bar-track': 'var(--surface-sub)',
-            } as React.CSSProperties
-          }
-        />
       </div>
 
-      {/* Stacked Macronutrient Breakdown Module */}
-      <div className="rounded-2xl bg-card border border-border p-4 space-y-4 shadow-xs">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Macronutrient Breakdown
-          </h2>
-          <SlidersHorizontal
-            className="w-3.5 h-3.5 text-muted-foreground"
-            aria-hidden="true"
-          />
-        </div>
+      {/* View 0: Daily Nutrition Arc & 3 Macro Bars (Pic 1) */}
+      {heroView === 'daily' ? (
+        <div role="tabpanel" aria-labelledby="hero-daily-tab" className="space-y-5">
+          {/* Horseshoe Arc + Flanking Numbers */}
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 sm:gap-3 pt-1">
+            {/* Left Flanking Metric */}
+            <div className="text-center min-w-0">
+              <div className="text-base sm:text-xl font-bold tabular-nums text-foreground truncate">
+                {leftFlankValue.toLocaleString()}
+              </div>
+              <div className="text-[11px] font-medium text-muted-foreground">
+                {leftFlankLabel}
+              </div>
+            </div>
 
-        <MacroBarRow
-          label="Calories"
-          unit="kcal"
-          metric={calories}
-          badgeTextClass="text-amber-500 dark:text-amber-400"
-          fillCssVar="var(--macro-calories)"
-        />
-        <MacroBarRow
-          label="Protein"
-          unit="g"
-          metric={protein}
-          badgeTextClass="text-sky-500 dark:text-sky-400"
-          fillCssVar="var(--macro-protein)"
-        />
-        <MacroBarRow
-          label="Carbohydrates"
-          unit="g"
-          metric={carbs}
-          badgeTextClass="text-emerald-500 dark:text-emerald-400"
-          fillCssVar="var(--macro-carbs)"
-        />
-        <MacroBarRow
-          label="Fat"
-          unit="g"
-          metric={fat}
-          badgeTextClass="text-rose-500 dark:text-rose-400"
-          fillCssVar="var(--macro-fat)"
-        />
-        <MacroBarRow
-          label="Fiber"
-          unit="g"
-          metric={fiber}
-          badgeTextClass="text-purple-500 dark:text-purple-400"
-          fillCssVar="var(--macro-fiber)"
-        />
+            {/* Center Horseshoe Arc */}
+            <div className="relative flex items-center justify-center w-[136px] h-[124px] sm:w-[164px] sm:h-[148px] shrink-0">
+              <svg
+                viewBox={`0 0 ${size} ${size}`}
+                className="w-full h-full overflow-visible"
+                aria-label={`Calorie intake ${calories.consumed} of ${calories.target} kcal`}
+              >
+                {/* Matte Track */}
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={radius}
+                  fill="none"
+                  stroke="var(--surface-sub)"
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={`${arcSpan} ${circumference}`}
+                  strokeLinecap="round"
+                  transform={`rotate(150 ${cx} ${cy})`}
+                />
+                {/* Cornflower Blue Progress Stroke */}
+                {activeSpan > 0 && (
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={radius}
+                    fill="none"
+                    stroke="var(--macro-calories)"
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={`${activeSpan} ${circumference}`}
+                    strokeLinecap="round"
+                    transform={`rotate(150 ${cx} ${cy})`}
+                    className="transition-all duration-300 ease-out"
+                  />
+                )}
+              </svg>
+
+              <div className="absolute inset-0 flex flex-col items-center justify-center pt-2 text-center pointer-events-none">
+                <span className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
+                  {typeof centerPrimaryValue === 'number'
+                    ? centerPrimaryValue.toLocaleString()
+                    : centerPrimaryValue}
+                </span>
+                <span className="text-xs font-medium text-muted-foreground mt-0.5">
+                  {centerSubLabel}
+                </span>
+              </div>
+            </div>
+
+            {/* Right Flanking Metric */}
+            <div className="text-center min-w-0">
+              <div className="text-base sm:text-xl font-bold tabular-nums text-foreground truncate">
+                {calories.target.toLocaleString()}
+              </div>
+              <div className="text-[11px] font-medium text-muted-foreground">
+                Target
+              </div>
+            </div>
+          </div>
+
+          {/* 3-Column Macro Slim Progress Row (Protein, Fat, Carbs) */}
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-4 min-w-0">
+            <MacroColumnBar
+              label="Protein"
+              metric={protein}
+              fillVar="var(--macro-protein)"
+              mode={mode}
+            />
+            <MacroColumnBar
+              label="Fat"
+              metric={fat}
+              fillVar="var(--macro-fat)"
+              mode={mode}
+            />
+            <MacroColumnBar
+              label="Carbs"
+              metric={carbs}
+              fillVar="var(--macro-carbs)"
+              mode={mode}
+            />
+          </div>
+
+          {/* Fiber subtle secondary line */}
+          <div className="flex items-center justify-center text-[11px] text-muted-foreground tabular-nums">
+            <span>
+              Fiber:{' '}
+              <strong className="text-foreground font-semibold">
+                {mode === 'consumed'
+                  ? fiber.consumed
+                  : fiber.overTarget
+                  ? `+${fiber.delta}`
+                  : fiber.remaining}
+              </strong>{' '}
+              / {fiber.target}g
+            </span>
+          </div>
+        </div>
+      ) : (
+        /* View 1: 7-Day Nutrition & Targets Columns (Pic 4 left phone) */
+        <div role="tabpanel" aria-labelledby="hero-weekly-tab" className="space-y-4 pt-1">
+          <div className="grid grid-cols-[1fr_auto] gap-3 items-center">
+            <div className="grid grid-cols-7 gap-1.5">
+              {(weeklyDays.length > 0
+                ? weeklyDays
+                : [
+                    {
+                      date: 'today',
+                      dayLetter: 'T',
+                      calories: calories.consumed,
+                      protein: protein.consumed,
+                      fat: fat.consumed,
+                      carbs: carbs.consumed,
+                      caloriesTarget: calories.target,
+                      proteinTarget: protein.target,
+                      fatTarget: fat.target,
+                      carbsTarget: carbs.target,
+                      isSelected: true,
+                    },
+                  ]
+              ).map((day) => {
+                const calPct = Math.min(
+                  100,
+                  day.caloriesTarget > 0 ? Math.round((day.calories / day.caloriesTarget) * 100) : 0
+                );
+                const proPct = Math.min(
+                  100,
+                  day.proteinTarget > 0 ? Math.round((day.protein / day.proteinTarget) * 100) : 0
+                );
+                const fatPct = Math.min(
+                  100,
+                  day.fatTarget > 0 ? Math.round((day.fat / day.fatTarget) * 100) : 0
+                );
+                const carbPct = Math.min(
+                  100,
+                  day.carbsTarget > 0 ? Math.round((day.carbs / day.carbsTarget) * 100) : 0
+                );
+
+                return (
+                  <button
+                    key={day.date}
+                    type="button"
+                    onClick={() => onSelectDate?.(day.date)}
+                    disabled={!onSelectDate}
+                    className={`flex flex-col items-center gap-1.5 py-1.5 px-1 rounded-xl transition-colors ${
+                      day.isSelected
+                        ? 'border border-foreground/45 bg-surface-sub/40'
+                        : 'border border-transparent hover:bg-surface-sub/30'
+                    }`}
+                    aria-label={`Select ${day.date}`}
+                  >
+                    {[
+                      { pct: calPct, color: 'var(--macro-calories)' },
+                      { pct: proPct, color: 'var(--macro-protein)' },
+                      { pct: fatPct, color: 'var(--macro-fat)' },
+                      { pct: carbPct, color: 'var(--macro-carbs)' },
+                    ].map((bar, idx) => (
+                      <div
+                        key={idx}
+                        className="w-2 h-6 rounded-sm bg-surface-sub overflow-hidden flex items-end"
+                      >
+                        <div
+                          className="w-full rounded-sm transition-all duration-300"
+                          style={{ height: `${bar.pct}%`, backgroundColor: bar.color }}
+                        />
+                      </div>
+                    ))}
+                    <span className="text-[10px] font-semibold text-muted-foreground mt-0.5">
+                      {day.dayLetter}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Right Target Numeric Summary */}
+            <div className="space-y-2.5 pl-1 border-l border-border/60 tabular-nums text-left">
+              <div>
+                <div className="text-xs font-bold text-foreground">
+                  {mode === 'consumed'
+                    ? calories.consumed
+                    : calories.overTarget
+                    ? `+${calories.delta}`
+                    : calories.remaining}{' '}
+                  <span className="text-[10px] font-normal text-muted-foreground">kcal</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  of {calories.target}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-bold text-foreground">
+                  {mode === 'consumed'
+                    ? protein.consumed
+                    : protein.overTarget
+                    ? `+${protein.delta}`
+                    : protein.remaining}{' '}
+                  <span className="text-[10px] font-semibold text-[var(--macro-protein)]">P</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground">of {protein.target}g</div>
+              </div>
+              <div>
+                <div className="text-xs font-bold text-foreground">
+                  {mode === 'consumed'
+                    ? fat.consumed
+                    : fat.overTarget
+                    ? `+${fat.delta}`
+                    : fat.remaining}{' '}
+                  <span className="text-[10px] font-semibold text-[var(--macro-fat)]">F</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground">of {fat.target}g</div>
+              </div>
+              <div>
+                <div className="text-xs font-bold text-foreground">
+                  {mode === 'consumed'
+                    ? carbs.consumed
+                    : carbs.overTarget
+                    ? `+${carbs.delta}`
+                    : carbs.remaining}{' '}
+                  <span className="text-[10px] font-semibold text-[var(--macro-carbs)]">C</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground">of {carbs.target}g</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Centered Segmented White Pill Toggle: Consumed | Remaining (Pics 1 & 4) */}
+      <div className="flex justify-center pt-1">
+        <div
+          role="group"
+          aria-label="Nutrition metric display mode"
+          className="inline-flex items-center p-1 rounded-full bg-surface-sub"
+        >
+          <button
+            type="button"
+            onClick={() => setMode('consumed')}
+            aria-pressed={mode === 'consumed'}
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              mode === 'consumed'
+                ? 'bg-foreground text-background shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Consumed
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('remaining')}
+            aria-pressed={mode === 'remaining'}
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              mode === 'remaining'
+                ? 'bg-foreground text-background shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Remaining
+          </button>
+        </div>
       </div>
     </section>
   );

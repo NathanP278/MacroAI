@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import type { MicroMetric } from '@/lib/nutrition/daily-summary';
-import { ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 export interface MicronutrientPanelProps {
   micros?: Record<string, MicroMetric>;
@@ -42,31 +42,34 @@ export function MicronutrientPanel({ micros = {}, className = '' }: Micronutrien
   }, [microList]);
 
   return (
-    <section className={`bg-card border border-border rounded-3xl p-4 shadow-xl space-y-3.5 ${className}`}>
+    <section
+      aria-label="Micronutrient Targets"
+      className={`bg-card rounded-2xl p-4 sm:p-5 space-y-3.5 ${className}`}
+    >
       {/* Header bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-            <ShieldCheck className="w-4 h-4" />
-          </div>
-          <div>
-            <h2 className="text-xs font-bold tracking-tight text-foreground uppercase">
-              Micronutrient Targets
-            </h2>
-            <p className="text-[10px] text-muted-foreground font-mono">
-              Cronometer-style daily RDA · {metCount}/{microList.length} targets on track
-            </p>
-          </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-base font-bold tracking-tight text-foreground">
+            Micronutrient Targets
+          </h2>
+          <p className="text-xs text-muted-foreground tabular-nums">
+            {metCount}/{microList.length} targets on track
+          </p>
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex items-center gap-1 bg-surface-sub p-0.5 rounded-xl border border-border">
+        {/* Clean Segmented Filter Pills */}
+        <div
+          role="group"
+          aria-label="Micronutrient category filter"
+          className="flex items-center gap-0.5 bg-surface-sub p-0.5 rounded-full"
+        >
           <button
             type="button"
             onClick={() => setActiveTab('all')}
-            className={`text-[10px] px-2 py-1 rounded-lg font-medium transition-colors ${
+            aria-pressed={activeTab === 'all'}
+            className={`text-[11px] px-2.5 py-1 rounded-full font-medium transition-colors ${
               activeTab === 'all'
-                ? 'bg-card text-foreground font-semibold shadow-xs'
+                ? 'bg-foreground text-background font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -75,9 +78,10 @@ export function MicronutrientPanel({ micros = {}, className = '' }: Micronutrien
           <button
             type="button"
             onClick={() => setActiveTab('minerals')}
-            className={`text-[10px] px-2 py-1 rounded-lg font-medium transition-colors ${
+            aria-pressed={activeTab === 'minerals'}
+            className={`text-[11px] px-2.5 py-1 rounded-full font-medium transition-colors ${
               activeTab === 'minerals'
-                ? 'bg-card text-foreground font-semibold shadow-xs'
+                ? 'bg-foreground text-background font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -86,9 +90,10 @@ export function MicronutrientPanel({ micros = {}, className = '' }: Micronutrien
           <button
             type="button"
             onClick={() => setActiveTab('vitamins')}
-            className={`text-[10px] px-2 py-1 rounded-lg font-medium transition-colors ${
+            aria-pressed={activeTab === 'vitamins'}
+            className={`text-[11px] px-2.5 py-1 rounded-full font-medium transition-colors ${
               activeTab === 'vitamins'
-                ? 'bg-card text-foreground font-semibold shadow-xs'
+                ? 'bg-foreground text-background font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -97,73 +102,57 @@ export function MicronutrientPanel({ micros = {}, className = '' }: Micronutrien
         </div>
       </div>
 
-      {/* Micronutrients List */}
-      <div className="space-y-2 pt-1">
+      {/* Clean Divider Rows (zero box-inside-box nesting) */}
+      <div className="divide-y divide-border/60">
         {displayedList.length === 0 ? (
           <div className="text-center py-4 text-xs text-muted-foreground">
             No micronutrients tracked for this category.
           </div>
         ) : (
           displayedList.map((item) => {
-            const isOver = item.overTarget;
             const isNear = item.status === 'near';
+            const fillColor = item.overTarget
+              ? 'var(--neutral-over)'
+              : isNear
+              ? 'var(--macro-carbs)'
+              : 'var(--macro-calories)';
 
             return (
-              <div
-                key={item.key}
-                className="bg-surface-sub/60 hover:bg-surface-sub border border-border/50 rounded-xl p-2.5 space-y-1.5 transition-colors"
-              >
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-semibold text-foreground text-[11px]">
-                      {item.name}
-                    </span>
-                    <span className="text-[9px] uppercase px-1 rounded text-muted-foreground bg-surface-sub border border-border/40 font-mono">
-                      {item.category}
-                    </span>
-                  </div>
+              <div key={item.key} className="py-2.5 first:pt-1 last:pb-1 space-y-1.5">
+                <div className="flex items-center justify-between text-xs gap-2">
+                  <span className="font-medium text-foreground">{item.name}</span>
 
-                  <div className="flex items-center gap-2 font-mono text-[11px]">
-                    <span className="tabular-nums text-foreground">
+                  <div className="flex items-center gap-2 text-xs tabular-nums">
+                    <span className="text-foreground font-semibold">
                       {item.consumed}
                       <span className="text-muted-foreground font-normal ml-0.5">
                         / {item.target} {item.unit}
                       </span>
                     </span>
-                    <span
-                      className={`text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded ${
-                        isOver
-                          ? 'bg-slate-500/15 text-slate-300'
-                          : isNear
-                          ? 'bg-emerald-500/15 text-emerald-400'
-                          : 'bg-surface-sub text-muted-foreground'
-                      }`}
-                    >
+                    <span className="text-[11px] font-medium text-muted-foreground min-w-[34px] text-right">
                       {item.rawPercent}%
                     </span>
                   </div>
                 </div>
 
-                {/* Neutral progress bar */}
-                <div className="w-full bg-surface-sub h-1.5 rounded-full overflow-hidden border border-border/30">
-                  <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      isOver
-                        ? 'bg-slate-400'
-                        : isNear
-                        ? 'bg-emerald-400'
-                        : 'bg-sky-400/80'
-                    }`}
-                    style={{ width: `${item.percent}%` }}
-                  />
-                </div>
+                <progress
+                  className="macro-progress w-full h-1.5 block"
+                  max={100}
+                  value={Math.min(100, Math.max(0, item.percent))}
+                  aria-label={`${item.name} RDA progress`}
+                  style={
+                    {
+                      '--progress-bar-fill': fillColor,
+                      '--progress-bar-track': 'var(--surface-sub)',
+                    } as React.CSSProperties
+                  }
+                />
               </div>
             );
           })
         )}
       </div>
 
-      {/* Expand/Collapse Toggle for ergonomic mobile view */}
       {activeTab === 'all' && filteredList.length > 6 && (
         <button
           type="button"

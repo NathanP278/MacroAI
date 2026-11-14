@@ -426,12 +426,18 @@ describe('aggregateDailySummary & Adherence-Neutral Analytics', () => {
 
       const { container } = render(React.createElement(MacroBentoGrid, { summary }));
 
-      expect(screen.getByText('Daily Energy Target')).toBeInTheDocument();
-      expect(screen.getByText('Macronutrient Breakdown')).toBeInTheDocument();
+      expect(screen.getByText('Daily Nutrition')).toBeInTheDocument();
+      expect(screen.getByText('Surplus')).toBeInTheDocument();
 
-      // Must display +200 kcal surplus or +200kcal over target without punitive styling
+      // Must display +200 analytical surplus delta without punitive styling
       const deltaMatches = screen.getAllByText(/\+200/);
       expect(deltaMatches.length).toBeGreaterThan(0);
+
+      // Must toggle cleanly between Consumed and Remaining + Today and 7-Day views
+      fireEvent.click(screen.getByRole('button', { name: /^remaining$/i }));
+      expect(screen.getAllByText('Surplus').length).toBeGreaterThanOrEqual(2);
+      fireEvent.click(screen.getByRole('tab', { name: /7-day/i }));
+      expect(screen.getByText('Nutrition & Targets')).toBeInTheDocument();
 
       // Must NEVER contain punitive red alert classes anywhere in rendered markup
       const html = container.innerHTML;
@@ -500,13 +506,13 @@ describe('aggregateDailySummary & Adherence-Neutral Analytics', () => {
 
       render(React.createElement(HomePage));
 
-      // Header & Macro Bars layout checks
+      // Header & MacroFactor Pics 1-4 dashboard checks
+      expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
       expect(screen.getByText('MacroAI')).toBeInTheDocument();
-      expect(screen.getByText('Target Mode: Active')).toBeInTheDocument();
-      expect(screen.getByText('Daily Energy Target')).toBeInTheDocument();
-      expect(screen.getByText('Macronutrient Breakdown')).toBeInTheDocument();
+      expect(screen.getByText('Daily Nutrition')).toBeInTheDocument();
+      expect(screen.getByText('Food Logging')).toBeInTheDocument();
       expect(screen.getByText('Remaining Meal Allocation')).toBeInTheDocument();
-      expect(screen.getByText(/dynamically distributed budget for upcoming breakfast:/i)).toBeInTheDocument();
+      expect(screen.getByText('Next: Breakfast')).toBeInTheDocument();
       expect(screen.getByText('Logged Entries')).toBeInTheDocument();
 
       // Date navigation: click previous day
