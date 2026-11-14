@@ -435,6 +435,65 @@ describe('Task 8: Barcode Scanner & Missing-Barcode Creator', () => {
       expect(screen.getByText('300 kcal')).toBeInTheDocument();
     });
 
+    test('resets scanner state when drawer is closed and reopened', async () => {
+      await db.foodsCache.put({
+        id: 'off:999888777',
+        barcode: '999888777',
+        source: 'off',
+        name: 'Stale Food Item',
+        basis: 'per100g',
+        servingSize: 100,
+        servingUnit: 'g',
+        nutrientsPerBasis: { calories: 200, protein: 10, carbs: 20, fat: 5, fiber: 2 },
+        micronutrientsPerBasis: {},
+        updatedAt: Date.now(),
+      });
+
+      const { rerender } = render(
+        <BarcodeScannerDrawer
+          open={true}
+          date="2026-11-14"
+          mealSlot="snacks"
+          onClose={() => {}}
+        />
+      );
+
+      fireEvent.change(screen.getByLabelText(/^barcode$/i), {
+        target: { value: '999888777' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /look up/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Stale Food Item')).toBeInTheDocument();
+      });
+
+      // Close the drawer
+      rerender(
+        <BarcodeScannerDrawer
+          open={false}
+          date="2026-11-14"
+          mealSlot="snacks"
+          onClose={() => {}}
+        />
+      );
+      expect(screen.queryByText('Stale Food Item')).not.toBeInTheDocument();
+
+      // Reopen the drawer
+      rerender(
+        <BarcodeScannerDrawer
+          open={true}
+          date="2026-11-14"
+          mealSlot="snacks"
+          onClose={() => {}}
+        />
+      );
+
+      // Stale food should be cleared, fresh manual barcode input restored
+      expect(screen.queryByText('Stale Food Item')).not.toBeInTheDocument();
+      expect(screen.getByLabelText(/^barcode$/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^barcode$/i)).toHaveValue('');
+    });
+
     test('opens AddBarcodeProductModal on missing barcode result', async () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
         new Response(JSON.stringify({ status: 0 }), {

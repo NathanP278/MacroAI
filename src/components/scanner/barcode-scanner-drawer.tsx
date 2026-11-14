@@ -70,6 +70,20 @@ export function BarcodeScannerDrawer({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, onClose]);
 
+  // Reset all scanner state and locks whenever the drawer closes
+  useEffect(() => {
+    if (!open) {
+      setLookupResult(null);
+      setManualBarcode('');
+      setMissingBarcode('');
+      setIsAddModalOpen(false);
+      setCameraError(null);
+      setIsLookingUp(false);
+      isProcessingScanRef.current = false;
+      isLookingUpRef.current = false;
+    }
+  }, [open]);
+
   const handleLookup = async (code: string) => {
     const trimmed = code.trim();
     if (!trimmed || isLookingUpRef.current) return;
@@ -107,6 +121,9 @@ export function BarcodeScannerDrawer({
     if (!open || lookupResult !== null || isAddModalOpen) {
       return;
     }
+
+    // Explicitly reset scan lock so interrupted or restarted scanning is never frozen
+    isProcessingScanRef.current = false;
 
     let isMounted = true;
     let activeStream: MediaStream | null = null;
@@ -288,11 +305,14 @@ export function BarcodeScannerDrawer({
   };
 
   const handleResetScanner = () => {
-    isProcessingScanRef.current = false;
-    isLookingUpRef.current = false;
     setLookupResult(null);
     setManualBarcode('');
     setMissingBarcode('');
+    setIsAddModalOpen(false);
+    setCameraError(null);
+    setIsLookingUp(false);
+    isProcessingScanRef.current = false;
+    isLookingUpRef.current = false;
   };
 
   return (
