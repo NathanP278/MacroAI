@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { AppShell } from '@/components/shell/app-shell';
 import { MealSlotsView } from '@/components/log/meal-slots-view';
 import { useLoggerStore } from '@/stores/logger-store';
 import { offsetIsoDate } from '@/lib/recipes/recipe-builder';
+import { runViewTransition, triggerHaptic } from '@/lib/motion';
 import { ChevronLeft, ChevronRight, Calendar, RotateCcw } from 'lucide-react';
 
 function getTodayIsoDate(): string {
@@ -41,19 +42,62 @@ function formatDisplayDate(iso: string): { label: string; isToday: boolean } {
 
 export default function LogPage() {
   const activeDate = useLoggerStore((s) => s.activeDate);
+  const dateDirection = useLoggerStore((s) => s.dateDirection);
   const setActiveDate = useLoggerStore((s) => s.setActiveDate);
+  const touchStartX = useRef<number | null>(null);
 
   const { label, isToday } = formatDisplayDate(activeDate);
 
-  const handlePrevDay = () => setActiveDate(offsetIsoDate(activeDate, -1));
-  const handleNextDay = () => setActiveDate(offsetIsoDate(activeDate, 1));
-  const handleToday = () => setActiveDate(getTodayIsoDate());
+  const handlePrevDay = () => {
+    triggerHaptic(8);
+    runViewTransition(() => setActiveDate(offsetIsoDate(activeDate, -1)), {
+      direction: 'backward',
+    });
+  };
+  const handleNextDay = () => {
+    triggerHaptic(8);
+    runViewTransition(() => setActiveDate(offsetIsoDate(activeDate, 1)), {
+      direction: 'forward',
+    });
+  };
+  const handleToday = () => {
+    triggerHaptic(8);
+    const today = getTodayIsoDate();
+    runViewTransition(() => setActiveDate(today), {
+      direction: today > activeDate ? 'forward' : today < activeDate ? 'backward' : null,
+    });
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0]?.clientX ?? null;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const endX = e.changedTouches[0]?.clientX ?? touchStartX.current;
+    const dx = endX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) < 48) return;
+    if (dx > 0) handlePrevDay();
+    else handleNextDay();
+  };
+
+  const dateSlideClass =
+    dateDirection === 'forward'
+      ? 'slide-enter-right'
+      : dateDirection === 'backward'
+        ? 'slide-enter-left'
+        : '';
 
   return (
     <AppShell>
       <div className="flex flex-col gap-5 sm:gap-6 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
         {/* Header & Date Switcher matching Dashboard Obsidian Aesthetic */}
-        <header className="flex flex-wrap items-end justify-between gap-3">
+        <header
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          className="flex flex-wrap items-end justify-between gap-3"
+        >
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Food Log
@@ -68,7 +112,7 @@ export default function LogPage() {
               <button
                 type="button"
                 onClick={handleToday}
-                className="touch-target macro-spring active:scale-95 px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-surface-sub border border-border/50 text-foreground hover:bg-surface-elevated flex items-center gap-1 mr-1"
+                className="touch-target tactile-press px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-surface-sub border border-border/50 text-foreground hover:bg-surface-elevated flex items-center gap-1 mr-1"
               >
                 <RotateCcw className="w-3 h-3" aria-hidden="true" />
                 Today
@@ -78,7 +122,7 @@ export default function LogPage() {
               type="button"
               onClick={handlePrevDay}
               aria-label="Previous day"
-              className="touch-target macro-spring active:scale-95 w-9 h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground"
+              className="touch-target tactile-press w-9 h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -90,7 +134,7 @@ export default function LogPage() {
               type="button"
               onClick={handleNextDay}
               aria-label="Next day"
-              className="touch-target macro-spring active:scale-95 w-9 h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground"
+              className="touch-target tactile-press w-9 h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -98,7 +142,9 @@ export default function LogPage() {
         </header>
 
         {/* Meal Slots View with Daily Consumed & Copy Yesterday */}
-        <MealSlotsView />
+        <div key={`log-date-${activeDate}`} className={dateSlideClass}>
+          <MealSlotsView />
+        </div>
       </div>
     </AppShell>
   );

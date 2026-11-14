@@ -36,8 +36,21 @@ export async function GET(
     const url = new URL(request.url);
     const searchParams = new URLSearchParams(url.searchParams);
 
-    // Enforce dataType and append api_key
-    searchParams.set('dataType', 'Foundation,SR Legacy');
+    // Preserve allowed dataType filter if requested, else default to Foundation,SR Legacy
+    const ALLOWED_DATA_TYPES = new Set([
+      'Foundation',
+      'SR Legacy',
+      'Survey (FNDDS)',
+      'Branded',
+    ]);
+    const requestedTypes = (searchParams.get('dataType') ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => ALLOWED_DATA_TYPES.has(s));
+    searchParams.set(
+      'dataType',
+      requestedTypes.length > 0 ? requestedTypes.join(',') : 'Foundation,SR Legacy'
+    );
     searchParams.set('api_key', apiKey);
 
     targetUrl = `${USDA_BASE_URL}/foods/search?${searchParams.toString()}`;

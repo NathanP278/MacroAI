@@ -8,6 +8,7 @@ import {
 } from '@/lib/recipes/recipe-builder';
 import { scaleNutrition } from '@/lib/nutrition/scaling';
 import { searchStaples } from '@/lib/foods/staples-search';
+import { triggerHaptic } from '@/lib/motion';
 import type {
   CustomRecipe,
   CustomRecipeIngredient,
@@ -24,7 +25,38 @@ import {
   Search,
   Check,
   Loader2,
+  RotateCcw,
 } from 'lucide-react';
+
+const RECIPE_DRAFT_KEY = 'macro_recipe_draft_v1';
+
+interface RecipeDraftPayload {
+  name: string;
+  basis?: 'perServing' | 'per100g';
+  servings: number;
+  ingredients: ModalIngredientRow[];
+}
+
+function readRecipeDraft(): Partial<RecipeDraftPayload> | null {
+  try {
+    const raw =
+      typeof window !== 'undefined'
+        ? window.localStorage.getItem(RECIPE_DRAFT_KEY)
+        : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<RecipeDraftPayload>;
+    if (
+      parsed &&
+      (typeof parsed.name === 'string' ||
+        (Array.isArray(parsed.ingredients) && parsed.ingredients.length > 0))
+    ) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export interface ModalIngredientRow extends CustomRecipeIngredient {
   amountStr?: string;
@@ -98,8 +130,14 @@ export function RecipeBuilderModal({
 }: RecipeBuilderModalProps) {
   const [name, setName] = useState('');
   const [basis, setBasis] = useState<'perServing' | 'per100g'>('perServing');
-  const [defaultServings, setDefaultServings] = useState(1);
+  const [servingsInput, setServingsInput] = useState('1');
   const [ingredients, setIngredients] = useState<ModalIngredientRow[]>([]);
+  const [touchedName, setTouchedName] = useState(false);
+  const [touchedServings, setTouchedServings] = useState(false);
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
+
+  const parsedServingsRaw = parseInt(servingsInput, 10);
+  const defaultServings = Math.max(1, Number.isFinite(parsedServingsRaw) ? parsedServingsRaw : 1);
 
   // Manual ingredient form fields
   const [manualName, setManualName] = useState('');
@@ -124,16 +162,26 @@ export function RecipeBuilderModal({
   if (isOpen !== prevModalKey.isOpen || currentRecipeId !== prevModalKey.recipeId) {
     setPrevModalKey({ isOpen, recipeId: currentRecipeId });
     if (isOpen) {
+      setTouchedName(false);
+      setTouchedServings(false);
       if (initialRecipe) {
         setName(initialRecipe.name || '');
         setBasis(initialRecipe.basis || 'perServing');
-        setDefaultServings(initialRecipe.defaultServings || 1);
+        setServingsInput(String(initialRecipe.defaultServings || 1));
         setIngredients(mapInitialIngredients(initialRecipe));
+        setHasRestoredDraft(false);
       } else {
-        setName('');
-        setBasis('perServing');
-        setDefaultServings(1);
-        setIngredients([]);
+        const draft = readRecipeDraft();
+        const hasDraftContent = Boolean(
+          draft && (draft.name?.trim() || (draft.ingredients && draft.ingredients.length > 0))
+        );
+        setName(draft?.name ?? '');
+        setBasis(draft?.basis === 'per100g' ? 'per100g' : 'perServing');
+        setServingsInput(
+          draft?.servings && draft.servings >= 1 ? String(draft.servings) : '1'
+        );
+        setIngredients(Array.isArray(draft?.ingredients) ? draft.ingredients : []);
+        setHasRestoredDraft(hasDraftContent);
       }
       setManualName('');
       setManualGrams('');
@@ -145,6 +193,45 @@ export function RecipeBuilderModal({
       setSearchResults([]);
     }
   }
+
+  useEffect(() => {
+    if (!isOpen || initialRecipe) return;
+    try {
+      const hasContent =
+        name.trim().length > 0 ||
+        ingredients.length > 0 ||
+        basis !== 'perServing' ||
+        defaultServings !== 1;
+      if (hasContent) {
+        const payload: RecipeDraftPayload = {
+          name,
+          basis,
+          servings: defaultServings,
+          ingredients,
+        };
+        window.localStorage.setItem(RECIPE_DRAFT_KEY, JSON.stringify(payload));
+      } else {
+        window.localStorage.removeItem(RECIPE_DRAFT_KEY);
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }, [isOpen, initialRecipe, name, basis, defaultServings, ingredients]);
+
+  const handleClearDraft = () => {
+    setName('');
+    setBasis('perServing');
+    setServingsInput('1');
+    setIngredients([]);
+    setTouchedName(false);
+    setTouchedServings(false);
+    setHasRestoredDraft(false);
+    try {
+      window.localStorage.removeItem(RECIPE_DRAFT_KEY);
+    } catch {
+      // Ignore storage errors
+    }
+  };
 
   const handleSearchQueryChange = (val: string) => {
     setSearchQuery(val);
@@ -375,12 +462,23 @@ export function RecipeBuilderModal({
         defaultServings: Math.max(1, defaultServings),
         gramWeights,
       });
+      if (!initialRecipe) {
+        try {
+          window.localStorage.removeItem(RECIPE_DRAFT_KEY);
+        } catch {
+          // Ignore storage errors
+        }
+      }
+      triggerHaptic(10);
       onSaved?.(saved);
       onClose();
     } catch (err) {
       console.error('Failed to save recipe:', err);
     }
   };
+
+  const isServingsInvalid =
+    touchedServings && (!servingsInput.trim() || !Number.isFinite(parsedServingsRaw) || parsedServingsRaw < 1);
 
   const modal = (
     <div
@@ -391,7 +489,7 @@ export function RecipeBuilderModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg max-h-full sm:max-h-[90dvh] bg-surface-elevated border-t border-x sm:border border-border rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden animate-sheet-in sm:animate-modal-in"
+        className="w-full max-w-lg max-h-full sm:max-h-[90dvh] surface-elevated-sheet rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden animate-sheet-in sm:animate-modal-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="w-9 h-1 rounded-full bg-border mx-auto mt-3 mb-1 shrink-0 sm:hidden" aria-hidden="true" />
@@ -410,14 +508,26 @@ export function RecipeBuilderModal({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close dialog"
-            className="touch-target macro-spring active:scale-90 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
-          >
-            <X className="w-5 h-5" aria-hidden="true" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {!initialRecipe && hasRestoredDraft && (
+              <button
+                type="button"
+                onClick={handleClearDraft}
+                className="tactile-press inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-full bg-surface-sub border border-border text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcw className="w-3 h-3" aria-hidden="true" />
+                <span>Clear draft</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close dialog"
+              className="touch-target tactile-press p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+            >
+              <X className="w-5 h-5" aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Content Scrollable Area */}
@@ -431,11 +541,18 @@ export function RecipeBuilderModal({
               <input
                 id="recipe-title"
                 type="text"
+                autoFocus
                 placeholder="Recipe title (e.g. Avocado Toast)"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                onBlur={() => setTouchedName(true)}
                 className="w-full bg-surface-sub rounded-xl px-3 py-2 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
               />
+              {touchedName && !name.trim() && (
+                <p className="text-[11px] text-[var(--neutral-over)]">
+                  Enter a recipe name to enable saving.
+                </p>
+              )}
             </div>
             <div className="space-y-1">
               <label htmlFor="recipe-servings" className="font-semibold text-foreground">
@@ -446,10 +563,16 @@ export function RecipeBuilderModal({
                 type="number"
                 min="1"
                 step="1"
-                value={defaultServings}
-                onChange={(e) => setDefaultServings(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                value={servingsInput}
+                onChange={(e) => setServingsInput(e.target.value)}
+                onBlur={() => setTouchedServings(true)}
                 className="w-full bg-surface-sub rounded-xl px-3 py-2 text-base sm:text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
               />
+              {isServingsInvalid && (
+                <p className="text-[11px] text-[var(--neutral-over)]">
+                  Minimum 1 serving (defaults to 1).
+                </p>
+              )}
             </div>
           </div>
 
@@ -460,7 +583,7 @@ export function RecipeBuilderModal({
               <button
                 type="button"
                 onClick={() => setBasis('perServing')}
-                className={`macro-spring active:scale-95 flex items-center justify-center py-1.5 px-3 rounded-full text-xs text-center leading-tight ${
+                className={`tactile-press flex items-center justify-center py-1.5 px-3 rounded-full text-xs text-center leading-tight ${
                   basis === 'perServing'
                     ? 'bg-foreground text-background font-semibold shadow-xs'
                     : 'text-muted-foreground hover:text-foreground font-medium'
@@ -471,7 +594,7 @@ export function RecipeBuilderModal({
               <button
                 type="button"
                 onClick={() => setBasis('per100g')}
-                className={`macro-spring active:scale-95 flex items-center justify-center py-1.5 px-3 rounded-full text-xs text-center leading-tight ${
+                className={`tactile-press flex items-center justify-center py-1.5 px-3 rounded-full text-xs text-center leading-tight ${
                   basis === 'per100g'
                     ? 'bg-foreground text-background font-semibold shadow-xs'
                     : 'text-muted-foreground hover:text-foreground font-medium'
@@ -672,7 +795,7 @@ export function RecipeBuilderModal({
             </div>
             <button
               type="submit"
-              className="macro-spring active:scale-[0.98] w-full flex items-center justify-center gap-1.5 py-2 rounded-full bg-surface-sub hover:bg-surface-elevated text-foreground font-semibold"
+              className="tactile-press w-full flex items-center justify-center gap-1.5 py-2 rounded-full bg-surface-sub hover:bg-surface-elevated text-foreground font-semibold"
             >
               <Plus className="w-3.5 h-3.5 text-[var(--macro-calories)]" aria-hidden="true" />
               <span>Add Ingredient</span>
@@ -685,7 +808,7 @@ export function RecipeBuilderModal({
           <button
             type="button"
             onClick={onClose}
-            className="macro-spring active:scale-95 px-4 py-2 rounded-full text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+            className="tactile-press px-4 py-2 rounded-full text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-surface-sub"
           >
             Cancel
           </button>
@@ -693,7 +816,7 @@ export function RecipeBuilderModal({
             type="button"
             onClick={handleSave}
             disabled={!name.trim()}
-            className="macro-spring active:scale-95 flex items-center gap-1.5 px-5 py-2 rounded-full bg-foreground hover:opacity-90 disabled:opacity-45 text-background text-xs font-semibold shadow-xs"
+            className="tactile-press flex items-center gap-1.5 px-5 py-2 rounded-full bg-foreground hover:opacity-90 disabled:opacity-45 text-background text-xs font-semibold shadow-xs"
           >
             <Check className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Save Recipe</span>

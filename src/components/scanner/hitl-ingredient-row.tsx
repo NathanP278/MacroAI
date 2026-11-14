@@ -15,7 +15,7 @@ export interface HitlIngredientRowProps {
 
 const MULTIPLIERS = [0.5, 1, 1.5, 2] as const;
 
-export function HitlIngredientRow({
+export const HitlIngredientRow = React.memo(function HitlIngredientRow({
   item,
   draftRevision,
   onChangeGrams,
@@ -193,4 +193,4 @@ export function HitlIngredientRow({
       </div>
     </div>
   );
-}
+});

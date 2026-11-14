@@ -46,15 +46,26 @@ export const FoodLogEntrySchema = z.object({
   createdAt: z.number(),
 });
 
+export const FoodServingOptionSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  unit: z.string(),
+  grams: z.number(),
+  defaultAmount: z.number().optional(),
+});
+
 export const FoodItemSchema = z.object({
   id: z.string(),
   barcode: z.string().nullable().optional(),
   source: z.enum(['staple', 'usda', 'off', 'custom_barcode']),
   name: z.string(),
   brand: z.string().optional(),
+  region: z.enum(['PH', 'GLOBAL']).optional(),
   basis: z.enum(['per100g', 'per100ml', 'perServing']),
   servingSize: z.number(),
   servingUnit: z.string(),
+  servingWeightGrams: z.number().optional(),
+  servingOptions: z.array(FoodServingOptionSchema).optional(),
   nutrientsPerBasis: MacroNutrientsSchema,
   micronutrientsPerBasis: MicronutrientsSchema,
   updatedAt: z.number(),

@@ -11,6 +11,7 @@ import {
   getServerAiConfig,
   normalizeChatEndpoint,
   callVisionChatCompletion,
+  clearAiRuntimeCaches,
 } from '../openai-compat';
 import { dynamic, GET as getHealth } from '@/app/api/ai/health/route';
 import { POST as postMealScan } from '@/app/api/ai/meal-scan/route';
@@ -175,6 +176,7 @@ describe('Task 9: OpenAI-Compatible Client Helper', () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv };
+    clearAiRuntimeCaches();
   });
 
   afterEach(() => {
@@ -363,6 +365,95 @@ describe('Task 9: OpenAI-Compatible Client Helper', () => {
     await expect(callVisionChatCompletion([{ role: 'user', content: 'test' }]))
       .rejects.toThrowError(expect.not.stringContaining(GATEWAY_SECRET));
   });
+
+  it('caches 400 response_format rejection per endpoint+model to skip duplicate retries', async () => {
+    process.env.AI_BASE_URL = 'https://no-json-mode.local/v1';
+    process.env.AI_API_KEY = 'sk-test';
+    process.env.AI_MODEL = 'legacy-vision-v1';
+
+    let fetchCount = 0;
+    const mockFetch = vi.fn().mockImplementation(async (_url, init) => {
+      fetchCount++;
+      const body = JSON.parse(init.body);
+      if (body.response_format) {
+        return {
+          ok: false,
+          status: 400,
+          text: async () => 'response_format json_object is not supported',
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: '{"items":[]}' } }],
+        }),
+      };
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    // Call 1 probes response_format -> 400 -> fallback without response_format (2 fetches)
+    await callVisionChatCompletion([{ role: 'user', content: 'meal 1' }]);
+    expect(fetchCount).toBe(2);
+
+    // Call 2 remembers incompatibility and skips response_format directly (1 fetch)
+    await callVisionChatCompletion([{ role: 'user', content: 'meal 2' }]);
+    expect(fetchCount).toBe(3);
+  });
+
+  it('deduplicates concurrent identical requests and serves cached responses when enableCache is true', async () => {
+    process.env.AI_BASE_URL = 'https://cache-test.local/v1';
+    process.env.AI_API_KEY = 'sk-test';
+    process.env.AI_MODEL = 'gemini-flash-lite';
+
+    let resolveUpstream!: (val: unknown) => void;
+    const mockFetch = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveUpstream = resolve;
+        })
+    );
+    vi.stubGlobal('fetch', mockFetch);
+
+    const messages = [{ role: 'user' as const, content: 'same meal image' }];
+    const p1 = callVisionChatCompletion(messages, { enableCache: true });
+    const p2 = callVisionChatCompletion(messages, { enableCache: true });
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    resolveUpstream({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: '{"items":[{"name":"Egg"}]}' } }],
+      }),
+    });
+
+    const [r1, r2] = await Promise.all([p1, p2]);
+    expect(r1).toContain('Egg');
+    expect(r2).toBe(r1);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+
+    // Subsequent call hits in-memory response cache with 0 extra fetches
+    const r3 = await callVisionChatCompletion(messages, { enableCache: true });
+    expect(r3).toBe(r1);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+
+    // Clearing caches forces a fresh upstream call
+    clearAiRuntimeCaches();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: '{"items":[{"name":"Egg v2"}]}' } }],
+        }),
+      })
+    );
+    const r4 = await callVisionChatCompletion(messages, { enableCache: true });
+    expect(r4).toContain('Egg v2');
+  });
 });
 
 describe('Task 9: Route Handlers', () => {
@@ -370,6 +461,7 @@ describe('Task 9: Route Handlers', () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv };
+    clearAiRuntimeCaches();
   });
 
   afterEach(() => {

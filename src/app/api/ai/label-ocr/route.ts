@@ -32,48 +32,34 @@ export async function POST(request: Request) {
   }
 
   const promptText = [
-    'Analyze this nutrition facts label image and extract the key nutritional information.',
-    'Extract:',
-    '- name: Product name if clearly visible (optional string)',
-    '- brand: Brand name if clearly visible (optional string)',
-    '- servingSize: Serving size number (must be > 0, e.g. 30 for 30g, 240 for 240ml, 1 for 1 serving)',
-    "- servingUnit: One of 'g', 'ml', or 'serving'",
-    '- calories: Calories per serving (non-negative number)',
-    '- protein: Protein in grams per serving (non-negative number)',
-    '- carbs: Total carbohydrates in grams per serving (non-negative number)',
-    '- fat: Total fat in grams per serving (non-negative number)',
-    '- fiber: Dietary fiber in grams per serving (optional non-negative number)',
-    '- sodiumMg: Sodium in milligrams per serving (optional non-negative number)',
-    'Return ONLY valid JSON matching this schema:',
-    '{',
-    '  "name": "Product Name",',
-    '  "brand": "Brand",',
-    '  "servingSize": 30,',
-    '  "servingUnit": "g",',
-    '  "calories": 150,',
-    '  "protein": 5,',
-    '  "carbs": 25,',
-    '  "fat": 3,',
-    '  "fiber": 2,',
-    '  "sodiumMg": 140',
-    '}',
+    'Output JSON immediately without extended thinking.',
+    'Extract nutrition facts from this label image: optional name, optional brand, servingSize (>0), servingUnit ("g"|"ml"|"serving"), calories, protein, carbs, fat, optional fiber, optional sodiumMg per serving.',
+    'Return ONLY compact JSON:',
+    '{"name":"Product Name","brand":"Brand","servingSize":30,"servingUnit":"g","calories":150,"protein":5,"carbs":25,"fat":3,"fiber":2,"sodiumMg":140}',
   ].join('\n');
 
   try {
-    const rawAiOutput = await callVisionChatCompletion([
-      {
-        role: 'user',
-        content: [
-          { type: 'text', text: promptText },
-          {
-            type: 'image_url',
-            image_url: {
-              url: imageDataUrl,
+    const rawAiOutput = await callVisionChatCompletion(
+      [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: promptText },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageDataUrl,
+              },
             },
-          },
-        ],
-      },
-    ]);
+          ],
+        },
+      ],
+      {
+        temperature: 0,
+        maxTokens: 400,
+        signal: request.signal,
+      }
+    );
 
     const parsed = parseAiJsonResponse(rawAiOutput, AiLabelOcrResponseSchema);
     return NextResponse.json(parsed, { status: 200 });

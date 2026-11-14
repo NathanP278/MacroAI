@@ -47,15 +47,26 @@ export interface FoodLogEntry {
   createdAt: number;
 }
 
+export interface FoodServingOption {
+  id: string;
+  label: string;          // e.g. "pc (136g)", "pack (80g)", "cup (158g)", "g"
+  unit: string;           // e.g. "pc", "pack", "cup", "slice", "serving", "g", "ml"
+  grams: number;          // gram weight of 1 unit (or 1 for 'g'/'ml')
+  defaultAmount?: number; // e.g. 1 for 'pc', 100 for 'g'
+}
+
 export interface FoodItem {
   id: string;
   barcode?: string | null;
   source: 'staple' | 'usda' | 'off' | 'custom_barcode';
   name: string;
   brand?: string;
+  region?: 'PH' | 'GLOBAL';
   basis: NutritionBasis;
   servingSize: number;
   servingUnit: string;
+  servingWeightGrams?: number;
+  servingOptions?: FoodServingOption[];
   nutrientsPerBasis: MacroNutrients;
   micronutrientsPerBasis: Micronutrients;
   updatedAt: number;

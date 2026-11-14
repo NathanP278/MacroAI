@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/db/macroai-db';
+import { db, generateId } from '@/lib/db/macroai-db';
 import { useLoggerStore } from '@/stores/logger-store';
 import { copyYesterdayLogs, offsetIsoDate } from '@/lib/recipes/recipe-builder';
 import { DEFAULT_RDA_MICROS } from '@/lib/nutrition/goals';
-import type { UserGoals } from '@/types/nutrition';
-import { Plus, RotateCcw, Trash2, Utensils, Check } from 'lucide-react';
+import { FoodRowSkeleton } from '@/components/ui/skeleton';
+import { triggerHaptic } from '@/lib/motion';
+import type { FoodLogEntry, UserGoals } from '@/types/nutrition';
+import { Plus, RotateCcw, Trash2, Check, ChevronDown, CopyPlus } from 'lucide-react';
 
 function formatEntryTime(timestamp: number): string | null {
   if (!Number.isFinite(timestamp) || timestamp <= 0) return null;
@@ -22,8 +24,11 @@ function formatEntryAmount(amount: number): string {
 export function MealSlotsView() {
   const activeDate = useLoggerStore((s) => s.activeDate);
   const openSheet = useLoggerStore((s) => s.openSheet);
+  const showUndoToast = useLoggerStore((s) => s.showUndoToast);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
   const feedbackTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rowTouchStartX = useRef<number | null>(null);
 
   React.useEffect(() => {
     return () => {
@@ -106,13 +111,48 @@ export function MealSlotsView() {
     }
   };
 
-  const handleDeleteEntry = async (entryId: string) => {
+  const handleDeleteEntry = async (entry: FoodLogEntry) => {
+    const snapshot: FoodLogEntry = {
+      ...entry,
+      nutritionSnapshot: entry.nutritionSnapshot
+        ? {
+            ...entry.nutritionSnapshot,
+            micros: entry.nutritionSnapshot.micros
+              ? { ...entry.nutritionSnapshot.micros }
+              : {},
+          }
+        : entry.nutritionSnapshot,
+    };
     try {
-      await db.foodLogs.delete(entryId);
+      await db.foodLogs.delete(entry.id);
+      triggerHaptic(12);
+      setExpandedEntryId((prev) => (prev === entry.id ? null : prev));
+      showUndoToast({
+        message: `Removed ${entry.name}`,
+        onUndo: async () => {
+          await db.foodLogs.put(snapshot);
+        },
+      });
     } catch (err) {
       console.error('Failed to delete log entry:', err);
     }
   };
+
+  const handleDuplicateEntry = async (entry: FoodLogEntry) => {
+    try {
+      await db.foodLogs.add({
+        ...entry,
+        id: generateId(),
+        date: activeDate,
+        createdAt: Date.now(),
+      });
+      triggerHaptic(10);
+    } catch (err) {
+      console.error('Failed to duplicate log entry:', err);
+    }
+  };
+
+  const isLoadingLogs = todayLogs === undefined;
 
   return (
     <div className="space-y-5 sm:space-y-6 animate-card-enter">
@@ -270,77 +310,180 @@ export function MealSlotsView() {
           </div>
         </div>
 
-        {sortedLogs.length > 0 ? (
+        {isLoadingLogs ? (
+          <FoodRowSkeleton count={3} />
+        ) : sortedLogs.length > 0 ? (
           <ul className="rounded-2xl bg-card border border-border/50 overflow-hidden divide-y divide-border/60">
-            {sortedLogs.map((entry) => {
+            {sortedLogs.map((entry, idx) => {
               const entryTime = formatEntryTime(entry.createdAt);
+              const isExpanded = expandedEntryId === entry.id;
+              const micros = entry.nutritionSnapshot?.micros;
 
               return (
                 <li
                   key={entry.id}
-                  className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-3.5 hover:bg-surface-sub/40 transition-colors"
+                  style={{ '--stagger-index': idx } as React.CSSProperties}
+                  onTouchStart={(e) => {
+                    rowTouchStartX.current = e.touches[0]?.clientX ?? null;
+                  }}
+                  onTouchEnd={(e) => {
+                    if (rowTouchStartX.current === null) return;
+                    const dx =
+                      (e.changedTouches[0]?.clientX ?? rowTouchStartX.current) -
+                      rowTouchStartX.current;
+                    rowTouchStartX.current = null;
+                    if (dx < -48) setExpandedEntryId(entry.id);
+                    else if (dx > 48 && isExpanded) setExpandedEntryId(null);
+                  }}
+                  className="stagger-item hover:bg-surface-sub/40 transition-colors"
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold text-foreground truncate">
-                      {entry.name}
-                    </div>
-                    <div className="text-xs text-muted-foreground tabular-nums mt-0.5 truncate">
-                      {formatEntryAmount(entry.amount)} {entry.unit}
-                      {entryTime ? ` · ${entryTime}` : ''}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-                    <div className="text-right tabular-nums">
-                      <div
-                        className="text-sm font-bold"
-                        style={{ color: 'var(--macro-calories)' }}
-                      >
-                        {Math.round(entry.nutritionSnapshot?.calories || 0)} kcal
-                      </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        <span className="text-[var(--macro-protein)]">
-                          {Math.round(entry.nutritionSnapshot?.protein || 0)}P
-                        </span>{' '}
-                        ·{' '}
-                        <span className="text-[var(--macro-carbs)]">
-                          {Math.round(entry.nutritionSnapshot?.carbs || 0)}C
-                        </span>{' '}
-                        ·{' '}
-                        <span className="text-[var(--macro-fat)]">
-                          {Math.round(entry.nutritionSnapshot?.fat || 0)}F
-                        </span>
-                      </div>
-                    </div>
-
+                  <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-3.5">
                     <button
                       type="button"
-                      onClick={() => handleDeleteEntry(entry.id)}
-                      aria-label={`Delete ${entry.name}`}
-                      className="touch-target macro-spring active:scale-90 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+                      onClick={() =>
+                        setExpandedEntryId((prev) =>
+                          prev === entry.id ? null : entry.id
+                        )
+                      }
+                      aria-expanded={isExpanded}
+                      className="min-w-0 flex-1 text-left group"
                     >
-                      <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-semibold text-foreground truncate">
+                          {entry.name}
+                        </span>
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-150 ${
+                            isExpanded
+                              ? 'rotate-180 text-foreground'
+                              : 'opacity-60 group-hover:opacity-100'
+                          }`}
+                          aria-hidden="true"
+                        />
+                      </div>
+                      <div className="text-xs text-muted-foreground tabular-nums mt-0.5 truncate">
+                        {formatEntryAmount(entry.amount)} {entry.unit}
+                        {entryTime ? ` · ${entryTime}` : ''}
+                      </div>
                     </button>
+
+                    <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+                      <div className="text-right tabular-nums">
+                        <div
+                          className="text-sm font-bold"
+                          style={{ color: 'var(--macro-calories)' }}
+                        >
+                          {Math.round(entry.nutritionSnapshot?.calories || 0)} kcal
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          <span className="text-[var(--macro-protein)]">
+                            {Math.round(entry.nutritionSnapshot?.protein || 0)}P
+                          </span>{' '}
+                          ·{' '}
+                          <span className="text-[var(--macro-carbs)]">
+                            {Math.round(entry.nutritionSnapshot?.carbs || 0)}C
+                          </span>{' '}
+                          ·{' '}
+                          <span className="text-[var(--macro-fat)]">
+                            {Math.round(entry.nutritionSnapshot?.fat || 0)}F
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteEntry(entry)}
+                        aria-label={`Delete ${entry.name}`}
+                        className="touch-target tactile-press w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                      </button>
+                    </div>
                   </div>
+
+                  {isExpanded && (
+                    <div className="px-4 pb-3 pt-1.5 sm:px-5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground border-t border-border/40 bg-surface-sub/35">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
+                        <span>
+                          Fiber:{' '}
+                          <strong className="text-foreground">
+                            {Math.round((entry.nutritionSnapshot?.fiber ?? 0) * 10) / 10}g
+                          </strong>
+                        </span>
+                        {micros?.sodiumMg !== undefined && (
+                          <span>
+                            Sodium:{' '}
+                            <strong className="text-foreground">
+                              {Math.round(micros.sodiumMg)}mg
+                            </strong>
+                          </span>
+                        )}
+                        {micros?.potassiumMg !== undefined && (
+                          <span>
+                            Potassium:{' '}
+                            <strong className="text-foreground">
+                              {Math.round(micros.potassiumMg)}mg
+                            </strong>
+                          </span>
+                        )}
+                        <span className="uppercase tracking-wider text-[10px]">
+                          {entry.source.replace('_', ' ')}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => void handleDuplicateEntry(entry)}
+                        className="tactile-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-card border border-border text-foreground font-medium hover:bg-surface-elevated"
+                      >
+                        <CopyPlus className="w-3 h-3" aria-hidden="true" />
+                        <span>Log Again</span>
+                      </button>
+                    </div>
+                  )}
                 </li>
               );
             })}
           </ul>
         ) : (
           <div className="rounded-2xl bg-card border border-border/50 p-6 sm:p-8 text-center">
-            <div className="w-10 h-10 rounded-full bg-surface-sub mx-auto mb-3 flex items-center justify-center text-muted-foreground">
-              <Utensils className="w-4 h-4" aria-hidden="true" />
-            </div>
+            <svg
+              viewBox="0 0 64 64"
+              className="w-12 h-12 mx-auto mb-3 text-muted-foreground/75"
+              aria-hidden="true"
+            >
+              <circle
+                cx="32"
+                cy="34"
+                r="20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeDasharray="84 126"
+                strokeLinecap="round"
+                transform="rotate(150 32 34)"
+              />
+              <circle
+                cx="32"
+                cy="34"
+                r="11"
+                fill="none"
+                stroke="var(--macro-calories)"
+                strokeWidth="2"
+                strokeOpacity="0.65"
+              />
+              <circle cx="32" cy="34" r="2.5" fill="var(--macro-calories)" />
+            </svg>
             <p className="text-sm font-semibold text-foreground">No entries logged yet</p>
             <p className="text-xs text-muted-foreground mt-1 max-w-[36ch] mx-auto">
-              Search foods, scan a barcode, or copy yesterday&apos;s entries to build your log.
+              Search offline staples, scan a barcode, or copy yesterday&apos;s entries to build your log.
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
               {yesterdayEntries.length > 0 && (
                 <button
                   type="button"
                   onClick={handleCopyYesterday}
-                  className="macro-spring active:scale-95 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-sub hover:bg-surface-elevated text-xs font-semibold text-foreground"
+                  className="tactile-press inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-sub hover:bg-surface-elevated text-xs font-semibold text-foreground"
                 >
                   <RotateCcw className="w-3.5 h-3.5 text-[var(--macro-calories)]" aria-hidden="true" />
                   <span>Copy Yesterday ({yesterdayEntries.length})</span>
@@ -349,7 +492,7 @@ export function MealSlotsView() {
               <button
                 type="button"
                 onClick={() => openSheet('search')}
-                className="macro-spring active:scale-95 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90"
+                className="tactile-press inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90"
               >
                 <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>Log Food</span>

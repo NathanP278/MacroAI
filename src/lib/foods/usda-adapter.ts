@@ -1,4 +1,10 @@
-import type { FoodItem, Micronutrients, MacroNutrients } from '@/types/nutrition';
+import type {
+  FoodItem,
+  FoodServingOption,
+  Micronutrients,
+  MacroNutrients,
+} from '@/types/nutrition';
+import { parseHouseholdServingText } from '@/lib/nutrition/scaling';
 import { db } from '@/lib/db/macroai-db';
 
 export interface UsdaNutrientEntry {
@@ -16,6 +22,24 @@ export interface UsdaNutrientEntry {
   };
 }
 
+export interface UsdaFoodMeasure {
+  disseminationText?: string;
+  gramWeight?: number;
+  measureUnitAbbreviation?: string;
+  measureUnitName?: string;
+}
+
+export interface UsdaFoodPortion {
+  portionDescription?: string;
+  gramWeight?: number;
+  amount?: number;
+  modifier?: string;
+  measureUnit?: {
+    name?: string;
+    abbreviation?: string;
+  };
+}
+
 export interface UsdaFoodPayload {
   fdcId?: number;
   id?: number;
@@ -24,11 +48,106 @@ export interface UsdaFoodPayload {
   dataType?: string;
   brandOwner?: string;
   brandName?: string;
+  servingSize?: number;
+  servingSizeUnit?: string;
+  householdServingFullText?: string;
+  foodMeasures?: UsdaFoodMeasure[];
+  foodPortions?: UsdaFoodPortion[];
   foodNutrients?: UsdaNutrientEntry[];
   [key: string]: unknown;
 }
 
 const round2 = (val: number): number => Math.round((val + Number.EPSILON) * 100) / 100;
+
+function extractUsdaServingOptions(raw: UsdaFoodPayload): {
+  servingWeightGrams?: number;
+  servingOptions?: FoodServingOption[];
+} {
+  const unitUpper = (raw.servingSizeUnit || '').trim().toLowerCase();
+  const baseUnit = unitUpper === 'ml' ? 'ml' : 'g';
+  const countable: FoodServingOption[] = [];
+  const seenUnits = new Set<string>();
+
+  const pushOption = (unit: string, perUnitGrams: number) => {
+    if (!unit || unit === 'g' || unit === 'ml' || perUnitGrams <= 0 || seenUnits.has(unit)) {
+      return;
+    }
+    const gramsRounded = round2(perUnitGrams);
+    if (gramsRounded <= 0) return;
+    seenUnits.add(unit);
+    countable.push({
+      id: unit,
+      label: `${unit} (${gramsRounded}${baseUnit})`,
+      unit,
+      grams: gramsRounded,
+      defaultAmount: 1,
+    });
+  };
+
+  if (
+    typeof raw.servingSize === 'number' &&
+    Number.isFinite(raw.servingSize) &&
+    raw.servingSize > 0 &&
+    (unitUpper === 'g' || unitUpper === 'grm' || unitUpper === 'ml')
+  ) {
+    const parsedHousehold = raw.householdServingFullText
+      ? parseHouseholdServingText(raw.householdServingFullText)
+      : null;
+    if (parsedHousehold) {
+      pushOption(parsedHousehold.unit, raw.servingSize / parsedHousehold.count);
+    } else if (raw.dataType === 'Branded' && round2(raw.servingSize) !== 100) {
+      pushOption('serving', raw.servingSize);
+    }
+  }
+
+  if (Array.isArray(raw.foodPortions)) {
+    for (const portion of raw.foodPortions) {
+      const gramWeight = portion?.gramWeight;
+      if (typeof gramWeight !== 'number' || !Number.isFinite(gramWeight) || gramWeight <= 0) {
+        continue;
+      }
+      const desc =
+        portion.portionDescription ||
+        `${portion.amount ?? 1} ${portion.measureUnit?.name || portion.modifier || portion.measureUnit?.abbreviation || ''}`;
+      const parsed = parseHouseholdServingText(desc);
+      if (parsed) {
+        pushOption(parsed.unit, gramWeight / parsed.count);
+      }
+    }
+  }
+
+  if (Array.isArray(raw.foodMeasures)) {
+    for (const measure of raw.foodMeasures) {
+      const gramWeight = measure?.gramWeight;
+      if (typeof gramWeight !== 'number' || !Number.isFinite(gramWeight) || gramWeight <= 0) {
+        continue;
+      }
+      const text = measure.disseminationText || measure.measureUnitName || '';
+      const parsed = parseHouseholdServingText(text);
+      if (parsed) {
+        pushOption(parsed.unit, gramWeight / parsed.count);
+      }
+    }
+  }
+
+  if (countable.length === 0) {
+    return {};
+  }
+
+  return {
+    servingWeightGrams: countable[0].grams,
+    servingOptions: [
+      ...countable,
+      {
+        id: baseUnit,
+        label: baseUnit,
+        unit: baseUnit,
+        grams: 1,
+        defaultAmount: 100,
+      },
+    ],
+  };
+}
 
 function extractNutrient(entry: UsdaNutrientEntry): {
   id?: number;
@@ -135,6 +254,8 @@ export function mapUsdaFoodToFoodItem(
     fiber: round2(fiber),
   };
 
+  const { servingWeightGrams, servingOptions } = extractUsdaServingOptions(raw);
+
   return {
     id,
     source,
@@ -143,6 +264,8 @@ export function mapUsdaFoodToFoodItem(
     basis: 'per100g',
     servingSize: 100,
     servingUnit: 'g',
+    ...(servingWeightGrams ? { servingWeightGrams } : {}),
+    ...(servingOptions ? { servingOptions } : {}),
     nutrientsPerBasis,
     micronutrientsPerBasis: micros,
     updatedAt: Date.now(),
@@ -154,12 +277,15 @@ export function mapUsdaFoodToFoodItem(
  */
 export async function searchUsdaFoods(
   query: string,
-  options?: { signal?: AbortSignal }
+  options?: { signal?: AbortSignal; includeBranded?: boolean }
 ): Promise<FoodItem[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
 
-  const url = `/api/usda/foods/search?query=${encodeURIComponent(trimmed)}`;
+  let url = `/api/usda/foods/search?query=${encodeURIComponent(trimmed)}`;
+  if (options?.includeBranded) {
+    url += `&dataType=${encodeURIComponent('Foundation,SR Legacy,Survey (FNDDS),Branded')}`;
+  }
   const res = await fetch(url, { signal: options?.signal });
   if (!res.ok) {
     throw new Error(`USDA search request failed with status ${res.status}`);

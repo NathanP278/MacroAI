@@ -1,9 +1,10 @@
 import 'fake-indexeddb/auto';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { parseOffProduct } from '../off-adapter';
+import { parseOffProduct, searchOffFoods } from '../off-adapter';
 import { lookupBarcodeWaterfall, useBarcodeLookup, type BarcodeLookupResult } from '@/hooks/use-barcode-lookup';
 import { GET as offRouteHandler } from '@/app/api/off/[barcode]/route';
+import { GET as offSearchRouteHandler } from '@/app/api/off/search/route';
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db/macroai-db';
 
@@ -393,6 +394,99 @@ describe('Open Food Facts Adapter & Barcode Waterfall', () => {
         result.current.reset();
       });
       expect(result.current.result).toBeNull();
+    });
+  });
+
+  describe('OFF search route & serving options extraction', () => {
+    test('parseOffProduct extracts countable servingOptions and PH region when metadata exists', () => {
+      const item = parseOffProduct('4800016644801', {
+        status: 1,
+        product: {
+          product_name: 'Pancit Canton Original',
+          brands: 'Lucky Me!',
+          countries_tags: ['en:philippines'],
+          serving_size: '1 pack (80 g)',
+          serving_quantity: 80,
+          serving_quantity_unit: 'g',
+          nutriments: {
+            'energy-kcal_100g': 462.5,
+            proteins_100g: 10,
+            carbohydrates_100g: 62.5,
+            fat_100g: 18.75,
+          },
+        },
+      });
+
+      expect(item).not.toBeNull();
+      expect(item?.region).toBe('PH');
+      expect(item?.servingWeightGrams).toBe(80);
+      expect(item?.servingOptions?.map((o) => o.unit)).toEqual(['pack', 'g']);
+      expect(item?.servingOptions?.[0].grams).toBe(80);
+
+      const plain = parseOffProduct('111222', {
+        status: 1,
+        product: {
+          product_name: 'Plain Oats',
+          nutriments: {
+            'energy-kcal_100g': 380,
+            proteins_100g: 13,
+            carbohydrates_100g: 66,
+            fat_100g: 7,
+          },
+        },
+      });
+      expect(plain?.servingOptions).toBeUndefined();
+    });
+
+    test('GET /api/off/search validates query and routes ph vs world hosts', async () => {
+      const badReq = new NextRequest('http://localhost:3000/api/off/search');
+      const badRes = await offSearchRouteHandler(badReq);
+      expect(badRes.status).toBe(400);
+
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: RequestInfo | URL) => {
+        const parsed = new URL(String(url));
+        expect(parsed.searchParams.get('search_terms')).toBe('lucky me');
+        return new Response(JSON.stringify({ products: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      });
+
+      const phReq = new NextRequest('http://localhost:3000/api/off/search?query=lucky%20me&country=ph');
+      const phRes = await offSearchRouteHandler(phReq);
+      expect(phRes.status).toBe(200);
+      expect(String(fetchSpy.mock.calls[0][0])).toContain('https://ph.openfoodfacts.org/cgi/search.pl');
+
+      const worldReq = new NextRequest('http://localhost:3000/api/off/search?query=lucky%20me&country=world');
+      const worldRes = await offSearchRouteHandler(worldReq);
+      expect(worldRes.status).toBe(200);
+      expect(String(fetchSpy.mock.calls[1][0])).toContain('https://world.openfoodfacts.org/cgi/search.pl');
+    });
+
+    test('searchOffFoods filters stubs and tags PH catalog products', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            products: [
+              { code: '000001', product_name: '', nutriments: {} },
+              {
+                code: '4800016644801',
+                product_name: 'Pancit Canton Original',
+                brands: 'Lucky Me!',
+                serving_size: '1 pack (80 g)',
+                nutriments: { 'energy-kcal_100g': 462.5, proteins_100g: 10 },
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+
+      const hits = await searchOffFoods('pancit', { country: 'ph' });
+      expect(hits).toHaveLength(1);
+      expect(hits[0].id).toBe('off:4800016644801');
+      expect(hits[0].region).toBe('PH');
+      expect(hits[0].servingOptions?.[0].unit).toBe('pack');
     });
   });
 });

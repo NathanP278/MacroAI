@@ -3,7 +3,7 @@ import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { db } from '@/lib/db/macroai-db';
 import { useLoggerStore } from '@/stores/logger-store';
-import { FoodSearchDrawer } from '../food-search-drawer';
+import { FoodSearchDrawer, clearOnlineSearchCache } from '../food-search-drawer';
 import { setStaplesCache } from '@/lib/foods/staples-search';
 import { AppShell } from '@/components/shell/app-shell';
 import type { FoodItem } from '@/types/nutrition';
@@ -31,10 +31,29 @@ const mockStaples: FoodItem[] = [
     micronutrientsPerBasis: { magnesiumMg: 43 },
     updatedAt: 1000,
   },
+  {
+    id: 'staple:ph-mcdo-egg-mcmuffin',
+    source: 'staple',
+    name: 'Egg McMuffin',
+    brand: "McDonald's",
+    region: 'PH',
+    basis: 'perServing',
+    servingSize: 1,
+    servingUnit: 'pc',
+    servingWeightGrams: 136,
+    servingOptions: [
+      { id: 'pc', label: 'pc (136g)', unit: 'pc', grams: 136, defaultAmount: 1 },
+      { id: 'g', label: 'g', unit: 'g', grams: 1, defaultAmount: 100 },
+    ],
+    nutrientsPerBasis: { calories: 310, protein: 17, carbs: 30, fat: 13, fiber: 2 },
+    micronutrientsPerBasis: { sodiumMg: 770 },
+    updatedAt: 1000,
+  },
 ];
 
 describe('FoodSearchDrawer component', () => {
   beforeEach(async () => {
+    clearOnlineSearchCache();
     await db.delete();
     await db.open();
     setStaplesCache(mockStaples);
@@ -53,7 +72,7 @@ describe('FoodSearchDrawer component', () => {
     render(<FoodSearchDrawer open date="2026-11-14" mealSlot="lunch" onClose={() => {}} />);
 
     expect(screen.getByTestId('food-search-drawer')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/search 2,500 offline whole-food staples/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/search foods, brands, ph staples & online databases/i)).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText('Chicken breast, raw')).toBeInTheDocument();
@@ -148,11 +167,7 @@ describe('FoodSearchDrawer component', () => {
 
     render(<FoodSearchDrawer open date="2026-11-14" mealSlot="dinner" onClose={() => {}} />);
 
-    // Switch to USDA Online tab
-    const usdaTab = screen.getByRole('button', { name: /usda online/i });
-    fireEvent.click(usdaTab);
-
-    const input = screen.getByPlaceholderText(/search online usda fooddata central/i);
+    const input = screen.getByLabelText(/search foods/i);
     fireEvent.change(input, { target: { value: 'salmon' } });
 
     await waitFor(() => {
@@ -191,5 +206,191 @@ describe('FoodSearchDrawer component', () => {
     );
 
     expect(screen.getByTestId('food-search-drawer')).toBeInTheDocument();
+  });
+
+  test('Egg McMuffin defaults to 1 pc, toggles to g, scales macros, and logs 2 pcs', async () => {
+    const handleClose = vi.fn();
+    render(<FoodSearchDrawer open date="2026-11-14" mealSlot="breakfast" onClose={handleClose} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Egg McMuffin')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Egg McMuffin'));
+
+    const amountInput = screen.getByLabelText(/portion amount/i);
+    const unitInput = screen.getByLabelText(/portion unit/i);
+    expect(amountInput).toHaveValue(1);
+    expect(unitInput).toHaveValue('pc');
+    expect(screen.getByText('310 kcal')).toBeInTheDocument();
+
+    // Toggle and piece presets are rendered because countable options apply
+    expect(screen.getByRole('group', { name: /serving unit options/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '0.5 pc' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '1 pc' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '1.5 pcs' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '2 pcs' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '3 pcs' })).toBeInTheDocument();
+
+    // Switch to grams and verify half weight (68g = 155 kcal)
+    fireEvent.click(screen.getByRole('button', { name: 'g' }));
+    expect(unitInput).toHaveValue('g');
+    fireEvent.change(amountInput, { target: { value: '68' } });
+    expect(screen.getByText('155 kcal')).toBeInTheDocument();
+
+    // Switch back to pieces and select 2 pcs
+    fireEvent.click(screen.getByRole('button', { name: 'pc (136g)' }));
+    fireEvent.click(screen.getByRole('button', { name: '2 pcs' }));
+    expect(amountInput).toHaveValue(2);
+    expect(unitInput).toHaveValue('pcs');
+    expect(screen.getByText('620 kcal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /log food/i }));
+
+    await waitFor(async () => {
+      expect(await db.foodLogs.count()).toBe(1);
+    });
+
+    const [logged] = await db.foodLogs.toArray();
+    expect(logged.name).toBe('Egg McMuffin');
+    expect(logged.amount).toBe(2);
+    expect(logged.unit).toBe('pcs');
+    expect(logged.nutritionSnapshot.calories).toBe(620);
+    expect(handleClose).toHaveBeenCalled();
+  });
+
+  test('plain per100g staple omits serving unit toggle and keeps gram presets', async () => {
+    render(<FoodSearchDrawer open date="2026-11-14" mealSlot="lunch" onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Chicken breast, raw')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Chicken breast, raw'));
+
+    expect(screen.queryByRole('group', { name: /serving unit options/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '100g' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '1 pc' })).not.toBeInTheDocument();
+  });
+
+  test('online tab merges Open Food Facts PH/Global and USDA results', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: RequestInfo | URL) => {
+      const urlStr = String(url);
+      if (urlStr.includes('/api/off/search') && urlStr.includes('country=ph')) {
+        return new Response(
+          JSON.stringify({
+            products: [
+              {
+                code: '4800016644801',
+                product_name: 'Pancit Canton Kalamansi',
+                brands: 'Lucky Me!',
+                serving_size: '1 pack (80 g)',
+                nutriments: {
+                  'energy-kcal_100g': 462.5,
+                  proteins_100g: 10,
+                  carbohydrates_100g: 62.5,
+                  fat_100g: 18.75,
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      if (urlStr.includes('/api/off/search')) {
+        return new Response(JSON.stringify({ products: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (urlStr.includes('/api/usda/foods/search')) {
+        return new Response(
+          JSON.stringify({
+            foods: [
+              {
+                fdcId: 888,
+                description: 'Noodles, egg, cooked',
+                foodNutrients: [{ nutrientId: 1008, unitName: 'kcal', value: 138 }],
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      return new Response('{}', { status: 200 });
+    });
+
+    render(<FoodSearchDrawer open date="2026-11-14" mealSlot="snack" onClose={() => {}} />);
+
+    fireEvent.change(screen.getByLabelText(/search foods/i), { target: { value: 'pancit' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Pancit Canton Kalamansi')).toBeInTheDocument();
+      expect(screen.getByText('Noodles, egg, cooked')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Lucky Me!')).toBeInTheDocument();
+    expect(screen.getByText('PH')).toBeInTheDocument();
+  });
+
+  test('typo-tolerant search suggests close foods like "eg mcmufin" and "chiken"', async () => {
+    render(<FoodSearchDrawer open date="2026-11-14" mealSlot="breakfast" onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Egg McMuffin')).toBeInTheDocument();
+    });
+
+    const input = screen.getByLabelText(/search foods/i);
+    fireEvent.change(input, { target: { value: 'eg mcmufin' } });
+    expect(screen.getByText('Egg McMuffin')).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: 'chiken' } });
+    expect(screen.getByText('Chicken breast, raw')).toBeInTheDocument();
+  });
+
+  test('streams fast online results immediately while slower providers are still pending alongside local items', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: RequestInfo | URL) => {
+      const urlStr = String(url);
+      if (urlStr.includes('/api/off/search') && urlStr.includes('country=ph')) {
+        return new Response(
+          JSON.stringify({
+            products: [
+              {
+                code: '4800111222333',
+                product_name: 'Chooks-to-Go Chicken Belly',
+                brands: 'Chooks-to-Go',
+                nutriments: {
+                  'energy-kcal_100g': 220,
+                  proteins_100g: 21,
+                  carbohydrates_100g: 2,
+                  fat_100g: 14,
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      // Keep world OFF & USDA pending indefinitely
+      return new Promise<Response>(() => {});
+    });
+
+    render(<FoodSearchDrawer open date="2026-11-14" mealSlot="lunch" onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Chicken breast, raw')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/search foods/i), { target: { value: 'chicken' } });
+
+    // Local chicken item displays immediately without blocking on pending providers
+    expect(screen.getByText('Chicken breast, raw')).toBeInTheDocument();
+
+    // Fast PH Open Food Facts result streams in immediately while USDA/World OFF remain pending
+    await waitFor(() => {
+      expect(screen.getByText('Chooks-to-Go Chicken Belly')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Chicken breast, raw')).toBeInTheDocument();
+    expect(screen.getByText(/searching open food facts & usda/i)).toBeInTheDocument();
   });
 });

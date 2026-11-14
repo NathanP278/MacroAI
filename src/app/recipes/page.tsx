@@ -5,11 +5,12 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db/macroai-db';
 import { AppShell } from '@/components/shell/app-shell';
 import { RecipeBuilderModal } from '@/components/recipes/recipe-builder-modal';
+import { RecipeCardSkeleton } from '@/components/ui/skeleton';
 import { logCustomRecipe } from '@/lib/recipes/recipe-builder';
+import { triggerHaptic } from '@/lib/motion';
 import { useLoggerStore } from '@/stores/logger-store';
 import type { CustomRecipe } from '@/types/nutrition';
 import {
-  ChefHat,
   Plus,
   Search,
   Trash2,
@@ -33,6 +34,7 @@ export default function RecipesPage() {
   }, []);
 
   const activeDate = useLoggerStore((s) => s.activeDate);
+  const showUndoToast = useLoggerStore((s) => s.showUndoToast);
 
   // Live query for custom recipes
   const recipes = useLiveQuery(() => db.customRecipes.toArray(), []);
@@ -55,9 +57,22 @@ export default function RecipesPage() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteRecipe = async (id: string) => {
+  const handleDeleteRecipe = async (recipe: CustomRecipe) => {
+    const snapshot: CustomRecipe = {
+      ...recipe,
+      ingredients: recipe.ingredients ? [...recipe.ingredients] : [],
+      nutrientsPerBasis: { ...recipe.nutrientsPerBasis },
+      micronutrientsPerBasis: { ...(recipe.micronutrientsPerBasis ?? {}) },
+    };
     try {
-      await db.customRecipes.delete(id);
+      await db.customRecipes.delete(recipe.id);
+      triggerHaptic(12);
+      showUndoToast({
+        message: `Removed recipe "${recipe.name}"`,
+        onUndo: async () => {
+          await db.customRecipes.put(snapshot);
+        },
+      });
     } catch (err) {
       console.error('Failed to delete custom recipe:', err);
     }
@@ -137,16 +152,19 @@ export default function RecipesPage() {
         </div>
 
         {/* Recipes Bento Grid */}
-        {filteredRecipes.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 animate-card-enter">
-            {filteredRecipes.map((recipe) => {
+        {recipes === undefined ? (
+          <RecipeCardSkeleton count={3} />
+        ) : filteredRecipes.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+            {filteredRecipes.map((recipe, idx) => {
               const feedback = loggedFeedback[recipe.id];
 
               return (
                 <div
                   key={recipe.id}
                   data-testid={`recipe-card-${recipe.id}`}
-                  className="bg-card border border-border/50 macro-card-interactive rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-4"
+                  style={{ '--stagger-index': idx } as React.CSSProperties}
+                  className="stagger-item bg-card border border-border/50 macro-card-interactive rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-4"
                 >
                   {/* Card Title & Edit/Delete */}
                   <div className="flex items-start justify-between gap-2">
@@ -179,9 +197,9 @@ export default function RecipesPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDeleteRecipe(recipe.id)}
+                        onClick={() => void handleDeleteRecipe(recipe)}
                         aria-label={`Delete recipe ${recipe.name}`}
-                        className="touch-target macro-spring active:scale-90 p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+                        className="touch-target tactile-press p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
                       >
                         <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                       </button>
@@ -245,9 +263,49 @@ export default function RecipesPage() {
         ) : (
           /* Empty State */
           <div className="bg-card border border-border/50 rounded-2xl px-6 py-10 sm:p-14 text-center space-y-4 animate-card-enter">
-            <div className="w-12 h-12 rounded-2xl bg-[var(--macro-calories)]/15 mx-auto flex items-center justify-center text-[var(--macro-calories)]">
-              <ChefHat className="w-6 h-6" aria-hidden="true" />
-            </div>
+            <svg
+              viewBox="0 0 64 64"
+              className="w-12 h-12 mx-auto text-muted-foreground/75"
+              aria-hidden="true"
+            >
+              <rect
+                x="14"
+                y="16"
+                width="36"
+                height="34"
+                rx="8"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+              <line
+                x1="22"
+                y1="27"
+                x2="42"
+                y2="27"
+                stroke="var(--macro-calories)"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <line
+                x1="22"
+                y1="35"
+                x2="38"
+                y2="35"
+                stroke="var(--macro-protein)"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <line
+                x1="22"
+                y1="43"
+                x2="33"
+                y2="43"
+                stroke="var(--macro-carbs)"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
             <div>
               <h2 className="text-base sm:text-lg font-bold text-foreground">
                 {searchQuery ? 'No matching recipes' : 'Recipe Book Empty'}
@@ -262,7 +320,7 @@ export default function RecipesPage() {
               <button
                 type="button"
                 onClick={handleOpenCreate}
-                className="macro-spring active:scale-95 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
+                className="tactile-press inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
               >
                 <Plus className="w-4 h-4" aria-hidden="true" />
                 <span>Create Recipe</span>

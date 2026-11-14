@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, X, Check, Plus, Loader2 } from 'lucide-react';
 import { db, generateId } from '@/lib/db/macroai-db';
-import { searchStaples } from '@/lib/foods/staples-search';
+import { loadStaples, searchStaples } from '@/lib/foods/staples-search';
 import { searchUsdaFoods } from '@/lib/foods/usda-adapter';
 import type { FoodItem, MacroNutrients, Micronutrients } from '@/types/nutrition';
 import type { AiDraftItem } from '@/stores/logger-store';
@@ -45,55 +45,94 @@ export function HitlVerificationSwapModal({
   const [manualFat, setManualFat] = useState('0');
 
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const searchRequestIdRef = useRef(0);
 
   const executeSearch = useCallback(async (searchTerm: string) => {
+    if (searchAbortRef.current) {
+      searchAbortRef.current.abort();
+      searchAbortRef.current = null;
+    }
+
+    const requestId = ++searchRequestIdRef.current;
     const q = searchTerm.trim();
     if (!q) {
       setResults([]);
+      setIsSearching(false);
       return;
     }
 
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
     setIsSearching(true);
-    try {
-      // 1. Search cached items in Dexie
-      const cached = await db.foodsCache.toArray();
-      const localMatches = cached.filter((item) =>
-        item.name.toLowerCase().includes(q.toLowerCase()) ||
-        (item.brand && item.brand.toLowerCase().includes(q.toLowerCase()))
-      );
 
-      // 2. Search offline staples dataset
-      let stapleMatches: FoodItem[] = [];
-      try {
-        stapleMatches = await searchStaples(q, 20);
-      } catch (err) {
-        console.warn('Staples search error:', err);
-      }
-
-      // 3. Search USDA FoodData Central online (resilient to offline/keys)
-      let usdaMatches: FoodItem[] = [];
-      try {
-        usdaMatches = await searchUsdaFoods(q);
-      } catch {
-        // USDA search failure is non-fatal: offline or missing key
-      }
-
-      // Deduplicate by id, prioritize local, then staples, then USDA
+    const deduplicate = (lists: FoodItem[][]): FoodItem[] => {
       const seenIds = new Set<string>();
       const combined: FoodItem[] = [];
-
-      for (const item of [...localMatches, ...stapleMatches, ...usdaMatches]) {
-        if (!seenIds.has(item.id)) {
-          seenIds.add(item.id);
-          combined.push(item);
+      for (const list of lists) {
+        for (const item of list) {
+          if (!seenIds.has(item.id)) {
+            seenIds.add(item.id);
+            combined.push(item);
+          }
         }
       }
+      return combined;
+    };
 
-      setResults(combined);
+    try {
+      // Launch online USDA lookup, local IndexedDB cache, and offline staples concurrently
+      const usdaPromise = searchUsdaFoods(q, { signal: controller.signal }).catch(
+        () => [] as FoodItem[]
+      );
+      const cachePromise = db.foodsCache.toArray().catch(() => [] as FoodItem[]);
+      const staplesPromise = searchStaples(q, 20).catch((err) => {
+        console.warn('Staples search error:', err);
+        return [] as FoodItem[];
+      });
+
+      const qLower = q.toLowerCase();
+      let localMatches: FoodItem[] = [];
+      let stapleMatches: FoodItem[] = [];
+
+      const cached = await cachePromise;
+      if (controller.signal.aborted || requestId !== searchRequestIdRef.current) {
+        return;
+      }
+
+      localMatches = cached.filter(
+        (item) =>
+          item.name.toLowerCase().includes(qLower) ||
+          (item.brand && item.brand.toLowerCase().includes(qLower))
+      );
+
+      if (localMatches.length > 0) {
+        setResults(deduplicate([localMatches]));
+      }
+
+      stapleMatches = await staplesPromise;
+      if (controller.signal.aborted || requestId !== searchRequestIdRef.current) {
+        return;
+      }
+
+      setResults(deduplicate([localMatches, stapleMatches]));
+
+      const usdaMatches = await usdaPromise;
+      if (controller.signal.aborted || requestId !== searchRequestIdRef.current) {
+        return;
+      }
+
+      if (usdaMatches.length > 0) {
+        setResults(deduplicate([localMatches, stapleMatches, usdaMatches]));
+      }
     } catch (err) {
-      console.error('Error during food verification search:', err);
+      if (!controller.signal.aborted) {
+        console.error('Error during food verification search:', err);
+      }
     } finally {
-      setIsSearching(false);
+      if (requestId === searchRequestIdRef.current) {
+        setIsSearching(false);
+      }
     }
   }, []);
 
@@ -116,9 +155,11 @@ export function HitlVerificationSwapModal({
     }
   }
 
-  // Initialize search with target item name when opening
+  // Pre-warm offline staples and initialize search with target item name when opening
   useEffect(() => {
-    if (open && targetItem) {
+    if (!open) return;
+    void loadStaples().catch(() => {});
+    if (targetItem) {
       const timer = setTimeout(() => {
         executeSearch(targetItem.name);
       }, 0);
@@ -139,18 +180,26 @@ export function HitlVerificationSwapModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, onClose]);
 
-  // Clean up search debounce timer on unmount and when modal closes
+  // Clean up search debounce timer and in-flight requests on unmount and when modal closes
   useEffect(() => {
     return () => {
       if (searchDebounceRef.current) {
         clearTimeout(searchDebounceRef.current);
       }
+      if (searchAbortRef.current) {
+        searchAbortRef.current.abort();
+      }
     };
   }, []);
 
   useEffect(() => {
-    if (!open && searchDebounceRef.current) {
-      clearTimeout(searchDebounceRef.current);
+    if (!open) {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+      if (searchAbortRef.current) {
+        searchAbortRef.current.abort();
+      }
     }
   }, [open]);
 
@@ -161,7 +210,7 @@ export function HitlVerificationSwapModal({
     }
     searchDebounceRef.current = setTimeout(() => {
       executeSearch(val);
-    }, 200);
+    }, 80);
   };
 
   const handleSelectFood = (foodItem: FoodItem) => {

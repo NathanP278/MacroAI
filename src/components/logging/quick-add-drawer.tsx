@@ -1,11 +1,36 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { X, RefreshCw, Zap, AlertCircle } from 'lucide-react';
+import { X, RefreshCw, Zap, AlertCircle, RotateCcw } from 'lucide-react';
 import { db, generateId } from '@/lib/db/macroai-db';
 import { computeMacroCalories } from '@/lib/nutrition/scaling';
 import { useLoggerStore } from '@/stores/logger-store';
+import { triggerHaptic } from '@/lib/motion';
 import type { FoodLogEntry } from '@/types/nutrition';
+
+const QUICK_ADD_DRAFT_KEY = 'macro_quick_add_draft_v1';
+
+interface QuickAddDraft {
+  name: string;
+  protein: string;
+  carbs: string;
+  fat: string;
+  fiber: string;
+  calories: string;
+  isCalorieOverridden: boolean;
+}
+
+function readQuickAddDraft(): Partial<QuickAddDraft> {
+  try {
+    const raw =
+      typeof window !== 'undefined'
+        ? window.localStorage.getItem(QUICK_ADD_DRAFT_KEY)
+        : null;
+    return raw ? (JSON.parse(raw) as Partial<QuickAddDraft>) : {};
+  } catch {
+    return {};
+  }
+}
 
 export interface QuickAddDrawerProps {
   open: boolean;
@@ -27,15 +52,73 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
   const effectiveDate = date ?? storeDate;
   const effectiveMealSlot = mealSlot ?? storeMealSlot;
 
-  const [name, setName] = useState('Quick Add');
-  const [protein, setProtein] = useState<string>('');
-  const [carbs, setCarbs] = useState<string>('');
-  const [fat, setFat] = useState<string>('');
-  const [fiber, setFiber] = useState<string>('');
-  const [calories, setCalories] = useState<string>('0');
-  const [isCalorieOverridden, setIsCalorieOverridden] = useState(false);
+  const [initialDraft] = useState<Partial<QuickAddDraft>>(readQuickAddDraft);
+  const [name, setName] = useState(initialDraft.name ?? 'Quick Add');
+  const [protein, setProtein] = useState<string>(initialDraft.protein ?? '');
+  const [carbs, setCarbs] = useState<string>(initialDraft.carbs ?? '');
+  const [fat, setFat] = useState<string>(initialDraft.fat ?? '');
+  const [fiber, setFiber] = useState<string>(initialDraft.fiber ?? '');
+  const [calories, setCalories] = useState<string>(initialDraft.calories ?? '0');
+  const [isCalorieOverridden, setIsCalorieOverridden] = useState(
+    Boolean(initialDraft.isCalorieOverridden)
+  );
+  const [touched, setTouched] = useState<{
+    calories?: boolean;
+    protein?: boolean;
+    carbs?: boolean;
+    fat?: boolean;
+    fiber?: boolean;
+  }>({});
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const isDirty =
+    name !== 'Quick Add' ||
+    protein !== '' ||
+    carbs !== '' ||
+    fat !== '' ||
+    fiber !== '' ||
+    calories !== '0' ||
+    isCalorieOverridden;
+
+  useEffect(() => {
+    try {
+      if (isDirty) {
+        window.localStorage.setItem(
+          QUICK_ADD_DRAFT_KEY,
+          JSON.stringify({
+            name,
+            protein,
+            carbs,
+            fat,
+            fiber,
+            calories,
+            isCalorieOverridden,
+          })
+        );
+      } else {
+        window.localStorage.removeItem(QUICK_ADD_DRAFT_KEY);
+      }
+    } catch {
+      // Ignore storage quota/unavailable errors
+    }
+  }, [isDirty, name, protein, carbs, fat, fiber, calories, isCalorieOverridden]);
+
+  const handleResetDraft = () => {
+    setName('Quick Add');
+    setProtein('');
+    setCarbs('');
+    setFat('');
+    setFiber('');
+    setCalories('0');
+    setIsCalorieOverridden(false);
+    setTouched({});
+    try {
+      window.localStorage.removeItem(QUICK_ADD_DRAFT_KEY);
+    } catch {
+      // Ignore storage errors
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -117,10 +200,16 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
       };
 
       await db.foodLogs.add(entry);
+      try {
+        window.localStorage.removeItem(QUICK_ADD_DRAFT_KEY);
+      } catch {
+        // Ignore storage errors
+      }
+      triggerHaptic(10);
       onClose();
     } catch (err: unknown) {
       console.error('Failed to log quick add entry:', err);
-      setErrorMessage('Unable to save log entry offline. Please try again.');
+      setErrorMessage('Unable to save log entry locally. Check browser storage permissions and try again.');
     } finally {
       setIsSaving(false);
     }
@@ -136,7 +225,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg mx-auto bg-surface-elevated border-t border-x border-border rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl animate-sheet-in"
+        className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] animate-sheet-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3" aria-hidden="true" />
@@ -153,14 +242,26 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close quick add"
-            className="touch-target macro-spring active:scale-90 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
-          >
-            <X className="w-5 h-5" aria-hidden="true" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {isDirty && (
+              <button
+                type="button"
+                onClick={handleResetDraft}
+                className="tactile-press inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-full bg-surface-sub border border-border text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcw className="w-3 h-3" aria-hidden="true" />
+                <span>Reset draft</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close quick add"
+              className="touch-target tactile-press p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+            >
+              <X className="w-5 h-5" aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         {/* Form Body */}
@@ -173,6 +274,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
               id="quick-add-name"
               aria-label="Description"
               type="text"
+              autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Protein shake, Greek yogurt"
@@ -190,7 +292,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
                 type="button"
                 onClick={handleSyncToMacros}
                 aria-label="Sync to macros"
-                className="macro-spring active:scale-95 inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2.5 py-1 rounded-full bg-card border border-border"
+                className="tactile-press inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2.5 py-1 rounded-full bg-card border border-border"
               >
                 <RefreshCw
                   className={`w-2.5 h-2.5 ${isCalorieOverridden ? 'text-[var(--macro-calories)]' : ''}`}
@@ -207,9 +309,15 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
                 step="any"
                 value={calories}
                 onChange={(e) => handleCaloriesChange(e.target.value)}
+                onBlur={() => setTouched((prev) => ({ ...prev, calories: true }))}
                 className="w-full px-3 py-2 text-sm font-semibold tabular-nums rounded-xl bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
               />
             </div>
+            {touched.calories && parseFloat(calories) < 0 && (
+              <p className="text-[11px] text-[var(--neutral-over)]">
+                Negative calories will clamp to 0 on save.
+              </p>
+            )}
             {isCalorieOverridden && (
               <p className="text-[10px] text-[var(--macro-calories)] font-medium">
                 Manual calorie override active (does not recalculate from macros)
@@ -218,71 +326,91 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
           </div>
 
           {/* Macro grid */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-surface-sub border border-border rounded-xl p-2.5">
-              <label htmlFor="quick-add-protein" className="block text-[10px] font-semibold text-[var(--macro-protein)] mb-1">
-                Protein (g)
-              </label>
-              <input
-                id="quick-add-protein"
-                aria-label="Protein"
-                type="number"
-                step="any"
-                value={protein}
-                onChange={(e) => handleMacroChange('p', e.target.value)}
-                placeholder="0"
-                className="w-full px-2 py-1.5 text-xs font-semibold tabular-nums rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
-              />
-            </div>
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-surface-sub border border-border rounded-xl p-2.5">
+                <label htmlFor="quick-add-protein" className="block text-[10px] font-semibold text-[var(--macro-protein)] mb-1">
+                  Protein (g)
+                </label>
+                <input
+                  id="quick-add-protein"
+                  aria-label="Protein"
+                  type="number"
+                  step="any"
+                  value={protein}
+                  onChange={(e) => handleMacroChange('p', e.target.value)}
+                  onBlur={() => setTouched((prev) => ({ ...prev, protein: true }))}
+                  placeholder="0"
+                  className="w-full px-2 py-1.5 text-xs font-semibold tabular-nums rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+                />
+              </div>
 
-            <div className="bg-surface-sub border border-border rounded-xl p-2.5">
-              <label htmlFor="quick-add-carbs" className="block text-[10px] font-semibold text-[var(--macro-carbs)] mb-1">
-                Carbs (g)
-              </label>
-              <input
-                id="quick-add-carbs"
-                aria-label="Carbs"
-                type="number"
-                step="any"
-                value={carbs}
-                onChange={(e) => handleMacroChange('c', e.target.value)}
-                placeholder="0"
-                className="w-full px-2 py-1.5 text-xs font-semibold tabular-nums rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
-              />
-            </div>
+              <div className="bg-surface-sub border border-border rounded-xl p-2.5">
+                <label htmlFor="quick-add-carbs" className="block text-[10px] font-semibold text-[var(--macro-carbs)] mb-1">
+                  Carbs (g)
+                </label>
+                <input
+                  id="quick-add-carbs"
+                  aria-label="Carbs"
+                  type="number"
+                  step="any"
+                  value={carbs}
+                  onChange={(e) => handleMacroChange('c', e.target.value)}
+                  onBlur={() => setTouched((prev) => ({ ...prev, carbs: true }))}
+                  placeholder="0"
+                  className="w-full px-2 py-1.5 text-xs font-semibold tabular-nums rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+                />
+              </div>
 
-            <div className="bg-surface-sub border border-border rounded-xl p-2.5">
-              <label htmlFor="quick-add-fat" className="block text-[10px] font-semibold text-[var(--macro-fat)] mb-1">
-                Fat (g)
-              </label>
-              <input
-                id="quick-add-fat"
-                aria-label="Fat"
-                type="number"
-                step="any"
-                value={fat}
-                onChange={(e) => handleMacroChange('f', e.target.value)}
-                placeholder="0"
-                className="w-full px-2 py-1.5 text-xs font-semibold tabular-nums rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
-              />
+              <div className="bg-surface-sub border border-border rounded-xl p-2.5">
+                <label htmlFor="quick-add-fat" className="block text-[10px] font-semibold text-[var(--macro-fat)] mb-1">
+                  Fat (g)
+                </label>
+                <input
+                  id="quick-add-fat"
+                  aria-label="Fat"
+                  type="number"
+                  step="any"
+                  value={fat}
+                  onChange={(e) => handleMacroChange('f', e.target.value)}
+                  onBlur={() => setTouched((prev) => ({ ...prev, fat: true }))}
+                  placeholder="0"
+                  className="w-full px-2 py-1.5 text-xs font-semibold tabular-nums rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+                />
+              </div>
             </div>
+            {((touched.protein && parseFloat(protein) < 0) ||
+              (touched.carbs && parseFloat(carbs) < 0) ||
+              (touched.fat && parseFloat(fat) < 0)) && (
+              <p className="text-[11px] text-[var(--neutral-over)] px-1">
+                Negative macro values will clamp to 0 on save.
+              </p>
+            )}
           </div>
 
           {/* Optional Fiber */}
-          <div className="bg-surface-sub border border-border rounded-xl p-2.5 flex items-center justify-between">
-            <label htmlFor="quick-add-fiber" className="text-[11px] font-medium text-muted-foreground">
-              Fiber (g, optional)
-            </label>
-            <input
-              id="quick-add-fiber"
-              aria-label="Fiber"
-              type="number"
-              step="any"
-              value={fiber}
-              onChange={(e) => setFiber(e.target.value)}
-              placeholder="0"
-              className="w-24 px-2 py-1 text-xs tabular-nums text-right rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
-            />
+          <div className="space-y-1">
+            <div className="bg-surface-sub border border-border rounded-xl p-2.5 flex items-center justify-between">
+              <label htmlFor="quick-add-fiber" className="text-[11px] font-medium text-muted-foreground">
+                Fiber (g, optional)
+              </label>
+              <input
+                id="quick-add-fiber"
+                aria-label="Fiber"
+                type="number"
+                step="any"
+                value={fiber}
+                onChange={(e) => setFiber(e.target.value)}
+                onBlur={() => setTouched((prev) => ({ ...prev, fiber: true }))}
+                placeholder="0"
+                className="w-24 px-2 py-1 text-xs tabular-nums text-right rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+              />
+            </div>
+            {touched.fiber && parseFloat(fiber) < 0 && (
+              <p className="text-[11px] text-[var(--neutral-over)] px-1">
+                Negative fiber will clamp to 0 on save.
+              </p>
+            )}
           </div>
 
           {/* Error Message */}
@@ -300,7 +428,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
           <button
             type="submit"
             disabled={isSaving}
-            className="macro-spring active:scale-95 w-full py-2.5 px-4 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
+            className="tactile-press w-full py-2.5 px-4 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
           >
             <Zap className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Log Quick Add</span>

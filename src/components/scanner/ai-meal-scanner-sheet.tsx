@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Camera,
   Upload,
@@ -21,14 +21,112 @@ import { db, generateId } from '@/lib/db/macroai-db';
 import { scaleNutrition } from '@/lib/nutrition/scaling';
 import { RDA_MICRONUTRIENT_METADATA } from '@/lib/nutrition/daily-summary';
 import { compressImageToJpeg } from '@/lib/media/image-compress';
+import { loadStaples } from '@/lib/foods/staples-search';
 import { HitlIngredientRow } from './hitl-ingredient-row';
 import { HitlVerificationSwapModal } from './hitl-verification-swap-modal';
 import type { FoodLogEntry, FoodSource, MacroNutrients, Micronutrients } from '@/types/nutrition';
+
+const MEAL_SCAN_MAX_DIMENSION = 640;
+const MEAL_SCAN_JPEG_QUALITY = 0.72;
+const CLIENT_SCAN_CACHE_LIMIT = 16;
+const SPECULATIVE_SCAN_DEBOUNCE_MS = 600;
+
+const QUALITATIVE_REFINE_PATTERN =
+  /\b(and|or|then|plus|with|instead|swap|replace|trimmed|boneless|skinless|fried|grilled|steamed|boiled|baked|roasted|raw|cooked)\b/i;
+
+function findSingleTargetIndex(items: AiDraftItem[], targetQuery: string): number {
+  const q = targetQuery.trim().toLowerCase();
+  if (!q) return -1;
+  if (q === 'it' || q === 'this' || q === 'meal') {
+    return items.length === 1 ? 0 : -1;
+  }
+
+  const exactIdx = items.findIndex((it) => it.name.trim().toLowerCase() === q);
+  if (exactIdx !== -1) return exactIdx;
+
+  const qTokens = q.split(/\s+/).filter(Boolean);
+  const matchedIndices: number[] = [];
+  items.forEach((it, idx) => {
+    const nameLower = it.name.toLowerCase();
+    if (nameLower.includes(q) || qTokens.every((t) => nameLower.includes(t))) {
+      matchedIndices.push(idx);
+    }
+  });
+
+  return matchedIndices.length === 1 ? matchedIndices[0] : -1;
+}
+
+/**
+ * Resolves unambiguous single-intent portion/removal instructions locally in 0ms
+ * without an LLM round-trip. Returns null for qualitative or ambiguous instructions.
+ */
+export function tryDeterministicRefine(
+  items: AiDraftItem[],
+  instruction: string
+): AiDraftItem[] | null {
+  const raw = instruction.trim().replace(/[.!]+$/, '').trim();
+  if (!raw || items.length === 0 || QUALITATIVE_REFINE_PATTERN.test(raw)) {
+    return null;
+  }
+
+  // 1. Remove / delete / drop / without an item
+  const removeMatch = raw.match(
+    /^(?:please\s+)?(?:remove|delete|drop|omit|without|no)\s+(?:the\s+)?([a-z0-9\s()-]+)$/i
+  );
+  if (removeMatch && items.length > 1) {
+    const idx = findSingleTargetIndex(items, removeMatch[1]);
+    if (idx !== -1) {
+      return items.filter((_, i) => i !== idx);
+    }
+  }
+
+  // 2. Explicit gram assignment (e.g. "make the chicken 200g", "set it to 250 grams")
+  const gramMatch = raw.match(
+    /^(?:please\s+)?(?:make|set|change|update)\s+(?:the\s+)?([a-z0-9\s()-]+?)\s+(?:to\s+)?(\d+(?:\.\d+)?)\s*(?:g|grams?)$/i
+  );
+  if (gramMatch) {
+    const grams = parseFloat(gramMatch[2]);
+    if (Number.isFinite(grams) && grams > 0) {
+      const idx = findSingleTargetIndex(items, gramMatch[1]);
+      if (idx !== -1) {
+        return items.map((it, i) => (i === idx ? { ...it, grams } : it));
+      }
+    }
+  }
+
+  // 3. Multiplier scaling (e.g. "double the rice", "halve the butter")
+  const scaleMatch = raw.match(
+    /^(?:please\s+)?(double|triple|halve|half)\s+(?:the\s+)?([a-z0-9\s()-]+)$/i
+  );
+  if (scaleMatch) {
+    const verb = scaleMatch[1].toLowerCase();
+    const factor = verb === 'double' ? 2 : verb === 'triple' ? 3 : 0.5;
+    const idx = findSingleTargetIndex(items, scaleMatch[2]);
+    if (idx !== -1) {
+      return items.map((it, i) => {
+        if (i !== idx) return it;
+        const nextGrams = Math.max(1, Math.round(it.grams * factor * 10) / 10);
+        return { ...it, grams: nextGrams };
+      });
+    }
+  }
+
+  return null;
+}
+
+function cloneDraftItems(items: AiDraftItem[]): AiDraftItem[] {
+  return items.map((it) => ({
+    ...it,
+    per100g: { ...it.per100g },
+    microsPer100g: it.microsPer100g ? { ...it.microsPer100g } : {},
+  }));
+}
 
 export interface AiMealScannerSheetProps {
   open: boolean;
   date?: string;
   mealSlot?: string;
+  enableSpeculativeScan?: boolean;
   onClose: () => void;
 }
 
@@ -36,6 +134,7 @@ export function AiMealScannerSheet({
   open,
   date,
   mealSlot,
+  enableSpeculativeScan,
   onClose,
 }: AiMealScannerSheetProps) {
   const storeDate = useLoggerStore((s) => s.activeDate);
@@ -67,6 +166,15 @@ export function AiMealScannerSheet({
   const [isRescanning, setIsRescanning] = useState(false);
   const [isSubmittingLog, setIsSubmittingLog] = useState(false);
   const [draftRevision, setDraftRevision] = useState(0);
+
+  const shouldSpeculate = enableSpeculativeScan ?? process.env.NODE_ENV !== 'test';
+  const scanCacheRef = useRef<Map<string, AiDraftItem[]>>(new Map());
+  const inFlightScanRef = useRef<{
+    key: string;
+    promise: Promise<AiDraftItem[]>;
+    controller: AbortController;
+    isSpeculative: boolean;
+  } | null>(null);
 
   // Sync draft data into local stage 1 state if present
   const [prevDraft, setPrevDraft] = useState(aiDraft);
@@ -101,6 +209,156 @@ export function AiMealScannerSheet({
     }
   }
 
+  // Decide active stage:
+  // 1) Stage 1 (Image Intake): no draft items (or rescanning) and no image yet
+  // 2) Stage 2 (Pre-Scan HITL): image captured, user describes what's in it before vision scan
+  // 3) Stage 3 (Post-Scan Review): draft items present and not rescanning
+  const hasDraftItems = Boolean(aiDraft && aiDraft.items && aiDraft.items.length > 0);
+  const showReviewStage = hasDraftItems && !isRescanning;
+  const showPreScanHitl = !showReviewStage && Boolean(imageDataUrl);
+
+  const executeMealScan = useCallback(
+    async (imgUrl: string, ctxPrompt: string, speculative: boolean): Promise<AiDraftItem[]> => {
+      const trimmedPrompt = ctxPrompt.trim();
+      const cacheKey = `${imgUrl}::${trimmedPrompt}`;
+
+      const cached = scanCacheRef.current.get(cacheKey);
+      if (cached) {
+        return cloneDraftItems(cached);
+      }
+
+      const activeInFlight = inFlightScanRef.current;
+      if (activeInFlight && activeInFlight.key === cacheKey) {
+        if (!speculative) {
+          activeInFlight.isSpeculative = false;
+        }
+        const items = await activeInFlight.promise;
+        return cloneDraftItems(items);
+      }
+
+      if (activeInFlight) {
+        activeInFlight.controller.abort();
+        inFlightScanRef.current = null;
+      }
+
+      const controller = new AbortController();
+      const promise = (async (): Promise<AiDraftItem[]> => {
+        const res = await fetch('/api/ai/meal-scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageDataUrl: imgUrl,
+            contextPrompt: trimmedPrompt,
+          }),
+          signal: controller.signal,
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(data.error || `Meal scan failed with status ${res.status}`);
+        }
+
+        if (!Array.isArray(data.items) || data.items.length === 0) {
+          throw new Error(
+            'No food items detected in image. Please try again or add items manually.'
+          );
+        }
+
+        const itemsWithIds: AiDraftItem[] = data.items.map((it: Partial<AiDraftItem>) => ({
+          id: it.id || generateId(),
+          name: it.name || 'Unknown food',
+          grams: typeof it.grams === 'number' && it.grams > 0 ? it.grams : 100,
+          per100g: {
+            calories: it.per100g?.calories ?? 0,
+            protein: it.per100g?.protein ?? 0,
+            carbs: it.per100g?.carbs ?? 0,
+            fat: it.per100g?.fat ?? 0,
+            fiber: it.per100g?.fiber ?? 0,
+          },
+          microsPer100g: it.microsPer100g || {},
+          verifiedSource: null,
+        }));
+
+        if (scanCacheRef.current.has(cacheKey)) {
+          scanCacheRef.current.delete(cacheKey);
+        } else if (scanCacheRef.current.size >= CLIENT_SCAN_CACHE_LIMIT) {
+          const oldestKey = scanCacheRef.current.keys().next().value;
+          if (oldestKey !== undefined) {
+            scanCacheRef.current.delete(oldestKey);
+          }
+        }
+        scanCacheRef.current.set(cacheKey, cloneDraftItems(itemsWithIds));
+
+        return itemsWithIds;
+      })().finally(() => {
+        if (inFlightScanRef.current?.controller === controller) {
+          inFlightScanRef.current = null;
+        }
+      });
+
+      inFlightScanRef.current = {
+        key: cacheKey,
+        promise,
+        controller,
+        isSpeculative: speculative,
+      };
+
+      const items = await promise;
+      return cloneDraftItems(items);
+    },
+    []
+  );
+
+  // Abort in-flight requests when sheet closes or unmounts
+  useEffect(() => {
+    if (!open && inFlightScanRef.current) {
+      inFlightScanRef.current.controller.abort();
+      inFlightScanRef.current = null;
+    }
+  }, [open]);
+
+  useEffect(() => {
+    return () => {
+      if (inFlightScanRef.current) {
+        inFlightScanRef.current.controller.abort();
+        inFlightScanRef.current = null;
+      }
+    };
+  }, []);
+
+  // Warm staples dataset while the scanner sheet is open
+  useEffect(() => {
+    if (!open || !shouldSpeculate) return;
+    loadStaples().catch(() => {
+      // Non-fatal preload
+    });
+  }, [open, shouldSpeculate]);
+
+  // Speculative pre-scan while user reviews preview / types context in Stage 2
+  useEffect(() => {
+    if (!shouldSpeculate || !open || !showPreScanHitl || !imageDataUrl) {
+      return;
+    }
+
+    const trimmed = contextPrompt.trim();
+    const cacheKey = `${imageDataUrl}::${trimmed}`;
+    if (
+      scanCacheRef.current.has(cacheKey) ||
+      inFlightScanRef.current?.key === cacheKey
+    ) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      executeMealScan(imageDataUrl, trimmed, true).catch(() => {
+        // Ignore speculative errors silently; user clicks Analyze Meal for explicit scan & error feedback
+      });
+    }, SPECULATIVE_SCAN_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [shouldSpeculate, open, showPreScanHitl, imageDataUrl, contextPrompt, executeMealScan]);
+
   // Escape key listener to close sheet (guarded when swap modal is open)
   useEffect(() => {
     if (!open) return;
@@ -114,15 +372,131 @@ export function AiMealScannerSheet({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, isSwapModalOpen, onClose]);
 
-  if (!open) return null;
+  // Stage 2: Item manipulation (cleanly updates useLoggerStore.aiDraft locally)
+  const handleChangeGrams = useCallback(
+    (itemId: string, newGrams: number) => {
+      const currentDraft = useLoggerStore.getState().aiDraft;
+      if (!currentDraft) return;
+      setAiDraft({
+        ...currentDraft,
+        items: currentDraft.items.map((it) =>
+          it.id === itemId ? { ...it, grams: newGrams } : it
+        ),
+      });
+    },
+    [setAiDraft]
+  );
 
-  // Decide active stage:
-  // 1) Stage 1 (Image Intake): no draft items (or rescanning) and no image yet
-  // 2) Stage 2 (Pre-Scan HITL): image captured, user describes what's in it before vision scan
-  // 3) Stage 3 (Post-Scan Review): draft items present and not rescanning
-  const hasDraftItems = Boolean(aiDraft && aiDraft.items && aiDraft.items.length > 0);
-  const showReviewStage = hasDraftItems && !isRescanning;
-  const showPreScanHitl = !showReviewStage && Boolean(imageDataUrl);
+  const handleDeleteItem = useCallback(
+    (itemId: string) => {
+      const currentDraft = useLoggerStore.getState().aiDraft;
+      if (!currentDraft) return;
+      setAiDraft({
+        ...currentDraft,
+        items: currentDraft.items.filter((it) => it.id !== itemId),
+      });
+    },
+    [setAiDraft]
+  );
+
+  const handleOpenSwapModal = useCallback((item: AiDraftItem) => {
+    setSwapTargetItem(item);
+    setIsSwapModalOpen(true);
+  }, []);
+
+  const handleSwapItem = useCallback(
+    (
+      targetItemId: string,
+      verifiedItem: {
+        name: string;
+        per100g: MacroNutrients;
+        microsPer100g?: Micronutrients;
+        verifiedSource: string;
+        verifiedFoodId: string;
+      }
+    ) => {
+      const currentDraft = useLoggerStore.getState().aiDraft;
+      if (!currentDraft) return;
+      setAiDraft({
+        ...currentDraft,
+        items: currentDraft.items.map((it) =>
+          it.id === targetItemId
+            ? {
+                ...it,
+                name: verifiedItem.name,
+                per100g: verifiedItem.per100g,
+                microsPer100g: verifiedItem.microsPer100g,
+                verifiedSource: verifiedItem.verifiedSource,
+                verifiedFoodId: verifiedItem.verifiedFoodId,
+                // row's current it.grams is preserved!
+              }
+            : it
+        ),
+      });
+    },
+    [setAiDraft]
+  );
+
+  const handleAddCustomItem = useCallback(
+    (newItem: AiDraftItem) => {
+      const currentDraft = useLoggerStore.getState().aiDraft || {
+        imageDataUrl: null,
+        contextPrompt: '',
+        items: [],
+      };
+      setAiDraft({
+        ...currentDraft,
+        items: [...currentDraft.items, newItem],
+      });
+    },
+    [setAiDraft]
+  );
+
+  // Memoize Stage 3 macro + 12-micronutrient totals
+  const { totalCalories, totalProtein, totalCarbs, totalFat, totalFiber, totalMicros } =
+    useMemo(() => {
+      let calories = 0;
+      let protein = 0;
+      let carbs = 0;
+      let fat = 0;
+      let fiber = 0;
+      const microsMap: Record<string, number> = {};
+      for (const key of Object.keys(RDA_MICRONUTRIENT_METADATA)) {
+        microsMap[key] = 0;
+      }
+
+      if (aiDraft?.items) {
+        for (const item of aiDraft.items) {
+          const { macros, micros } = scaleNutrition(
+            item.per100g,
+            item.microsPer100g ?? {},
+            'per100g',
+            item.grams
+          );
+          calories += macros.calories;
+          protein += macros.protein;
+          carbs += macros.carbs;
+          fat += macros.fat;
+          fiber += macros.fiber;
+          for (const [k, v] of Object.entries(micros)) {
+            if (typeof v === 'number' && Number.isFinite(v)) {
+              microsMap[k] = (microsMap[k] ?? 0) + v;
+            }
+          }
+        }
+      }
+
+      return {
+        totalCalories: calories,
+        totalProtein: protein,
+        totalCarbs: carbs,
+        totalFat: fat,
+        totalFiber: fiber,
+        totalMicros: microsMap,
+      };
+    }, [aiDraft?.items]);
+
+  if (!open) return null;
 
   // Image upload handling (Stage 1)
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,7 +505,11 @@ export function AiMealScannerSheet({
 
     try {
       setScanError(null);
-      const compressed = await compressImageToJpeg(file, 1024, 0.8);
+      const compressed = await compressImageToJpeg(
+        file,
+        MEAL_SCAN_MAX_DIMENSION,
+        MEAL_SCAN_JPEG_QUALITY
+      );
       setImageDataUrl(compressed);
     } catch (err: unknown) {
       console.error('Failed to compress image:', err);
@@ -147,39 +525,7 @@ export function AiMealScannerSheet({
     setScanError(null);
 
     try {
-      const res = await fetch('/api/ai/meal-scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageDataUrl,
-          contextPrompt: contextPrompt.trim(),
-        }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        throw new Error(data.error || `Meal scan failed with status ${res.status}`);
-      }
-
-      if (!Array.isArray(data.items) || data.items.length === 0) {
-        throw new Error('No food items detected in image. Please try again or add items manually.');
-      }
-
-      const itemsWithIds: AiDraftItem[] = data.items.map((it: Partial<AiDraftItem>) => ({
-        id: it.id || generateId(),
-        name: it.name || 'Unknown food',
-        grams: typeof it.grams === 'number' && it.grams > 0 ? it.grams : 100,
-        per100g: {
-          calories: it.per100g?.calories ?? 0,
-          protein: it.per100g?.protein ?? 0,
-          carbs: it.per100g?.carbs ?? 0,
-          fat: it.per100g?.fat ?? 0,
-          fiber: it.per100g?.fiber ?? 0,
-        },
-        microsPer100g: it.microsPer100g || {},
-        verifiedSource: null,
-      }));
+      const itemsWithIds = await executeMealScan(imageDataUrl, contextPrompt, false);
 
       setAiDraft({
         imageDataUrl,
@@ -188,6 +534,9 @@ export function AiMealScannerSheet({
       });
       setIsRescanning(false);
     } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return;
+      }
       const msg = err instanceof Error ? err.message : 'Failed to analyze meal';
       setScanError(msg);
     } finally {
@@ -210,74 +559,23 @@ export function AiMealScannerSheet({
     setIsRescanning(false);
   };
 
-  // Stage 2: Item manipulation (cleanly updates useLoggerStore.aiDraft locally)
-  const handleChangeGrams = (itemId: string, newGrams: number) => {
-    if (!aiDraft) return;
-    setAiDraft({
-      ...aiDraft,
-      items: aiDraft.items.map((it) => (it.id === itemId ? { ...it, grams: newGrams } : it)),
-    });
-  };
-
-  const handleDeleteItem = (itemId: string) => {
-    if (!aiDraft) return;
-    setAiDraft({
-      ...aiDraft,
-      items: aiDraft.items.filter((it) => it.id !== itemId),
-    });
-  };
-
-  const handleOpenSwapModal = (item: AiDraftItem) => {
-    setSwapTargetItem(item);
-    setIsSwapModalOpen(true);
-  };
-
-  const handleSwapItem = (
-    targetItemId: string,
-    verifiedItem: {
-      name: string;
-      per100g: MacroNutrients;
-      microsPer100g?: Micronutrients;
-      verifiedSource: string;
-      verifiedFoodId: string;
-    }
-  ) => {
-    if (!aiDraft) return;
-    setAiDraft({
-      ...aiDraft,
-      items: aiDraft.items.map((it) =>
-        it.id === targetItemId
-          ? {
-              ...it,
-              name: verifiedItem.name,
-              per100g: verifiedItem.per100g,
-              microsPer100g: verifiedItem.microsPer100g,
-              verifiedSource: verifiedItem.verifiedSource,
-              verifiedFoodId: verifiedItem.verifiedFoodId,
-              // row's current it.grams is preserved!
-            }
-          : it
-      ),
-    });
-  };
-
-  const handleAddCustomItem = (newItem: AiDraftItem) => {
-    const currentDraft = aiDraft || {
-      imageDataUrl: null,
-      contextPrompt: '',
-      items: [],
-    };
-    setAiDraft({
-      ...currentDraft,
-      items: [...currentDraft.items, newItem],
-    });
-  };
-
-  // Conversational Refine with AI POST /api/ai/refine
+  // Conversational Refine with AI POST /api/ai/refine (with 0ms deterministic fast-path)
   const handleRefineAi = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const instruction = refineInstruction.trim();
     if (!instruction || !aiDraft || aiDraft.items.length === 0 || isRefining) return;
+
+    const deterministicItems = tryDeterministicRefine(aiDraft.items, instruction);
+    if (deterministicItems) {
+      setRefineError(null);
+      setAiDraft({
+        ...aiDraft,
+        items: deterministicItems,
+      });
+      setDraftRevision((r) => r + 1);
+      setRefineInstruction('');
+      return;
+    }
 
     setIsRefining(true);
     setRefineError(null);
@@ -395,38 +693,6 @@ export function AiMealScannerSheet({
       setIsSubmittingLog(false);
     }
   };
-
-  // Compute Stage 2 totals
-  let totalCalories = 0;
-  let totalProtein = 0;
-  let totalCarbs = 0;
-  let totalFat = 0;
-  let totalFiber = 0;
-  const totalMicros: Record<string, number> = {};
-  for (const key of Object.keys(RDA_MICRONUTRIENT_METADATA)) {
-    totalMicros[key] = 0;
-  }
-
-  if (aiDraft?.items) {
-    for (const item of aiDraft.items) {
-      const { macros, micros } = scaleNutrition(
-        item.per100g,
-        item.microsPer100g ?? {},
-        'per100g',
-        item.grams
-      );
-      totalCalories += macros.calories;
-      totalProtein += macros.protein;
-      totalCarbs += macros.carbs;
-      totalFat += macros.fat;
-      totalFiber += macros.fiber;
-      for (const [k, v] of Object.entries(micros)) {
-        if (typeof v === 'number' && Number.isFinite(v)) {
-          totalMicros[k] = (totalMicros[k] ?? 0) + v;
-        }
-      }
-    }
-  }
 
   return (
     <>

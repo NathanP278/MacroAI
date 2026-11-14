@@ -3,7 +3,7 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { useLoggerStore } from '@/stores/logger-store';
 import { db } from '@/lib/db/macroai-db';
-import { AiMealScannerSheet } from '../ai-meal-scanner-sheet';
+import { AiMealScannerSheet, tryDeterministicRefine } from '../ai-meal-scanner-sheet';
 import { AppShell } from '@/components/shell/app-shell';
 import type { FoodItem } from '@/types/nutrition';
 
@@ -664,5 +664,51 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
       vitaminB12Mcg: 3.6,
       folateMcg: 190,
     });
+  });
+
+  test('tryDeterministicRefine handles local portion edits without API calls and defers qualitative edits to AI', () => {
+    const sampleItems = [
+      {
+        id: 'i-chicken',
+        name: 'Chicken Breast',
+        grams: 150,
+        per100g: { calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0 },
+        microsPer100g: {},
+        verifiedSource: null,
+        verifiedFoodId: null,
+      },
+      {
+        id: 'i-rice',
+        name: 'White Rice',
+        grams: 100,
+        per100g: { calories: 130, protein: 2.7, carbs: 28, fat: 0.3, fiber: 0.4 },
+        microsPer100g: {},
+        verifiedSource: null,
+        verifiedFoodId: null,
+      },
+      {
+        id: 'i-butter',
+        name: 'Butter',
+        grams: 15,
+        per100g: { calories: 717, protein: 0.9, carbs: 0.1, fat: 81, fiber: 0 },
+        microsPer100g: {},
+        verifiedSource: null,
+        verifiedFoodId: null,
+      },
+    ];
+
+    const singleUpdated = tryDeterministicRefine([sampleItems[0]], 'Make it 250 grams');
+    expect(singleUpdated).toHaveLength(1);
+    expect(singleUpdated?.[0].grams).toBe(250);
+
+    const doubledRice = tryDeterministicRefine(sampleItems, 'double the rice');
+    expect(doubledRice?.find((i) => i.id === 'i-rice')?.grams).toBe(200);
+
+    const removedButter = tryDeterministicRefine(sampleItems, 'remove the butter');
+    expect(removedButter).toHaveLength(2);
+    expect(removedButter?.some((i) => i.id === 'i-butter')).toBe(false);
+
+    // Qualitative prep changes must still defer to LLM refinement
+    expect(tryDeterministicRefine(sampleItems, 'Make it trimmed and 120 grams')).toBeNull();
   });
 });

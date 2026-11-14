@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import type { DailySummary, MacroMetric } from '@/lib/nutrition/daily-summary';
+import { runViewTransition, triggerHaptic } from '@/lib/motion';
 
 export interface DayNutritionPoint {
   date: string;
@@ -85,6 +86,16 @@ export function MacroBentoGrid({
 }: MacroBentoGridProps) {
   const [mode, setMode] = useState<DisplayMode>('consumed');
   const [heroView, setHeroView] = useState<HeroView>('daily');
+  const [viewDirection, setViewDirection] = useState<'forward' | 'backward' | null>(null);
+  const swipeStartX = useRef<number | null>(null);
+
+  const switchHeroView = (nextView: HeroView) => {
+    if (nextView === heroView) return;
+    const direction = nextView === 'weekly' ? 'forward' : 'backward';
+    setViewDirection(direction);
+    triggerHaptic(8);
+    runViewTransition(() => setHeroView(nextView), { direction });
+  };
 
   const { calories, protein, carbs, fat, fiber } = summary;
 
@@ -119,6 +130,17 @@ export function MacroBentoGrid({
   return (
     <section
       aria-label="Daily Nutrition Summary"
+      onTouchStart={(e) => {
+        swipeStartX.current = e.touches[0]?.clientX ?? null;
+      }}
+      onTouchEnd={(e) => {
+        if (swipeStartX.current === null) return;
+        const dx = (e.changedTouches[0]?.clientX ?? swipeStartX.current) - swipeStartX.current;
+        swipeStartX.current = null;
+        if (Math.abs(dx) < 52) return;
+        if (dx < 0 && heroView === 'daily') switchHeroView('weekly');
+        if (dx > 0 && heroView === 'weekly') switchHeroView('daily');
+      }}
       className={`rounded-2xl bg-card border border-border/50 p-5 sm:p-6 flex flex-col justify-between gap-4 min-w-0 ${className}`}
     >
       {/* Top Card Header + Slide Switcher Dots (Pics 1 & 4) */}
@@ -137,8 +159,8 @@ export function MacroBentoGrid({
             role="tab"
             id="hero-daily-tab"
             aria-selected={heroView === 'daily'}
-            onClick={() => setHeroView('daily')}
-            className={`macro-spring active:scale-95 px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
+            onClick={() => switchHeroView('daily')}
+            className={`tactile-press px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
               heroView === 'daily'
                 ? 'bg-foreground text-background font-semibold shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
@@ -151,8 +173,8 @@ export function MacroBentoGrid({
             role="tab"
             id="hero-weekly-tab"
             aria-selected={heroView === 'weekly'}
-            onClick={() => setHeroView('weekly')}
-            className={`macro-spring active:scale-95 px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
+            onClick={() => switchHeroView('weekly')}
+            className={`tactile-press px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
               heroView === 'weekly'
                 ? 'bg-foreground text-background font-semibold shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
@@ -169,7 +191,11 @@ export function MacroBentoGrid({
           key="hero-daily"
           role="tabpanel"
           aria-labelledby="hero-daily-tab"
-          className="space-y-5 animate-panel-switch"
+          className={`space-y-5 ${
+            viewDirection === 'backward'
+              ? 'slide-enter-left'
+              : 'animate-panel-switch'
+          }`}
         >
           {/* Horseshoe Arc + Flanking Numbers */}
           <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 sm:gap-3 pt-1">
@@ -293,7 +319,11 @@ export function MacroBentoGrid({
           key="hero-weekly"
           role="tabpanel"
           aria-labelledby="hero-weekly-tab"
-          className="space-y-4 pt-1 animate-panel-switch"
+          className={`space-y-4 pt-1 ${
+            viewDirection === 'forward'
+              ? 'slide-enter-right'
+              : 'animate-panel-switch'
+          }`}
         >
           <div className="grid grid-cols-[1fr_auto] gap-3 items-center">
             <div className="grid grid-cols-7 gap-1.5">

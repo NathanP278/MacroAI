@@ -1,4 +1,11 @@
-import type { FoodItem, Micronutrients, MacroNutrients, NutritionBasis } from '@/types/nutrition';
+import type {
+  FoodItem,
+  FoodServingOption,
+  Micronutrients,
+  MacroNutrients,
+  NutritionBasis,
+} from '@/types/nutrition';
+import { parseHouseholdServingText } from '@/lib/nutrition/scaling';
 
 export interface OffNutriments {
   energy?: number;
@@ -28,11 +35,13 @@ export interface OffNutriments {
 }
 
 export interface OffProduct {
+  code?: string;
   product_name?: string;
   product_name_en?: string;
   generic_name?: string;
   brands?: string;
   brand_owner?: string;
+  countries_tags?: string[];
   nutriments?: OffNutriments;
   product_quantity_unit?: string;
   serving_quantity_unit?: string;
@@ -62,6 +71,68 @@ function parseNumeric(val: unknown): number | undefined {
     }
   }
   return undefined;
+}
+
+function extractOffServingOption(
+  product: OffProduct,
+  basis: NutritionBasis
+): { option?: FoodServingOption; servingWeightGrams?: number } {
+  const baseUnit = basis === 'per100ml' ? 'ml' : 'g';
+  const rawServingSize =
+    typeof product.serving_size === 'string' ? product.serving_size.trim() : '';
+  const servingQty = parseNumeric(product.serving_quantity);
+  const servingQtyUnit =
+    typeof product.serving_quantity_unit === 'string'
+      ? product.serving_quantity_unit.toLowerCase().trim()
+      : '';
+
+  let metricWeight: number | undefined;
+  const metricMatch = rawServingSize.match(/(\d+(?:\.\d+)?)\s*(g|gr|grams|ml)\b/i);
+  if (metricMatch) {
+    const val = Number(metricMatch[1]);
+    if (Number.isFinite(val) && val > 0) metricWeight = val;
+  } else if (
+    servingQty &&
+    servingQty > 0 &&
+    (servingQtyUnit === 'g' || servingQtyUnit === 'ml' || servingQtyUnit === '')
+  ) {
+    metricWeight = servingQty;
+  }
+
+  if (!metricWeight || metricWeight <= 0) {
+    return {};
+  }
+
+  const parsedText =
+    parseHouseholdServingText(rawServingSize) ??
+    (servingQtyUnit && servingQtyUnit !== 'g' && servingQtyUnit !== 'ml'
+      ? parseHouseholdServingText(servingQtyUnit)
+      : null);
+
+  let count = 1;
+  let unit = 'serving';
+  if (parsedText) {
+    count = parsedText.count;
+    unit = parsedText.unit;
+  } else if (!rawServingSize) {
+    return { servingWeightGrams: round2(metricWeight) };
+  } else if (round2(metricWeight) === 100) {
+    return { servingWeightGrams: 100 };
+  }
+
+  const perUnitGrams = round2(metricWeight / count);
+  if (perUnitGrams <= 0) return {};
+
+  return {
+    servingWeightGrams: round2(metricWeight),
+    option: {
+      id: unit,
+      label: `${unit} (${perUnitGrams}${baseUnit})`,
+      unit,
+      grams: perUnitGrams,
+      defaultAmount: 1,
+    },
+  };
 }
 
 /**
@@ -220,17 +291,91 @@ export function parseOffProduct(barcode: string, payload: unknown): FoodItem | n
     fiber: round2(Math.max(0, fiber)),
   };
 
+  const region =
+    Array.isArray(product.countries_tags) &&
+    product.countries_tags.some(
+      (tag) => typeof tag === 'string' && tag.toLowerCase().includes('philippines')
+    )
+      ? 'PH'
+      : undefined;
+
+  const { option: offOption, servingWeightGrams } = extractOffServingOption(product, basis);
+  const metricUnit = basis === 'per100ml' ? 'ml' : 'g';
+  const servingOptions: FoodServingOption[] | undefined =
+    offOption && (basis === 'per100g' || basis === 'per100ml')
+      ? [
+          offOption,
+          {
+            id: metricUnit,
+            label: metricUnit,
+            unit: metricUnit,
+            grams: 1,
+            defaultAmount: 100,
+          },
+        ]
+      : undefined;
+
   return {
     id: `off:${cleanBarcode}`,
     barcode: cleanBarcode,
     source: 'off',
     name,
     brand,
+    ...(region ? { region } : {}),
     basis,
     servingSize,
     servingUnit,
+    ...(servingWeightGrams ? { servingWeightGrams } : {}),
+    ...(servingOptions ? { servingOptions } : {}),
     nutrientsPerBasis,
     micronutrientsPerBasis: micros,
     updatedAt: Date.now(),
   };
+}
+
+/**
+ * Searches Open Food Facts crowd-sourced database via MacroAI's proxy route (/api/off/search).
+ * Filters out unpopulated stubs and tags PH catalog products with region: 'PH'.
+ */
+export async function searchOffFoods(
+  query: string,
+  options?: { country?: 'ph' | 'world'; signal?: AbortSignal }
+): Promise<FoodItem[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  const country = options?.country ?? 'world';
+  const url = `/api/off/search?query=${encodeURIComponent(trimmed)}&country=${country}`;
+  const res = await fetch(url, { signal: options?.signal });
+  if (!res.ok) {
+    throw new Error(`Open Food Facts search failed with status ${res.status}`);
+  }
+
+  const data = await res.json();
+  const rawProducts: unknown[] = Array.isArray(data?.products) ? data.products : [];
+  const results: FoodItem[] = [];
+  const seenIds = new Set<string>();
+
+  for (const raw of rawProducts) {
+    if (!raw || typeof raw !== 'object') continue;
+    const prod = raw as OffProduct & { code?: string };
+    const code = typeof prod.code === 'string' ? prod.code.trim() : '';
+    if (!code) continue;
+
+    const item = parseOffProduct(code, { status: 1, product: prod });
+    if (!item || item.name === 'Unknown Food') continue;
+
+    const { calories, protein, carbs, fat } = item.nutrientsPerBasis;
+    if (calories === 0 && protein === 0 && carbs === 0 && fat === 0) continue;
+
+    if (country === 'ph' && !item.region) {
+      item.region = 'PH';
+    }
+    if (!seenIds.has(item.id)) {
+      seenIds.add(item.id);
+      results.push(item);
+    }
+  }
+
+  return results;
 }

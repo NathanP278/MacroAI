@@ -13,6 +13,8 @@ import {
   ScanBarcode,
   Sparkles,
 } from "lucide-react";
+import { useLoggerStore } from "@/stores/logger-store";
+import { triggerHaptic } from "@/lib/motion";
 import type { QuickActionType } from "./quick-action-dock";
 
 export interface BottomNavProps {
@@ -38,6 +40,8 @@ const NAV_ITEMS_RIGHT: NavItem[] = [
 
 export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps) {
   const pathname = usePathname() ?? "/";
+  const setCommandPaletteOpen = useLoggerStore((s) => s.setCommandPaletteOpen);
+
   const showQuickSearchBar =
     Boolean(onDirectAction) &&
     (pathname === "/" || pathname.startsWith("/log"));
@@ -51,47 +55,79 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
-      {/* Persistent Quick Search Strip on Dashboard & Food Log (Pic 4 style) */}
+      {/* Persistent Quick Search Strip on Dashboard & Food Log */}
       {showQuickSearchBar && onDirectAction && (
         <div className="max-w-2xl mx-auto px-4 sm:px-6 pb-2.5 pointer-events-auto">
-          <div className="macro-card-interactive bg-surface-card/95 backdrop-blur-md border border-border rounded-2xl h-12 px-3.5 flex items-center gap-2 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+          <div className="surface-floating-bar macro-card-interactive rounded-2xl h-12 px-3 flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => onDirectAction("search")}
+              onClick={() => {
+                triggerHaptic(8);
+                onDirectAction("search");
+              }}
               aria-label="Search for a food"
-              className="flex-1 flex items-center gap-2.5 text-left text-muted-foreground hover:text-foreground transition-colors h-full min-w-0 group"
+              className="tactile-press flex-1 flex items-center gap-2.5 text-left text-muted-foreground hover:text-foreground transition-colors h-full min-w-0 group px-1"
             >
-              <Search className="w-4 h-4 shrink-0 transition-transform duration-150 group-hover:scale-105" aria-hidden="true" />
-              <span className="text-[13px] font-medium truncate">Search for a food</span>
+              <Search
+                className="w-4 h-4 shrink-0 transition-transform duration-150 group-hover:scale-105"
+                aria-hidden="true"
+              />
+              <span className="text-[13px] font-medium truncate">
+                Search for a food
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic(8);
+                setCommandPaletteOpen(true);
+              }}
+              aria-label="Open command palette"
+              className="hidden sm:inline-flex tactile-press items-center gap-1 px-2 py-1 rounded-lg bg-surface-sub border border-border text-[11px] font-mono text-muted-foreground hover:text-foreground shrink-0"
+            >
+              <span>⌘K</span>
             </button>
 
             <div className="flex items-center gap-1 shrink-0">
               <button
                 type="button"
-                onClick={() => onDirectAction("barcode")}
+                onClick={() => {
+                  triggerHaptic(8);
+                  onDirectAction("barcode");
+                }}
                 aria-label="Open barcode camera"
-                className="touch-target macro-spring active:scale-90 w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+                className="touch-target tactile-press min-w-[44px] min-h-[44px] sm:min-w-0 sm:px-2.5 sm:h-9 rounded-xl flex items-center justify-center gap-1.5 text-muted-foreground hover:text-foreground hover:bg-surface-sub"
               >
                 <ScanBarcode className="w-4 h-4" aria-hidden="true" />
+                <span className="hidden sm:inline text-[11px] font-medium">
+                  Barcode
+                </span>
               </button>
               <button
                 type="button"
-                onClick={() => onDirectAction("ai-scan")}
+                onClick={() => {
+                  triggerHaptic(8);
+                  onDirectAction("ai-scan");
+                }}
                 aria-label="Open photo scanner"
-                className="touch-target macro-spring active:scale-90 w-9 h-9 rounded-xl flex items-center justify-center text-[var(--macro-calories)] hover:bg-[var(--macro-calories)]/12"
+                className="touch-target tactile-press min-w-[44px] min-h-[44px] sm:min-w-0 sm:px-2.5 sm:h-9 rounded-xl flex items-center justify-center gap-1.5 text-[var(--macro-calories)] hover:bg-[var(--macro-calories)]/12"
               >
                 <Sparkles className="w-4 h-4" aria-hidden="true" />
+                <span className="hidden sm:inline text-[11px] font-semibold">
+                  AI Scan
+                </span>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Docked Navigation Bar (Pics 1, 3, 4) */}
+      {/* Docked Navigation Bar */}
       <nav
         data-testid="bottom-nav"
         aria-label="Bottom Navigation"
-        className="pointer-events-auto bg-surface-card/95 backdrop-blur-md border-t border-border pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        className="pointer-events-auto surface-floating-bar border-x-0 border-b-0 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
       >
         <div className="max-w-2xl mx-auto h-16 px-2 sm:px-6 flex items-center justify-between gap-1">
           {/* Left Nav items */}
@@ -103,7 +139,8 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`macro-spring active:scale-95 relative flex flex-col items-center justify-center flex-1 min-w-0 py-1.5 rounded-xl ${
+                  onClick={() => triggerHaptic(8)}
+                  className={`touch-target tactile-press relative flex flex-col items-center justify-center flex-1 min-w-0 min-h-[44px] py-1.5 rounded-xl ${
                     active
                       ? "text-foreground font-semibold"
                       : "text-muted-foreground hover:text-foreground"
@@ -111,6 +148,11 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                   aria-current={active ? "page" : undefined}
                 >
                   <span
+                    style={
+                      active
+                        ? { viewTransitionName: "active-nav-indicator" }
+                        : undefined
+                    }
                     className={`flex items-center justify-center w-9 h-6 rounded-full mb-0.5 transition-colors duration-200 ${
                       active ? "bg-foreground/10" : "bg-transparent"
                     }`}
@@ -127,13 +169,13 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
             })}
           </div>
 
-          {/* Crisp White/Foreground Center '+' Action Pill (Pics 1, 3, 4) */}
+          {/* Crisp White/Foreground Center '+' Action Pill */}
           <div className="px-2 sm:px-4 shrink-0">
             <button
               type="button"
               onClick={onOpenQuickActions}
               aria-label="Open quick actions"
-              className="touch-target macro-spring w-11 h-11 rounded-full bg-foreground text-background hover:scale-105 hover:ring-4 hover:ring-foreground/10 active:scale-90 flex items-center justify-center shadow-[0_4px_16px_rgba(0,0,0,0.28)] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+              className="touch-target tactile-press w-11 h-11 rounded-full bg-foreground text-background hover:scale-105 hover:ring-4 hover:ring-foreground/10 flex items-center justify-center shadow-[0_4px_16px_rgba(0,0,0,0.28)] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
             >
               <Plus className="w-5 h-5 stroke-[2.5]" aria-hidden="true" />
             </button>
@@ -148,7 +190,8 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`macro-spring active:scale-95 relative flex flex-col items-center justify-center flex-1 min-w-0 py-1.5 rounded-xl ${
+                  onClick={() => triggerHaptic(8)}
+                  className={`touch-target tactile-press relative flex flex-col items-center justify-center flex-1 min-w-0 min-h-[44px] py-1.5 rounded-xl ${
                     active
                       ? "text-foreground font-semibold"
                       : "text-muted-foreground hover:text-foreground"
@@ -156,6 +199,11 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                   aria-current={active ? "page" : undefined}
                 >
                   <span
+                    style={
+                      active
+                        ? { viewTransitionName: "active-nav-indicator" }
+                        : undefined
+                    }
                     className={`flex items-center justify-center w-9 h-6 rounded-full mb-0.5 transition-colors duration-200 ${
                       active ? "bg-foreground/10" : "bg-transparent"
                     }`}

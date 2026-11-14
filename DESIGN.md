@@ -11,10 +11,10 @@ colors:
   obsidian-canvas: "#141416"
   obsidian-card: "#1c1c1f"
   obsidian-well: "#2a2a30"
-  obsidian-elevated: "#28282d"
-  obsidian-hairline: "rgba(255, 255, 255, 0.06)"
+  obsidian-elevated: "#222226"
+  obsidian-hairline: "rgba(255, 255, 255, 0.07)"
   ink-primary: "#f5f5f7"
-  ink-muted: "#8e8e93"
+  ink-muted: "#9a9aa2"
   light-canvas: "#f4f4f6"
   light-card: "#ffffff"
   light-well: "#ebebf0"
@@ -129,8 +129,8 @@ MacroAI pairs a monochrome matte charcoal chrome hierarchy with four distinct, m
 - **Obsidian Canvas** (`#141416` dark / `#f4f4f6` light): Root viewport and scroll track canvas (`--background`, `--surface-canvas`).
 - **Matte Tile Card** (`#1c1c1f` dark / `#ffffff` light): Primary bento cards, meal log cards, and micronutrient container (`--card`, `--surface-card`).
 - **Recessed Well** (`#2a2a30` dark / `#ebebf0` light): Progress bar tracks, unlogged 30-day matrix squares, toggle group wells, and hover targets (`--surface-sub`).
-- **Elevated Sheet** (`#28282d` dark / `#ffffff` light): Modal overlay docks and drawers (`--surface-elevated`).
-- **Slate Muted Ink** (`#8e8e93` dark / `#5c5c64` light): Secondary sublabels, timestamps, and inactive controls (`--muted-foreground`).
+- **Elevated Sheet** (`#222226` dark / `#ffffff` light): Modal overlay docks, undo toast, command palette, and drawers (`--surface-elevated`).
+- **Slate Muted Ink** (`#9a9aa2` dark / `#52525b` light): Secondary sublabels, timestamps, and inactive controls (`--muted-foreground`, >= 4.5:1 AA contrast across card and recessed well surfaces).
 - **Neutral Surplus Slate** (`#94a3b8` dark / `#64748b` light): Mapped to `--destructive` and `--neutral-over` so no surface renders red target alarms.
 
 ### Named Rules
@@ -179,7 +179,8 @@ Apple-inspired spring motion cues paired with strict accessibility respect:
   - `macro-modal-in`: Scale-and-settle entrance for dialog overlays (`RecipeBuilderModal`, `AddBarcodeProductModal`, `HitlVerificationSwapModal`).
   - `macro-card-enter`: Subtle vertical settle with 45ms bento row stagger.
   - `macro-check-pop`: Crisp overshoot pop on confirmation checks (`Goals Saved!`, `Copied!`, recipe logged).
-- **Coarse-Pointer Touch Targets (`.touch-target`):** Under `@media (pointer: coarse)`, expands the interactive hit area via `-6px` `::after` pseudo-element insets so compact circular icon buttons still meet Fitts's Law comfort guidelines without bloating desktop chrome.
+- **Coarse-Pointer Touch Targets (`.touch-target`):** Under `@media (pointer: coarse)`, expands the interactive hit area cleanly to at least `44x44px` (`width: max(100%, 44px); height: max(100%, 44px)`) centered on compact controls so mobile tap targets always meet WCAG/Fitts comfort without bloating visual chrome.
+- **Diffused Elevation Vocabulary (`.surface-floating-bar`, `.surface-elevated-sheet`):** Floating strips, docked bars, toast surfaces, and sheets combine subtle luminance shifts, translucent `backdrop-filter: blur(16px)`, `1px solid` hairlines (`5–8%` opacity), and soft diffused ambient shadows (`--shadow-ambient`, `--shadow-floating`) instead of hard dark drops.
 
 ## Elevation & Depth
 

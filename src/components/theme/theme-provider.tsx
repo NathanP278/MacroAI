@@ -113,3 +113,7 @@ export function useTheme(): ThemeContextType {
   }
   return context;
 }
+
+export function useOptionalTheme(): ThemeContextType | null {
+  return useContext(ThemeContext) ?? null;
+}

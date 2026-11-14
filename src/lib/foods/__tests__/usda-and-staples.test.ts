@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mapUsdaFoodToFoodItem, fetchAndCacheUsdaFood } from '../usda-adapter';
-import { filterStaples, searchStaples, loadStaples, setStaplesCache } from '../staples-search';
+import { filterStaples, searchStaples, loadStaples, setStaplesCache, enrichMealItemsWithStaples } from '../staples-search';
 import { GET as usdaRouteHandler } from '@/app/api/usda/[...path]/route';
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db/macroai-db';
@@ -194,5 +194,184 @@ describe('USDA adapter and Staples search', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('Cache-Control')).toBe('public, max-age=86400');
     expect(fetchSpy).toHaveBeenCalled();
+  });
+
+  test('USDA route handler preserves allowed dataType param including Survey (FNDDS) and Branded', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: RequestInfo | URL) => {
+      const parsed = new URL(String(url));
+      expect(parsed.searchParams.get('dataType')).toBe('Foundation,SR Legacy,Survey (FNDDS),Branded');
+      return new Response(JSON.stringify({ totalHits: 0, foods: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    const req = new NextRequest(
+      'http://localhost:3000/api/usda/foods/search?query=burger&dataType=Foundation,SR%20Legacy,Survey%20(FNDDS),Branded'
+    );
+    const res = await usdaRouteHandler(req, { params: Promise.resolve({ path: ['foods', 'search'] }) });
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalled();
+  });
+
+  test('loadStaples merges PH foods and filterStaples ranks brand + PH matches', async () => {
+    setStaplesCache(null);
+    const loaded = await loadStaples();
+
+    expect(loaded.some((f) => f.name === 'Egg McMuffin' && f.brand === "McDonald's")).toBe(true);
+    expect(loaded.some((f) => f.name.includes('Chickenjoy') && f.brand === 'Jollibee')).toBe(true);
+    expect(loaded.some((f) => f.name.toLowerCase().includes('pandesal'))).toBe(true);
+    expect(loaded.some((f) => f.brand?.includes('Lucky Me'))).toBe(true);
+
+    const mcdoHits = filterStaples(loaded, 'McDonalds Egg McMuffin', 5);
+    expect(mcdoHits.length).toBeGreaterThan(0);
+    expect(mcdoHits[0].name).toBe('Egg McMuffin');
+
+    const jollibeeHits = filterStaples(loaded, 'Jollibee Chickenjoy', 5);
+    expect(jollibeeHits.length).toBeGreaterThan(0);
+    expect(jollibeeHits[0].brand).toBe('Jollibee');
+  });
+
+  test('mapUsdaFoodToFoodItem extracts servingOptions only when portion metadata is present', () => {
+    const brandedItem = mapUsdaFoodToFoodItem({
+      fdcId: 9001,
+      description: 'Egg McMuffin',
+      dataType: 'Branded',
+      brandOwner: "McDonald's",
+      servingSize: 136,
+      servingSizeUnit: 'g',
+      householdServingFullText: '1 SANDWICH',
+      foodNutrients: [
+        { nutrient: { id: 1008, unitName: 'kcal' }, amount: 228 },
+        { nutrient: { id: 1003, unitName: 'g' }, amount: 12.5 },
+      ],
+    });
+    expect(brandedItem.servingWeightGrams).toBe(136);
+    expect(brandedItem.servingOptions?.map((o) => o.unit)).toEqual(['pc', 'g']);
+
+    const surveyItem = mapUsdaFoodToFoodItem({
+      fdcId: 9002,
+      description: 'White rice, cooked',
+      dataType: 'Survey (FNDDS)',
+      foodPortions: [
+        { portionDescription: '1 cup', gramWeight: 158 },
+      ],
+      foodNutrients: [{ nutrient: { id: 1008, unitName: 'kcal' }, amount: 130 }],
+    });
+    expect(surveyItem.servingOptions?.[0]).toMatchObject({ unit: 'cup', grams: 158 });
+
+    const plainItem = mapUsdaFoodToFoodItem({
+      fdcId: 9003,
+      description: 'Chicken breast, raw',
+      dataType: 'Foundation',
+      foodNutrients: [{ nutrient: { id: 1008, unitName: 'kcal' }, amount: 120 }],
+    });
+    expect(plainItem.servingOptions).toBeUndefined();
+  });
+
+  test('filterStaples suggests close matches for typos and missing spaces', async () => {
+    setStaplesCache(null);
+    const loaded = await loadStaples();
+
+    const chikenHits = filterStaples(loaded, 'chiken', 10);
+    expect(chikenHits.some((f) => f.name.toLowerCase().includes('chicken'))).toBe(true);
+
+    const transposedHits = filterStaples(loaded, 'chciekn brest', 10);
+    expect(transposedHits.some((f) => f.name.toLowerCase().includes('chicken breast'))).toBe(true);
+
+    const typoMcMuffin = filterStaples(loaded, 'eg mcmufin', 5);
+    expect(typoMcMuffin[0]?.name).toBe('Egg McMuffin');
+
+    const compactMcMuffin = filterStaples(loaded, 'eggmcmuffin', 5);
+    expect(compactMcMuffin[0]?.name).toBe('Egg McMuffin');
+
+    const typoJollibee = filterStaples(loaded, 'jolibee chikenjoy', 5);
+    expect(typoJollibee.some((f) => f.brand === 'Jollibee' && f.name.toLowerCase().includes('chickenjoy'))).toBe(true);
+
+    const typoPandesal = filterStaples(loaded, 'pandesl', 5);
+    expect(typoPandesal.some((f) => f.name.toLowerCase().includes('pandesal'))).toBe(true);
+
+    const typoAvocado = filterStaples(loaded, 'avacado', 5);
+    expect(typoAvocado.some((f) => f.name.toLowerCase().includes('avocado'))).toBe(true);
+  });
+
+  test('filterStaples matches prep-modifier queries and enrichMealItemsWithStaples backfills missing micros', async () => {
+    const sample: FoodItem[] = [
+      {
+        id: 'staple:broccoli',
+        source: 'usda',
+        name: 'Broccoli, raw',
+        basis: 'per100g',
+        servingSize: 100,
+        servingUnit: 'g',
+        nutrientsPerBasis: { calories: 34, protein: 2.8, carbs: 6.6, fat: 0.4, fiber: 2.6 },
+        micronutrientsPerBasis: {
+          sodiumMg: 33,
+          potassiumMg: 316,
+          calciumMg: 47,
+          ironMg: 0.73,
+          magnesiumMg: 21,
+          zincMg: 0.41,
+          vitaminAMcg: 31,
+          vitaminCMg: 89.2,
+          vitaminDMcg: 0,
+          vitaminB6Mg: 0.175,
+          vitaminB12Mcg: 0,
+          folateMcg: 63,
+        },
+        verified: true,
+        updatedAt: '2026-11-15T00:00:00Z',
+      },
+      {
+        id: 'staple:salmon',
+        source: 'usda',
+        name: 'Salmon, Atlantic, cooked',
+        basis: 'per100g',
+        servingSize: 100,
+        servingUnit: 'g',
+        nutrientsPerBasis: { calories: 206, protein: 22.1, carbs: 0, fat: 12.4, fiber: 0 },
+        micronutrientsPerBasis: {
+          sodiumMg: 59,
+          potassiumMg: 384,
+          calciumMg: 15,
+          ironMg: 0.34,
+          magnesiumMg: 27,
+          zincMg: 0.43,
+          vitaminAMcg: 12,
+          vitaminCMg: 0,
+          vitaminDMcg: 11,
+          vitaminB6Mg: 0.65,
+          vitaminB12Mcg: 2.8,
+          folateMcg: 26,
+        },
+        verified: true,
+        updatedAt: '2026-11-15T00:00:00Z',
+      },
+    ];
+
+    const broccoliHits = filterStaples(sample, 'Steamed Broccoli', 5, { allowFuzzy: false });
+    expect(broccoliHits[0]?.id).toBe('staple:broccoli');
+
+    const salmonHits = filterStaples(sample, 'Grilled Salmon', 5, { allowFuzzy: false });
+    expect(salmonHits[0]?.id).toBe('staple:salmon');
+
+    setStaplesCache(sample);
+    try {
+      const enriched = await enrichMealItemsWithStaples([
+        {
+          name: 'Steamed Broccoli',
+          microsPer100g: {
+            sodiumMg: 99, // Existing AI-provided value should be preserved
+          },
+        },
+      ]);
+
+      expect(enriched[0].microsPer100g?.sodiumMg).toBe(99);
+      expect(enriched[0].microsPer100g?.vitaminCMg).toBe(89.2);
+      expect(enriched[0].microsPer100g?.potassiumMg).toBe(316);
+      expect(enriched[0].microsPer100g?.folateMcg).toBe(63);
+    } finally {
+      setStaplesCache(null);
+    }
   });
 });
