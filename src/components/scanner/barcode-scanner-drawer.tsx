@@ -40,7 +40,7 @@ function BarcodeScannerContent({
   const storeMealSlot = useLoggerStore((s) => s.activeMealSlot);
 
   const effectiveDate = date ?? storeDate ?? '2026-11-14';
-  const effectiveMealSlot = mealSlot ?? storeMealSlot ?? 'snacks';
+  const effectiveMealSlot = mealSlot ?? storeMealSlot ?? 'log';
 
   const [manualBarcode, setManualBarcode] = useState('');
   const [detectedBarcode, setDetectedBarcode] = useState<string | null>(null);
@@ -251,8 +251,8 @@ function BarcodeScannerContent({
                     ? lookupResult.item.name
                     : 'Scan Food Barcode'}
                 </h2>
-                <p className="text-[11px] text-muted-foreground capitalize">
-                  Logging to {effectiveMealSlot} &bull; {effectiveDate}
+                <p className="text-[11px] text-muted-foreground">
+                  Logging for {effectiveDate}
                 </p>
               </div>
             </div>

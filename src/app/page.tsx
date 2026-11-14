@@ -5,9 +5,8 @@ import Link from 'next/link';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db/macroai-db';
 import { useLoggerStore } from '@/stores/logger-store';
-import { DEFAULT_MEAL_SLOTS, DEFAULT_RDA_MICROS } from '@/lib/nutrition/goals';
+import { DEFAULT_RDA_MICROS } from '@/lib/nutrition/goals';
 import { aggregateDailySummary } from '@/lib/nutrition/daily-summary';
-import { distributeRemainingMacros } from '@/lib/nutrition/meal-distribution';
 import { MacroBentoGrid, type DayNutritionPoint } from '@/components/dashboard/macro-bento-grid';
 import {
   HabitsAnalyticsGrid,
@@ -90,7 +89,7 @@ export default function HomePage() {
       fatG: 65,
       fiberG: 30,
       micronutrientTargets: { ...DEFAULT_RDA_MICROS },
-      mealSlots: [...DEFAULT_MEAL_SLOTS],
+      mealSlots: [],
       updatedAt: 0,
     }),
     []
@@ -120,31 +119,6 @@ export default function HomePage() {
     () => aggregateDailySummary(activeLogs, activeGoals),
     [activeLogs, activeGoals]
   );
-
-  const mealSlots = useMemo(() => {
-    return activeGoals.mealSlots && activeGoals.mealSlots.length > 0
-      ? activeGoals.mealSlots
-      : DEFAULT_MEAL_SLOTS;
-  }, [activeGoals.mealSlots]);
-
-  const distributedBudgets = useMemo(
-    () => distributeRemainingMacros({ ...activeGoals, mealSlots }, activeLogs),
-    [activeGoals, mealSlots, activeLogs]
-  );
-
-  const nextUnloggedSlot = useMemo(() => {
-    const loggedIds = new Set(activeLogs.map((entry) => entry.mealSlot));
-    return mealSlots.find((slot) => !loggedIds.has(slot.id)) ?? null;
-  }, [mealSlots, activeLogs]);
-
-  const allocationTarget = nextUnloggedSlot
-    ? distributedBudgets[nextUnloggedSlot.id] ?? { calories: 0, protein: 0, carbs: 0, fat: 0 }
-    : {
-        calories: summary.calories.remaining,
-        protein: summary.protein.remaining,
-        carbs: summary.carbs.remaining,
-        fat: summary.fat.remaining,
-      };
 
   // Build 7-day sequence ending on activeDate (Pics 3 & 4)
   const weeklyDays: DayNutritionPoint[] = useMemo(() => {
@@ -288,8 +262,6 @@ export default function HomePage() {
               summary={summary}
               weeklyDays={weeklyDays}
               thirtyDayDots={thirtyDayDots}
-              nextSlotName={nextUnloggedSlot?.name ?? null}
-              nextSlotBudget={allocationTarget}
               onSelectDate={setActiveDate}
             />
           </div>

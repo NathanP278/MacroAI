@@ -511,16 +511,17 @@ describe('aggregateDailySummary & Adherence-Neutral Analytics', () => {
       expect(screen.getByText('MacroAI')).toBeInTheDocument();
       expect(screen.getByText('Daily Nutrition')).toBeInTheDocument();
       expect(screen.getByText('Food Logging')).toBeInTheDocument();
-      expect(screen.getByText('Remaining Meal Allocation')).toBeInTheDocument();
-      expect(screen.getByText('Next: Breakfast')).toBeInTheDocument();
+      expect(screen.getByText('Daily Balance')).toBeInTheDocument();
+      expect(screen.getByText('Remaining Today')).toBeInTheDocument();
       expect(screen.getByText('Logged Entries')).toBeInTheDocument();
+
+      expect(screen.queryByText('Breakfast')).not.toBeInTheDocument();
+      expect(screen.queryByText('Lunch')).not.toBeInTheDocument();
+      expect(screen.queryByText('Dinner')).not.toBeInTheDocument();
+      expect(screen.queryByText('Snacks')).not.toBeInTheDocument();
 
       const loggedSection = screen.getByRole('region', { name: 'Logged Entries' });
       expect(within(loggedSection).getByText('No entries logged yet')).toBeInTheDocument();
-      expect(within(loggedSection).queryByText('Breakfast')).not.toBeInTheDocument();
-      expect(within(loggedSection).queryByText('Lunch')).not.toBeInTheDocument();
-      expect(within(loggedSection).queryByText('Dinner')).not.toBeInTheDocument();
-      expect(within(loggedSection).queryByText('Snacks')).not.toBeInTheDocument();
 
       // Date navigation: click previous day
       const prevBtn = screen.getByRole('button', { name: /previous day/i });

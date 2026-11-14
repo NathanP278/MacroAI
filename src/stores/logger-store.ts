@@ -42,7 +42,7 @@ function getTodayIsoDate(): string {
 
 export const useLoggerStore = create<LoggerState>((set) => ({
   activeDate: getTodayIsoDate(),
-  activeMealSlot: 'breakfast',
+  activeMealSlot: 'log',
   activeSheet: null,
   aiDraft: null,
   openSheet: (sheet, mealSlot) =>

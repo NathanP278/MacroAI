@@ -184,7 +184,7 @@ export async function saveCustomRecipe(input: SaveCustomRecipeInput): Promise<Cu
 
 export interface LogCustomRecipeParams {
   date: string;
-  mealSlot: string;
+  mealSlot?: string;
   servings?: number;
   grams?: number;
   note?: string;
@@ -225,7 +225,7 @@ export async function logCustomRecipe(
   const entry: FoodLogEntry = {
     id: generateId(),
     date: params.date,
-    mealSlot: params.mealSlot,
+    mealSlot: params.mealSlot ?? 'log',
     foodId: `recipe:${recipe.id}`,
     name: recipe.name,
     source: 'recipe',
@@ -241,6 +241,40 @@ export async function logCustomRecipe(
 
   await db.foodLogs.put(entry);
   return entry;
+}
+
+/**
+ * Clones all entries from yesterday into targetDate with fresh UUIDs.
+ * Returns the count of entries copied (0 if none found).
+ */
+export async function copyYesterdayLogs(targetDate: string): Promise<number> {
+  const yesterday = offsetIsoDate(targetDate, -1);
+  const entries = await db.foodLogs.where('date').equals(yesterday).toArray();
+
+  if (entries.length === 0) {
+    return 0;
+  }
+
+  const now = Date.now();
+  const clones: FoodLogEntry[] = entries.map((entry, index) => ({
+    id: generateId(),
+    date: targetDate,
+    mealSlot: entry.mealSlot || 'log',
+    foodId: entry.foodId,
+    name: entry.name,
+    source: entry.source,
+    amount: entry.amount,
+    unit: entry.unit,
+    nutritionSnapshot: JSON.parse(JSON.stringify(entry.nutritionSnapshot)),
+    note: entry.note,
+    createdAt: now + index,
+  }));
+
+  await db.transaction('rw', db.foodLogs, async () => {
+    await db.foodLogs.bulkAdd(clones);
+  });
+
+  return clones.length;
 }
 
 /**

@@ -30,7 +30,7 @@ export function AddBarcodeProductModal({
   const storeMealSlot = useLoggerStore((s) => s.activeMealSlot);
 
   const effectiveDate = date ?? storeDate ?? '2026-11-14';
-  const effectiveMealSlot = mealSlot ?? storeMealSlot ?? 'snacks';
+  const effectiveMealSlot = mealSlot ?? storeMealSlot ?? 'log';
 
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');

@@ -2,9 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import type { DailySummary } from '@/lib/nutrition/daily-summary';
+import type { DailySummary, MacroMetric } from '@/lib/nutrition/daily-summary';
 import type { DayNutritionPoint } from './macro-bento-grid';
-import type { SlotMacroBudget } from '@/lib/nutrition/meal-distribution';
 import { ChevronRight } from 'lucide-react';
 
 export interface LoggedDayDot {
@@ -17,10 +16,15 @@ export interface HabitsAnalyticsGridProps {
   summary: DailySummary;
   weeklyDays: DayNutritionPoint[];
   thirtyDayDots: LoggedDayDot[];
-  nextSlotName: string | null;
-  nextSlotBudget: SlotMacroBudget;
   onSelectDate?: (isoDate: string) => void;
   className?: string;
+}
+
+function formatRemainingReadout(metric: MacroMetric, unit: string): string {
+  if (metric.overTarget) {
+    return `+${metric.delta}${unit}`;
+  }
+  return `${metric.remaining}${unit}`;
 }
 
 /**
@@ -28,14 +32,12 @@ export interface HabitsAnalyticsGridProps {
  * - Calories Today bar with target notch tick (Pic 2 & 3)
  * - Macros Last 7 Days stacked coral/gold/emerald columns (Pic 3)
  * - Food Logging Last 30 Days 3x10 dot matrix heatmap (Pic 1)
- * - Remaining Meal Allocation budget tile (Fitia integration in MacroFactor card language)
+ * - Daily Balance remaining/surplus telemetry tile
  */
 export function HabitsAnalyticsGrid({
   summary,
   weeklyDays,
   thirtyDayDots,
-  nextSlotName,
-  nextSlotBudget,
   onSelectDate,
   className = '',
 }: HabitsAnalyticsGridProps) {
@@ -191,8 +193,8 @@ export function HabitsAnalyticsGrid({
         </div>
       </section>
 
-      {/* Habits & Meal Budget Row (Pic 1 exact 2-col card anatomy) */}
-      <section aria-label="Habits and remaining meal budget" className="space-y-2.5 sm:space-y-3">
+      {/* Habits & Daily Balance Row (Pic 1 exact 2-col card anatomy) */}
+      <section aria-label="Habits and daily balance" className="space-y-2.5 sm:space-y-3">
         <div className="flex items-center justify-between px-0.5">
           <h2 className="text-base font-bold tracking-tight text-foreground">
             Habits
@@ -245,17 +247,17 @@ export function HabitsAnalyticsGrid({
             </div>
           </Link>
 
-          {/* Remaining Meal Allocation Tile */}
+          {/* Daily Balance Tile */}
           <Link
             href="/log"
             className="min-w-0 rounded-2xl bg-card border border-border/50 p-3.5 sm:p-4 flex flex-col justify-between gap-3 hover:bg-surface-sub/60 active:scale-[0.985] macro-spring macro-card-interactive group"
           >
             <div>
               <div className="text-sm font-semibold text-foreground truncate">
-                {nextSlotName ? `Next: ${nextSlotName}` : 'Daily Balance'}
+                Daily Balance
               </div>
               <div className="text-xs text-muted-foreground truncate">
-                Remaining Meal Allocation
+                {summary.calories.overTarget ? 'Surplus Today' : 'Remaining Today'}
               </div>
             </div>
 
@@ -266,7 +268,7 @@ export function HabitsAnalyticsGrid({
                   className="text-sm font-bold"
                   style={{ color: 'var(--macro-calories)' }}
                 >
-                  {nextSlotBudget.calories} kcal
+                  {formatRemainingReadout(summary.calories, ' kcal')}
                 </div>
               </div>
               <div>
@@ -275,7 +277,7 @@ export function HabitsAnalyticsGrid({
                   className="text-sm font-bold"
                   style={{ color: 'var(--macro-protein)' }}
                 >
-                  {nextSlotBudget.protein}g
+                  {formatRemainingReadout(summary.protein, 'g')}
                 </div>
               </div>
               <div>
@@ -284,7 +286,7 @@ export function HabitsAnalyticsGrid({
                   className="text-sm font-bold"
                   style={{ color: 'var(--macro-fat)' }}
                 >
-                  {nextSlotBudget.fat}g
+                  {formatRemainingReadout(summary.fat, 'g')}
                 </div>
               </div>
               <div>
@@ -293,14 +295,16 @@ export function HabitsAnalyticsGrid({
                   className="text-sm font-bold"
                   style={{ color: 'var(--macro-carbs)' }}
                 >
-                  {nextSlotBudget.carbs}g
+                  {formatRemainingReadout(summary.carbs, 'g')}
                 </div>
               </div>
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                {nextSlotName ? 'Auto-distributed' : 'All slots logged'}
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {summary.logsCount > 0
+                  ? `${summary.logsCount} ${summary.logsCount === 1 ? 'entry' : 'entries'} logged`
+                  : 'Ready to log'}
               </span>
               <ChevronRight
                 className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all"

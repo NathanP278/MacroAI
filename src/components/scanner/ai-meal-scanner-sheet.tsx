@@ -38,7 +38,7 @@ export function AiMealScannerSheet({
   const storeDate = useLoggerStore((s) => s.activeDate);
   const storeMealSlot = useLoggerStore((s) => s.activeMealSlot);
   const effectiveDate = date ?? storeDate ?? '2026-11-14';
-  const effectiveMealSlot = mealSlot ?? storeMealSlot ?? 'lunch';
+  const effectiveMealSlot = mealSlot ?? storeMealSlot ?? 'log';
 
   const aiDraft = useLoggerStore((s) => s.aiDraft);
   const setAiDraft = useLoggerStore((s) => s.setAiDraft);
@@ -447,8 +447,8 @@ export function AiMealScannerSheet({
                       ? "What's in this meal?"
                       : 'AI Meal Scanner'}
                 </h2>
-                <p className="text-[11px] text-muted-foreground capitalize">
-                  Logging to {effectiveMealSlot} &bull; {effectiveDate}
+                <p className="text-[11px] text-muted-foreground">
+                  Logging for {effectiveDate}
                 </p>
               </div>
             </div>

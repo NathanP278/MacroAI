@@ -228,8 +228,8 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
               <h2 className="text-sm font-semibold text-foreground line-clamp-1">
                 {selectedFood ? selectedFood.name : 'Search Foods'}
               </h2>
-              <p className="text-[11px] text-muted-foreground capitalize">
-                Logging to {effectiveMealSlot} &bull; {effectiveDate}
+              <p className="text-[11px] text-muted-foreground">
+                Logging for {effectiveDate}
               </p>
             </div>
           </div>
@@ -371,7 +371,7 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
                 ) : (
                   <Check className="w-3.5 h-3.5" aria-hidden="true" />
                 )}
-                <span>Log to {effectiveMealSlot}</span>
+                <span>Log Food</span>
               </button>
             </div>
           </div>

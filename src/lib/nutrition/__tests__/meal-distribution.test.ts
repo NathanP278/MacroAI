@@ -5,6 +5,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { db } from '@/lib/db/macroai-db';
 import { distributeRemainingMacros } from '../meal-distribution';
 import {
+  copyYesterdayLogs,
   copyYesterdayMeal,
   saveCustomRecipe,
   logCustomRecipe,
@@ -388,10 +389,44 @@ describe('Task 12: Fitia-Style Smart Meal Distribution & Copy Yesterday', () => 
       const count = await copyYesterdayMeal('2026-11-14', 'dinner');
       expect(count).toBe(0);
     });
+
+    test('copyYesterdayLogs clones all yesterday entries regardless of mealSlot', async () => {
+      await db.foodLogs.bulkAdd([
+        {
+          id: 'y-1',
+          date: '2026-11-13',
+          mealSlot: 'breakfast',
+          foodId: 's:1',
+          name: 'Eggs',
+          source: 'staple',
+          amount: 100,
+          unit: 'g',
+          nutritionSnapshot: { calories: 143, protein: 12.6, carbs: 0.7, fat: 9.5, fiber: 0, micros: {} },
+          createdAt: 1,
+        },
+        {
+          id: 'y-2',
+          date: '2026-11-13',
+          mealSlot: 'dinner',
+          foodId: 's:2',
+          name: 'Salmon',
+          source: 'staple',
+          amount: 150,
+          unit: 'g',
+          nutritionSnapshot: { calories: 310, protein: 32, carbs: 0, fat: 19, fiber: 0, micros: {} },
+          createdAt: 2,
+        },
+      ]);
+
+      const count = await copyYesterdayLogs('2026-11-14');
+      expect(count).toBe(2);
+      const copied = await db.foodLogs.where('date').equals('2026-11-14').toArray();
+      expect(copied.map((c) => c.name).sort()).toEqual(['Eggs', 'Salmon']);
+    });
   });
 
   describe('UI Component: MealSlotsView & LogPage', () => {
-    test('renders meal slots, Fitia remaining chips, and allows copying yesterday', async () => {
+    test('renders unified logged entries list without meal-slot groupings and copies yesterday', async () => {
       // Seed user goals
       await db.userGoals.put({
         id: 'active',
@@ -409,67 +444,81 @@ describe('Task 12: Fitia-Style Smart Meal Distribution & Copy Yesterday', () => 
         ],
       });
 
-      // Seed yesterday's breakfast entry
-      await db.foodLogs.put({
-        id: 'yesterday-entry',
-        date: '2026-11-13',
-        mealSlot: 'breakfast',
-        foodId: 'staple:1',
-        name: 'Greek Yogurt',
-        source: 'staple',
-        amount: 200,
-        unit: 'g',
-        nutritionSnapshot: {
-          calories: 130,
-          protein: 20,
-          carbs: 8,
-          fat: 2,
-          fiber: 0,
-          micros: {},
+      // Seed yesterday entries across different legacy mealSlots
+      await db.foodLogs.bulkAdd([
+        {
+          id: 'yesterday-entry',
+          date: '2026-11-13',
+          mealSlot: 'breakfast',
+          foodId: 'staple:1',
+          name: 'Greek Yogurt',
+          source: 'staple',
+          amount: 200,
+          unit: 'g',
+          nutritionSnapshot: {
+            calories: 130,
+            protein: 20,
+            carbs: 8,
+            fat: 2,
+            fiber: 0,
+            micros: {},
+          },
+          createdAt: 100,
         },
-        createdAt: 100,
-      });
+        {
+          id: 'yesterday-entry-2',
+          date: '2026-11-13',
+          mealSlot: 'dinner',
+          foodId: 'staple:2',
+          name: 'Chicken Bowl',
+          source: 'staple',
+          amount: 250,
+          unit: 'g',
+          nutritionSnapshot: {
+            calories: 420,
+            protein: 40,
+            carbs: 38,
+            fat: 12,
+            fiber: 4,
+            micros: {},
+          },
+          createdAt: 200,
+        },
+      ]);
 
       render(React.createElement(MealSlotsView));
 
-      // Check slot headers
-      await waitFor(() => {
-        expect(screen.getByText('Breakfast')).toBeInTheDocument();
-        expect(screen.getByText('Lunch')).toBeInTheDocument();
-        expect(screen.getByText('Dinner')).toBeInTheDocument();
-      });
+      // No Breakfast / Lunch / Dinner / Snacks headings anywhere
+      expect(screen.getByText('Logged Entries')).toBeInTheDocument();
+      expect(screen.queryByText('Breakfast')).not.toBeInTheDocument();
+      expect(screen.queryByText('Lunch')).not.toBeInTheDocument();
+      expect(screen.queryByText('Dinner')).not.toBeInTheDocument();
+      expect(screen.queryByText('Snacks')).not.toBeInTheDocument();
 
-      // Since breakfast is unlogged today, it should display recommended budget chip
-      await waitFor(() => {
-        expect(screen.getByTestId('budget-chip-breakfast')).toBeInTheDocument();
-      });
-
-      // Check "Copy Yesterday's Breakfast" button is present (after useLiveQuery resolves)
-      const copyBtn = await screen.findByRole('button', { name: /copy yesterday's breakfast/i });
+      // Check "Copy Yesterday" button is present (after useLiveQuery resolves)
+      const copyBtn = await screen.findByRole('button', { name: /^copy yesterday$/i });
       expect(copyBtn).toBeInTheDocument();
 
-      // Click "Copy Yesterday's Breakfast"
+      // Click "Copy Yesterday"
       await act(async () => {
         fireEvent.click(copyBtn);
       });
 
-      // Today's breakfast should now have Greek Yogurt!
+      // Today should now have both copied entries in the unified list
       await waitFor(async () => {
         const todayLogs = await db.foodLogs.where('date').equals('2026-11-14').toArray();
-        expect(todayLogs).toHaveLength(1);
-        expect(todayLogs[0].name).toBe('Greek Yogurt');
+        expect(todayLogs).toHaveLength(2);
       });
 
-      // The entry is now visible in the DOM
       await waitFor(() => {
         expect(screen.getByText('Greek Yogurt')).toBeInTheDocument();
+        expect(screen.getByText('Chicken Bowl')).toBeInTheDocument();
       });
 
-      // Test slot + button triggers openSheet('search', 'lunch')
-      const addLunchBtn = screen.getByRole('button', { name: /add food to lunch/i });
-      fireEvent.click(addLunchBtn);
+      // Test + Add button triggers openSheet('search')
+      const addFoodBtn = screen.getByRole('button', { name: /add food/i });
+      fireEvent.click(addFoodBtn);
       expect(useLoggerStore.getState().activeSheet).toBe('search');
-      expect(useLoggerStore.getState().activeMealSlot).toBe('lunch');
 
       // Test delete entry
       const deleteBtn = screen.getByRole('button', { name: /delete greek yogurt/i });
@@ -479,7 +528,7 @@ describe('Task 12: Fitia-Style Smart Meal Distribution & Copy Yesterday', () => 
 
       await waitFor(async () => {
         const count = await db.foodLogs.where('date').equals('2026-11-14').count();
-        expect(count).toBe(0);
+        expect(count).toBe(1);
       });
     });
 

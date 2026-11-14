@@ -148,8 +148,8 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-foreground">Quick Add Macros</h2>
-              <p className="text-[11px] text-muted-foreground capitalize">
-                Logging to {effectiveMealSlot} &bull; {effectiveDate}
+              <p className="text-[11px] text-muted-foreground">
+                Logging for {effectiveDate}
               </p>
             </div>
           </div>
@@ -175,7 +175,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Protein shake, Snack"
+              placeholder="e.g. Protein shake, Greek yogurt"
               className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground/50 transition-shadow"
             />
           </div>

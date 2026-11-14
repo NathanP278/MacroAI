@@ -7,7 +7,6 @@ import { AppShell } from '@/components/shell/app-shell';
 import { RecipeBuilderModal } from '@/components/recipes/recipe-builder-modal';
 import { logCustomRecipe } from '@/lib/recipes/recipe-builder';
 import { useLoggerStore } from '@/stores/logger-store';
-import { DEFAULT_MEAL_SLOTS } from '@/lib/nutrition/goals';
 import type { CustomRecipe } from '@/types/nutrition';
 import {
   ChefHat,
@@ -23,7 +22,6 @@ export default function RecipesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<CustomRecipe | null>(null);
-  const [selectedSlots, setSelectedSlots] = useState<Record<string, string>>({});
   const [loggedFeedback, setLoggedFeedback] = useState<Record<string, string>>({});
   const feedbackTimersRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -35,15 +33,9 @@ export default function RecipesPage() {
   }, []);
 
   const activeDate = useLoggerStore((s) => s.activeDate);
-  const activeMealSlot = useLoggerStore((s) => s.activeMealSlot);
 
-  // Live queries for custom recipes and user goals
+  // Live query for custom recipes
   const recipes = useLiveQuery(() => db.customRecipes.toArray(), []);
-  const userGoals = useLiveQuery(() => db.userGoals.get('active'), []);
-
-  const mealSlots = userGoals?.mealSlots?.length
-    ? userGoals.mealSlots
-    : DEFAULT_MEAL_SLOTS;
 
   // Filter recipes by live search query
   const filteredRecipes = useMemo(() => {
@@ -72,17 +64,15 @@ export default function RecipesPage() {
   };
 
   const handleLogRecipe = async (recipe: CustomRecipe) => {
-    const slot = selectedSlots[recipe.id] || activeMealSlot || 'lunch';
     try {
       await logCustomRecipe(recipe, {
         date: activeDate,
-        mealSlot: slot,
         servings: 1,
       });
 
       setLoggedFeedback((prev) => ({
         ...prev,
-        [recipe.id]: `Logged to ${slot}!`,
+        [recipe.id]: 'Logged!',
       }));
 
       if (feedbackTimersRef.current[recipe.id]) {
@@ -150,7 +140,6 @@ export default function RecipesPage() {
         {filteredRecipes.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 animate-card-enter">
             {filteredRecipes.map((recipe) => {
-              const currentSlot = selectedSlots[recipe.id] || activeMealSlot || 'lunch';
               const feedback = loggedFeedback[recipe.id];
 
               return (
@@ -232,44 +221,22 @@ export default function RecipesPage() {
                   </div>
 
                   {/* 1-Tap Log Action Bar */}
-                  <div className="flex items-center justify-between pt-2 border-t border-border/60 gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] text-muted-foreground">Slot:</span>
-                      <select
-                        value={currentSlot}
-                        onChange={(e) =>
-                          setSelectedSlots((prev) => ({
-                            ...prev,
-                            [recipe.id]: e.target.value,
-                          }))
-                        }
-                        className="bg-surface-sub rounded-full px-2.5 py-1 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
-                      >
-                        {mealSlots.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {feedback && (
-                        <span className="animate-check-pop text-[11px] text-[var(--macro-carbs)] flex items-center gap-1 font-semibold">
-                          <Check className="w-3.5 h-3.5" aria-hidden="true" />
-                          {feedback}
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleLogRecipe(recipe)}
-                        aria-label={`Log ${recipe.name}`}
-                        className="macro-spring active:scale-95 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
-                      >
-                        <Utensils className="w-3.5 h-3.5" aria-hidden="true" />
-                        <span>Log</span>
-                      </button>
-                    </div>
+                  <div className="flex items-center justify-end pt-2 border-t border-border/60 gap-2">
+                    {feedback && (
+                      <span className="animate-check-pop text-[11px] text-[var(--macro-carbs)] flex items-center gap-1 font-semibold">
+                        <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                        {feedback}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleLogRecipe(recipe)}
+                      aria-label={`Log ${recipe.name}`}
+                      className="macro-spring active:scale-95 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
+                    >
+                      <Utensils className="w-3.5 h-3.5" aria-hidden="true" />
+                      <span>Log</span>
+                    </button>
                   </div>
                 </div>
               );

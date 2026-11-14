@@ -100,7 +100,7 @@ describe('FoodSearchDrawer component', () => {
     expect(screen.getByText('45g')).toBeInTheDocument();
 
     // Log food
-    const logButton = screen.getByRole('button', { name: /log to lunch/i });
+    const logButton = screen.getByRole('button', { name: /log food/i });
     fireEvent.click(logButton);
 
     await waitFor(async () => {
@@ -164,7 +164,7 @@ describe('FoodSearchDrawer component', () => {
     expect(screen.getByText(/wild alaskan salmon/i)).toBeInTheDocument();
 
     // Log food
-    fireEvent.click(screen.getByRole('button', { name: /log to dinner/i }));
+    fireEvent.click(screen.getByRole('button', { name: /log food/i }));
 
     await waitFor(async () => {
       expect(await db.foodLogs.count()).toBe(1);
