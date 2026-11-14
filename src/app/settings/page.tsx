@@ -5,6 +5,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import { BackupPanel } from "@/components/settings/backup-panel";
 import { GoalsCalculatorForm } from "@/components/settings/goals-calculator-form";
+import { AiHealthStatusCard } from "@/components/settings/ai-health-status-card";
 import { Moon, ShieldCheck, Database } from "lucide-react";
 
 export default function SettingsPage() {
@@ -35,6 +36,9 @@ export default function SettingsPage() {
 
         {/* Goals & TDEE Calculator */}
         <GoalsCalculatorForm />
+
+        {/* AI Vision & OCR Service */}
+        <AiHealthStatusCard />
 
         {/* Data Backup & Restore */}
         <BackupPanel />
