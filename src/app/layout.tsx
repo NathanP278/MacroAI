@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import { PwaRegister } from "@/components/shell/pwa-register";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,7 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "MacroAI - Adherence-Neutral Macro & Calorie Tracker",
   description: "100% free, offline-first calorie and macro tracking with AI meal scanning and adherence-neutral analytics.",
-  manifest: "/manifest.json",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -46,6 +47,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
         <ThemeProvider defaultTheme="dark">
+          <PwaRegister />
           {children}
         </ThemeProvider>
       </body>
