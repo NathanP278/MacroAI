@@ -50,3 +50,6 @@ macroai.db
 macroai.db-journal
 macroai.db-wal
 macroai.db-shm
+
+# codegraph
+.codegraph/
