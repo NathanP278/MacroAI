@@ -1,0 +1,76 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+const USDA_BASE_URL = 'https://api.nal.usda.gov/fdc/v1';
+
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ path: string[] }> | { path: string[] } }
+): Promise<NextResponse> {
+  const resolvedParams =
+    context.params instanceof Promise ? await context.params : context.params;
+  const pathSegments = resolvedParams?.path || [];
+
+  // Validation: Allow ONLY 'foods/search' and 'food/<numericId>'
+  const isSearchPath =
+    pathSegments.length === 2 &&
+    pathSegments[0] === 'foods' &&
+    pathSegments[1] === 'search';
+
+  const isFoodDetailPath =
+    pathSegments.length === 2 &&
+    pathSegments[0] === 'food' &&
+    /^\d+$/.test(pathSegments[1]);
+
+  if (!isSearchPath && !isFoodDetailPath) {
+    return NextResponse.json(
+      { error: 'Invalid USDA API path. Allowed paths: foods/search, food/<numericId>' },
+      { status: 400 }
+    );
+  }
+
+  const apiKey = process.env.USDA_API_KEY || 'DEMO_KEY';
+
+  let targetUrl: string;
+
+  if (isSearchPath) {
+    const url = new URL(request.url);
+    const searchParams = new URLSearchParams(url.searchParams);
+
+    // Enforce dataType and append api_key
+    searchParams.set('dataType', 'Foundation,SR Legacy');
+    searchParams.set('api_key', apiKey);
+
+    targetUrl = `${USDA_BASE_URL}/foods/search?${searchParams.toString()}`;
+  } else {
+    const fdcId = pathSegments[1];
+    targetUrl = `${USDA_BASE_URL}/food/${fdcId}?api_key=${encodeURIComponent(apiKey)}`;
+  }
+
+  try {
+    const upstreamRes = await fetch(targetUrl);
+    if (!upstreamRes.ok) {
+      const errorText = await upstreamRes.text().catch(() => '');
+      return NextResponse.json(
+        {
+          error: `USDA API upstream returned error status ${upstreamRes.status}`,
+          details: errorText,
+        },
+        { status: upstreamRes.status }
+      );
+    }
+
+    const data = await upstreamRes.json();
+    return NextResponse.json(data, {
+      status: 200,
+      headers: {
+        'Cache-Control': 'public, max-age=86400',
+      },
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json(
+      { error: 'Failed to communicate with USDA API', message },
+      { status: 502 }
+    );
+  }
+}

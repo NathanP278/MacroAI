@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { BottomNav } from "./bottom-nav";
 import { QuickActionDock, QuickActionType } from "./quick-action-dock";
 import { QuickAddDrawer } from "@/components/logging/quick-add-drawer";
+import { FoodSearchDrawer } from "@/components/logging/food-search-drawer";
 import { useLoggerStore } from "@/stores/logger-store";
 import { ensureDefaultUserGoals } from "@/lib/nutrition/goals";
 
@@ -61,6 +62,14 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
         {/* Quick Add Macros Drawer */}
         <QuickAddDrawer
           open={activeSheet === "quick-add"}
+          date={activeDate}
+          mealSlot={activeMealSlot}
+          onClose={closeSheet}
+        />
+
+        {/* Food Search Drawer */}
+        <FoodSearchDrawer
+          open={activeSheet === "search"}
           date={activeDate}
           mealSlot={activeMealSlot}
           onClose={closeSheet}
