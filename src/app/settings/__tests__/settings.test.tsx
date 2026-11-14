@@ -14,6 +14,7 @@ describe('SettingsPage', () => {
 
     expect(screen.getByText('Settings & Preferences')).toBeInTheDocument();
     expect(screen.getByText('Theme & Appearance')).toBeInTheDocument();
+    expect(screen.getByText('Goals & TDEE Calculator')).toBeInTheDocument();
     expect(screen.getByText('Data Backup & Restore')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /export backup/i })).toBeInTheDocument();
     expect(screen.getByText(/adherence-neutral analytics/i)).toBeInTheDocument();

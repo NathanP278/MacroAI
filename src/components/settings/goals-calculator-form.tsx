@@ -1,0 +1,307 @@
+"use client";
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { Calculator, Check, Flame, Dumbbell, Wheat, Droplets } from 'lucide-react';
+import { db } from '@/lib/db/macroai-db';
+import {
+  calculateMifflinStJeorTargets,
+  DEFAULT_MEAL_SLOTS,
+  DEFAULT_RDA_MICROS,
+  ACTIVITY_LEVELS,
+  GOAL_DELTAS,
+} from '@/lib/nutrition/goals';
+import type { UserGoals, UserProfile } from '@/types/nutrition';
+
+export function GoalsCalculatorForm() {
+  const [sex, setSex] = useState<'male' | 'female'>('male');
+  const [age, setAge] = useState<number>(30);
+  const [weightKg, setWeightKg] = useState<number>(75);
+  const [heightCm, setHeightCm] = useState<number>(175);
+  const [activityMultiplier, setActivityMultiplier] = useState<number>(1.55);
+  const [goalDeltaKcal, setGoalDeltaKcal] = useState<number>(-300);
+  const [proteinPerKg, setProteinPerKg] = useState<number>(2.0);
+
+  const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Load existing profile from active goals on mount
+  useEffect(() => {
+    async function loadGoals() {
+      try {
+        const goals = await db.userGoals.get('active');
+        if (goals?.profile) {
+          const p = goals.profile;
+          setSex(p.sex ?? 'male');
+          setAge(p.age ?? 30);
+          setWeightKg(p.weightKg ?? 75);
+          setHeightCm(p.heightCm ?? 175);
+          setActivityMultiplier(p.activityMultiplier ?? 1.55);
+          setGoalDeltaKcal(p.goalDeltaKcal ?? 0);
+          setProteinPerKg(p.proteinPerKg ?? 2.0);
+        }
+      } catch (err) {
+        console.error('Failed to load user goals profile:', err);
+      }
+    }
+    loadGoals();
+  }, []);
+
+  const targets = useMemo(() => {
+    return calculateMifflinStJeorTargets({
+      sex,
+      age,
+      weightKg,
+      heightCm,
+      activityMultiplier,
+      goalDeltaKcal,
+      proteinPerKg,
+    });
+  }, [sex, age, weightKg, heightCm, activityMultiplier, goalDeltaKcal, proteinPerKg]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSaving) return;
+    setIsSaving(true);
+    setSavedSuccess(false);
+
+    try {
+      const existing = await db.userGoals.get('active');
+      const profile: UserProfile = {
+        sex,
+        age,
+        weightKg,
+        heightCm,
+        activityMultiplier,
+        goalDeltaKcal,
+        proteinPerKg,
+      };
+
+      const updatedGoals: UserGoals = {
+        id: 'active',
+        dailyCalories: targets.dailyCalories,
+        proteinG: targets.proteinG,
+        carbsG: targets.carbsG,
+        fatG: targets.fatG,
+        fiberG: targets.fiberG,
+        micronutrientTargets: existing?.micronutrientTargets ?? { ...DEFAULT_RDA_MICROS },
+        mealSlots: existing?.mealSlots ?? [...DEFAULT_MEAL_SLOTS],
+        profile,
+        updatedAt: Date.now(),
+      };
+
+      await db.userGoals.put(updatedGoals);
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (err) {
+      console.error('Failed to save user goals:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <section className="bg-card border border-border rounded-2xl p-4 space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-xl bg-purple-400/10 border border-purple-400/20 flex items-center justify-center text-purple-400">
+          <Calculator className="w-4 h-4" />
+        </div>
+        <div>
+          <h2 className="text-xs font-semibold text-foreground">Goals & TDEE Calculator</h2>
+          <p className="text-[10px] text-muted-foreground">Mifflin-St Jeor metabolic target estimation</p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSave} className="space-y-4">
+        {/* Profile Inputs */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="goals-sex" className="block text-[11px] font-medium text-muted-foreground mb-1">
+              Biological Sex
+            </label>
+            <select
+              id="goals-sex"
+              aria-label="Biological Sex"
+              value={sex}
+              onChange={(e) => setSex(e.target.value as 'male' | 'female')}
+              className="w-full px-2.5 py-1.5 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground transition-colors"
+            >
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="goals-age" className="block text-[11px] font-medium text-muted-foreground mb-1">
+              Age (years)
+            </label>
+            <input
+              id="goals-age"
+              aria-label="Age"
+              type="number"
+              min={12}
+              max={120}
+              value={age || ''}
+              onChange={(e) => setAge(Math.max(1, parseInt(e.target.value) || 0))}
+              className="w-full px-2.5 py-1.5 text-xs tabular-nums rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="goals-weight" className="block text-[11px] font-medium text-muted-foreground mb-1">
+              Weight (kg)
+            </label>
+            <input
+              id="goals-weight"
+              aria-label="Weight"
+              type="number"
+              step="0.5"
+              min={30}
+              max={300}
+              value={weightKg || ''}
+              onChange={(e) => setWeightKg(Math.max(1, parseFloat(e.target.value) || 0))}
+              className="w-full px-2.5 py-1.5 text-xs tabular-nums rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="goals-height" className="block text-[11px] font-medium text-muted-foreground mb-1">
+              Height (cm)
+            </label>
+            <input
+              id="goals-height"
+              aria-label="Height"
+              type="number"
+              min={100}
+              max={250}
+              value={heightCm || ''}
+              onChange={(e) => setHeightCm(Math.max(1, parseInt(e.target.value) || 0))}
+              className="w-full px-2.5 py-1.5 text-xs tabular-nums rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground"
+            />
+          </div>
+        </div>
+
+        {/* Activity & Target Delta */}
+        <div className="space-y-3">
+          <div>
+            <label htmlFor="goals-activity" className="block text-[11px] font-medium text-muted-foreground mb-1">
+              Activity Level
+            </label>
+            <select
+              id="goals-activity"
+              aria-label="Activity Level"
+              value={activityMultiplier}
+              onChange={(e) => setActivityMultiplier(parseFloat(e.target.value))}
+              className="w-full px-2.5 py-1.5 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground transition-colors"
+            >
+              {ACTIVITY_LEVELS.map((act) => (
+                <option key={act.value} value={act.value}>
+                  {act.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="goals-delta" className="block text-[11px] font-medium text-muted-foreground mb-1">
+              Caloric Goal / Target Delta
+            </label>
+            <select
+              id="goals-delta"
+              aria-label="Caloric Goal"
+              value={goalDeltaKcal}
+              onChange={(e) => setGoalDeltaKcal(parseInt(e.target.value))}
+              className="w-full px-2.5 py-1.5 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground transition-colors"
+            >
+              {GOAL_DELTAS.map((delta) => (
+                <option key={delta.value} value={delta.value}>
+                  {delta.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="goals-protein-per-kg" className="text-[11px] font-medium text-muted-foreground">
+                Protein per kg
+              </label>
+              <span className="text-[10px] text-muted-foreground tabular-nums">
+                {proteinPerKg.toFixed(1)} g/kg
+              </span>
+            </div>
+            <input
+              id="goals-protein-per-kg"
+              aria-label="Protein per kg"
+              type="number"
+              step="0.1"
+              min={1.0}
+              max={3.5}
+              value={proteinPerKg || ''}
+              onChange={(e) => setProteinPerKg(Math.max(0.5, parseFloat(e.target.value) || 0))}
+              className="w-full px-2.5 py-1.5 text-xs tabular-nums rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground"
+            />
+          </div>
+        </div>
+
+        {/* Calculated Targets Preview */}
+        <div className="bg-surface-sub border border-border rounded-xl p-3 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-muted-foreground">Target Daily Nutrition</span>
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-foreground tabular-nums">
+              <Flame className="w-3.5 h-3.5 text-amber-400" />
+              {targets.dailyCalories} kcal
+            </span>
+          </div>
+
+          <div className="grid grid-cols-4 gap-2 pt-1">
+            <div className="p-2 rounded-lg bg-surface-card border border-border text-center">
+              <div className="flex items-center justify-center gap-1 text-[10px] text-emerald-400 font-medium">
+                <Dumbbell className="w-2.5 h-2.5" />
+                <span>Protein</span>
+              </div>
+              <p className="text-xs font-bold text-foreground tabular-nums mt-0.5">{targets.proteinG}g</p>
+            </div>
+
+            <div className="p-2 rounded-lg bg-surface-card border border-border text-center">
+              <div className="flex items-center justify-center gap-1 text-[10px] text-sky-400 font-medium">
+                <Wheat className="w-2.5 h-2.5" />
+                <span>Carbs</span>
+              </div>
+              <p className="text-xs font-bold text-foreground tabular-nums mt-0.5">{targets.carbsG}g</p>
+            </div>
+
+            <div className="p-2 rounded-lg bg-surface-card border border-border text-center">
+              <div className="flex items-center justify-center gap-1 text-[10px] text-amber-400 font-medium">
+                <Droplets className="w-2.5 h-2.5" />
+                <span>Fat</span>
+              </div>
+              <p className="text-xs font-bold text-foreground tabular-nums mt-0.5">{targets.fatG}g</p>
+            </div>
+
+            <div className="p-2 rounded-lg bg-surface-card border border-border text-center">
+              <div className="text-[10px] text-muted-foreground font-medium">Fiber</div>
+              <p className="text-xs font-bold text-foreground tabular-nums mt-0.5">{targets.fiberG}g</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Button & Status */}
+        <button
+          type="submit"
+          disabled={isSaving}
+          className="w-full py-2.5 px-4 rounded-xl bg-foreground text-background font-semibold text-xs hover:opacity-90 active:scale-[0.99] disabled:opacity-50 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+        >
+          {savedSuccess ? (
+            <>
+              <Check className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Goals Saved!</span>
+            </>
+          ) : (
+            <span>Save Nutrition Goals</span>
+          )}
+        </button>
+      </form>
+    </section>
+  );
+}

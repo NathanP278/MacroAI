@@ -1,8 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BottomNav } from "./bottom-nav";
 import { QuickActionDock, QuickActionType } from "./quick-action-dock";
+import { QuickAddDrawer } from "@/components/logging/quick-add-drawer";
+import { useLoggerStore } from "@/stores/logger-store";
+import { ensureDefaultUserGoals } from "@/lib/nutrition/goals";
 
 export { QuickActionDock };
 export type { QuickActionType };
@@ -14,9 +17,21 @@ export interface AppShellProps {
 
 export function AppShell({ children, onQuickAction }: AppShellProps) {
   const [isDockOpen, setIsDockOpen] = useState(false);
+  const activeSheet = useLoggerStore((s) => s.activeSheet);
+  const openSheet = useLoggerStore((s) => s.openSheet);
+  const closeSheet = useLoggerStore((s) => s.closeSheet);
+  const activeDate = useLoggerStore((s) => s.activeDate);
+  const activeMealSlot = useLoggerStore((s) => s.activeMealSlot);
+
+  useEffect(() => {
+    ensureDefaultUserGoals().catch((err) => {
+      console.error("Failed to seed default user goals:", err);
+    });
+  }, []);
 
   const handleAction = (action: QuickActionType) => {
     setIsDockOpen(false);
+    openSheet(action);
     onQuickAction?.(action);
   };
 
@@ -42,6 +57,14 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
             onClose={() => setIsDockOpen(false)}
           />
         )}
+
+        {/* Quick Add Macros Drawer */}
+        <QuickAddDrawer
+          open={activeSheet === "quick-add"}
+          date={activeDate}
+          mealSlot={activeMealSlot}
+          onClose={closeSheet}
+        />
       </div>
     </div>
   );

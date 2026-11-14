@@ -4,6 +4,7 @@ import React from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import { BackupPanel } from "@/components/settings/backup-panel";
+import { GoalsCalculatorForm } from "@/components/settings/goals-calculator-form";
 import { Moon, ShieldCheck, Database } from "lucide-react";
 
 export default function SettingsPage() {
@@ -31,6 +32,9 @@ export default function SettingsPage() {
             <ThemeSwitcher />
           </div>
         </section>
+
+        {/* Goals & TDEE Calculator */}
+        <GoalsCalculatorForm />
 
         {/* Data Backup & Restore */}
         <BackupPanel />
