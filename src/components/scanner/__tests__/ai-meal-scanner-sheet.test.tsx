@@ -460,4 +460,125 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(useLoggerStore.getState().activeSheet).toBeNull();
   });
+
+  // 9. Regression: Escape key handling with open HitlVerificationSwapModal
+  test('regression: opening HitlVerificationSwapModal and pressing Escape closes ONLY swap modal while keeping AiMealScannerSheet open', () => {
+    const handleClose = vi.fn();
+    useLoggerStore.getState().setAiDraft({
+      imageDataUrl: 'data:image/jpeg;base64,photo',
+      contextPrompt: '',
+      items: [
+        {
+          id: 'item-esc',
+          name: 'Sweet Potato',
+          grams: 150,
+          per100g: { calories: 86, protein: 1.6, carbs: 20, fat: 0.1, fiber: 3 },
+          verifiedSource: null,
+        },
+      ],
+    });
+
+    render(<AiMealScannerSheet open date="2026-11-14" mealSlot="lunch" onClose={handleClose} />);
+
+    // Open swap modal
+    fireEvent.click(screen.getByRole('button', { name: /verify \/ swap/i }));
+    expect(screen.getByRole('dialog', { name: /verify or swap food/i })).toBeInTheDocument();
+
+    // Press Escape
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    // Swap modal must be closed
+    expect(screen.queryByRole('dialog', { name: /verify or swap food/i })).not.toBeInTheDocument();
+
+    // Parent sheet must still be open and handleClose NOT called
+    expect(handleClose).not.toHaveBeenCalled();
+    expect(screen.getByTestId('ai-meal-scanner-sheet')).toBeInTheDocument();
+  });
+
+  // 10. Regression: Confirming & logging resets draft and local state so reopening starts clean in Stage 1
+  test('regression: confirming and logging resets draft and local state so reopening starts clean in Stage 1', async () => {
+    const handleClose = vi.fn();
+    useLoggerStore.getState().setAiDraft({
+      imageDataUrl: 'data:image/jpeg;base64,my-test-photo',
+      contextPrompt: 'cooked with olive oil',
+      items: [
+        {
+          id: 'item-log',
+          name: 'Steak',
+          grams: 200,
+          per100g: { calories: 250, protein: 26, carbs: 0, fat: 17, fiber: 0 },
+          verifiedSource: null,
+        },
+      ],
+    });
+
+    const { rerender } = render(
+      <AiMealScannerSheet open date="2026-11-14" mealSlot="dinner" onClose={handleClose} />
+    );
+
+    // Confirm and log
+    fireEvent.click(screen.getByRole('button', { name: /confirm & log/i }));
+    await waitFor(async () => expect(await db.foodLogs.count()).toBe(1));
+    expect(handleClose).toHaveBeenCalled();
+
+    // Reopen sheet (simulate close then reopen in AppShell)
+    rerender(<AiMealScannerSheet open={false} date="2026-11-14" mealSlot="dinner" onClose={handleClose} />);
+    rerender(<AiMealScannerSheet open={true} date="2026-11-14" mealSlot="dinner" onClose={handleClose} />);
+
+    // Should be back to Stage 1 with clean state (no leftover image preview, empty prompt)
+    expect(screen.queryByAltText(/meal preview/i)).not.toBeInTheDocument();
+    const promptInput = screen.getByPlaceholderText(/cooking oil, sauces, prep style/i) as HTMLTextAreaElement;
+    expect(promptInput.value).toBe('');
+  });
+
+  // 11. Regression: Refine with AI updates baselineGrams cleanly
+  test('regression: clicking 1x after Refine with AI preserves refined gram value instead of reverting to stale pre-refine grams', async () => {
+    useLoggerStore.getState().setAiDraft({
+      imageDataUrl: 'data:image/jpeg;base64,test',
+      contextPrompt: '',
+      items: [
+        {
+          id: '1',
+          name: 'Pork Chop',
+          grams: 100,
+          per100g: { calories: 200, protein: 25, carbs: 0, fat: 10, fiber: 0 },
+          verifiedSource: null,
+        },
+      ],
+    });
+
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        items: [
+          {
+            id: '1',
+            name: 'Pork Chop',
+            grams: 250,
+            per100g: { calories: 200, protein: 25, carbs: 0, fat: 10, fiber: 0 },
+          },
+        ],
+      }),
+    } as Response);
+
+    render(<AiMealScannerSheet open date="2026-11-14" mealSlot="dinner" onClose={() => {}} />);
+
+    // Initial grams: 100g -> 200 kcal
+    expect(screen.getByTestId('hitl-total-calories')).toHaveTextContent('200');
+
+    // Refine to 250g
+    const refineInput = screen.getByPlaceholderText(/e\.g\., remove the cheese, make the chicken 200g/i);
+    fireEvent.change(refineInput, { target: { value: 'Make it 250 grams' } });
+    fireEvent.click(screen.getByRole('button', { name: /refine/i }));
+
+    await waitFor(() => {
+      // 250g * 2 = 500 kcal
+      expect(screen.getByTestId('hitl-total-calories')).toHaveTextContent('500');
+    });
+
+    // Now click '1x' multiplier: it must preserve the 250g refined baseline, NOT snap back to 100g!
+    fireEvent.click(screen.getByRole('button', { name: '1x' }));
+    expect(screen.getByTestId('hitl-total-calories')).toHaveTextContent('500');
+  });
 });

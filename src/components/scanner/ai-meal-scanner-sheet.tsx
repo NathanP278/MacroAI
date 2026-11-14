@@ -61,6 +61,7 @@ export function AiMealScannerSheet({
   // User explicitly wants to re-scan with a new photo
   const [isRescanning, setIsRescanning] = useState(false);
   const [isSubmittingLog, setIsSubmittingLog] = useState(false);
+  const [draftRevision, setDraftRevision] = useState(0);
 
   // Sync draft data into local stage 1 state if present
   useEffect(() => {
@@ -74,17 +75,18 @@ export function AiMealScannerSheet({
     }
   }, [aiDraft]);
 
-  // Escape key listener to close sheet
+  // Escape key listener to close sheet (guarded when swap modal is open)
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (isSwapModalOpen) return;
         onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose]);
+  }, [open, isSwapModalOpen, onClose]);
 
   // Reset transient local state when sheet closes
   useEffect(() => {
@@ -98,8 +100,12 @@ export function AiMealScannerSheet({
       setSwapTargetItem(null);
       setIsRescanning(false);
       setIsSubmittingLog(false);
+      if (!aiDraft) {
+        setImageDataUrl(null);
+        setContextPrompt('');
+      }
     }
-  }, [open]);
+  }, [open, aiDraft]);
 
   if (!open) return null;
 
@@ -291,6 +297,7 @@ export function AiMealScannerSheet({
         ...aiDraft,
         items: refinedItems,
       });
+      setDraftRevision((r) => r + 1);
       setRefineInstruction('');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to refine meal';
@@ -347,6 +354,14 @@ export function AiMealScannerSheet({
       });
 
       resetDraft();
+      setImageDataUrl(null);
+      setContextPrompt('');
+      setRefineInstruction('');
+      setScanError(null);
+      setRefineError(null);
+      setIsSwapModalOpen(false);
+      setSwapTargetItem(null);
+      setIsRescanning(false);
       onClose();
     } catch (err) {
       console.error('Failed to log meal entries:', err);
@@ -595,6 +610,7 @@ export function AiMealScannerSheet({
                   <HitlIngredientRow
                     key={item.id}
                     item={item}
+                    draftRevision={draftRevision}
                     onChangeGrams={handleChangeGrams}
                     onDeleteItem={handleDeleteItem}
                     onOpenVerifySwap={handleOpenSwapModal}

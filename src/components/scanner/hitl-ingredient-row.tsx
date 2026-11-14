@@ -7,6 +7,7 @@ import { scaleNutrition } from '@/lib/nutrition/scaling';
 
 export interface HitlIngredientRowProps {
   item: AiDraftItem;
+  draftRevision?: number;
   onChangeGrams: (itemId: string, newGrams: number) => void;
   onDeleteItem: (itemId: string) => void;
   onOpenVerifySwap: (item: AiDraftItem) => void;
@@ -16,19 +17,31 @@ const MULTIPLIERS = [0.5, 1, 1.5, 2] as const;
 
 export function HitlIngredientRow({
   item,
+  draftRevision,
   onChangeGrams,
   onDeleteItem,
   onOpenVerifySwap,
 }: HitlIngredientRowProps) {
   // Baseline initial grams for non-compounding multiplier calculation
   const baseGramsRef = useRef<number>(item.grams > 0 ? item.grams : 100);
+  const prevIdRef = useRef(item.id);
+  const prevNameRef = useRef(item.name);
+  const prevRevisionRef = useRef(draftRevision);
 
   useEffect(() => {
-    // If row mounts or item identity changes, record its baseline
-    if (!baseGramsRef.current || baseGramsRef.current <= 0) {
+    // Unconditionally sync baseline if row mounts, item identity/name changes (e.g. food swap),
+    // or draftRevision updates (e.g. After AI refine)
+    if (
+      item.id !== prevIdRef.current ||
+      item.name !== prevNameRef.current ||
+      draftRevision !== prevRevisionRef.current
+    ) {
       baseGramsRef.current = item.grams > 0 ? item.grams : 100;
+      prevIdRef.current = item.id;
+      prevNameRef.current = item.name;
+      prevRevisionRef.current = draftRevision;
     }
-  }, [item.id]);
+  }, [item.id, item.name, item.grams, draftRevision]);
 
   const { macros } = scaleNutrition(
     item.per100g,

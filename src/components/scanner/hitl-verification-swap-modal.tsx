@@ -70,12 +70,28 @@ export function HitlVerificationSwapModal({
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        e.stopPropagation();
         onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, onClose]);
+
+  // Clean up search debounce timer on unmount and when modal closes
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open && searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+  }, [open]);
 
   const executeSearch = async (searchTerm: string) => {
     const q = searchTerm.trim();
