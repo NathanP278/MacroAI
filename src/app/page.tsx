@@ -1,291 +1,267 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import Link from "next/link";
-import { AppShell, QuickActionType } from "@/components/shell/app-shell";
+import React, { useMemo } from 'react';
+import Link from 'next/link';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db/macroai-db';
+import { useLoggerStore } from '@/stores/logger-store';
+import { DEFAULT_MEAL_SLOTS, DEFAULT_RDA_MICROS } from '@/lib/nutrition/goals';
+import { aggregateDailySummary } from '@/lib/nutrition/daily-summary';
+import { MacroBentoGrid } from '@/components/dashboard/macro-bento-grid';
+import { MicronutrientPanel } from '@/components/dashboard/micronutrient-panel';
+import { AppShell } from '@/components/shell/app-shell';
+import type { UserGoals } from '@/types/nutrition';
 import {
-  Flame,
-  ShieldCheck,
+  ChevronLeft,
   ChevronRight,
   Plus,
-} from "lucide-react";
+  ShieldCheck,
+  Utensils,
+  ArrowRight,
+  RotateCcw,
+} from 'lucide-react';
 
-interface FoodItem {
-  id: string;
-  name: string;
-  portion: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
+function getTodayIsoDate(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
-interface MealSlot {
-  name: string;
-  suggestedCalories: number;
-  consumedCalories: number;
-  items: FoodItem[];
+function offsetIsoDate(iso: string, dayOffset: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setDate(date.getDate() + dayOffset);
+  const nextY = date.getFullYear();
+  const nextM = String(date.getMonth() + 1).padStart(2, '0');
+  const nextD = String(date.getDate()).padStart(2, '0');
+  return `${nextY}-${nextM}-${nextD}`;
 }
 
-const INITIAL_MEALS: MealSlot[] = [
-  {
-    name: "Breakfast",
-    suggestedCalories: 550,
-    consumedCalories: 520,
-    items: [
-      { id: "1", name: "Rolled Oats & Whey", portion: "80g oats, 30g whey", calories: 410, protein: 36, carbs: 54, fat: 6 },
-      { id: "2", name: "Black Coffee & Honey", portion: "1 mug, 1 tsp", calories: 110, protein: 0, carbs: 17, fat: 0 },
-    ],
-  },
-  {
-    name: "Lunch",
-    suggestedCalories: 750,
-    consumedCalories: 710,
-    items: [
-      { id: "3", name: "Grilled Chicken Breast Bowl", portion: "200g chicken, 180g jasmine rice", calories: 540, protein: 55, carbs: 52, fat: 7 },
-      { id: "4", name: "Avocado & Olive Oil Slaw", portion: "60g avocado", calories: 170, protein: 2, carbs: 8, fat: 15 },
-    ],
-  },
-  {
-    name: "Dinner",
-    suggestedCalories: 650,
-    consumedCalories: 450,
-    items: [
-      { id: "5", name: "Atlantic Salmon Fillet", portion: "180g", calories: 370, protein: 38, carbs: 0, fat: 22 },
-      { id: "6", name: "Steamed Asparagus", portion: "120g", calories: 80, protein: 4, carbs: 8, fat: 1 },
-    ],
-  },
-  {
-    name: "Snacks",
-    suggestedCalories: 250,
-    consumedCalories: 0,
-    items: [],
-  },
-];
+function formatDisplayDate(iso: string): { label: string; sub: string; isToday: boolean } {
+  const today = getTodayIsoDate();
+  const isToday = iso === today;
+  const [y, m, d] = iso.split('-').map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+  const monthName = dateObj.toLocaleDateString('en-US', { month: 'short' });
+  const dayNum = dateObj.getDate();
+
+  return {
+    label: isToday ? 'Today' : `${dayName}, ${monthName} ${dayNum}`,
+    sub: isToday ? `${dayName}, ${monthName} ${dayNum}` : `${y}`,
+    isToday,
+  };
+}
 
 export default function HomePage() {
-  const [meals] = useState<MealSlot[]>(INITIAL_MEALS);
-  const [activeActionNotice, setActiveActionNotice] = useState<string | null>(null);
+  const activeDate = useLoggerStore((s) => s.activeDate);
+  const setActiveDate = useLoggerStore((s) => s.setActiveDate);
+  const openSheet = useLoggerStore((s) => s.openSheet);
 
-  const targetCalories = 2200;
-  const consumedCalories = meals.reduce((acc, m) => acc + m.consumedCalories, 0);
-  const remainingCalories = targetCalories - consumedCalories;
+  // Live query for logs on active date and user goals
+  const foodLogs = useLiveQuery(
+    () => db.foodLogs.where('date').equals(activeDate).toArray(),
+    [activeDate]
+  );
 
-  const targetProtein = 180;
-  const consumedProtein = 133;
+  const userGoals = useLiveQuery(
+    () => db.userGoals.get('active'),
+    []
+  );
 
-  const targetCarbs = 225;
-  const consumedCarbs = 139;
+  // Safe fallback before goals resolve or seed
+  const fallbackGoals: UserGoals = useMemo(
+    () => ({
+      id: 'active',
+      dailyCalories: 2000,
+      proteinG: 150,
+      carbsG: 200,
+      fatG: 65,
+      fiberG: 30,
+      micronutrientTargets: { ...DEFAULT_RDA_MICROS },
+      mealSlots: [...DEFAULT_MEAL_SLOTS],
+      updatedAt: 0,
+    }),
+    []
+  );
 
-  const targetFat = 65;
-  const consumedFat = 51;
+  const activeGoals = userGoals ?? fallbackGoals;
+  const activeLogs = foodLogs ?? [];
 
-  const handleQuickAction = (action: QuickActionType) => {
-    setActiveActionNotice(`Triggered: ${action}`);
-    setTimeout(() => setActiveActionNotice(null), 3000);
-  };
+  const summary = useMemo(
+    () => aggregateDailySummary(activeLogs, activeGoals),
+    [activeLogs, activeGoals]
+  );
+
+  const mealSlots = useMemo(() => {
+    return activeGoals.mealSlots && activeGoals.mealSlots.length > 0
+      ? activeGoals.mealSlots
+      : DEFAULT_MEAL_SLOTS;
+  }, [activeGoals.mealSlots]);
+
+  const dateInfo = formatDisplayDate(activeDate);
+
+  const handlePrevDay = () => setActiveDate(offsetIsoDate(activeDate, -1));
+  const handleNextDay = () => setActiveDate(offsetIsoDate(activeDate, 1));
+  const handleToday = () => setActiveDate(getTodayIsoDate());
 
   return (
-    <AppShell onQuickAction={handleQuickAction}>
+    <AppShell>
       <div className="flex flex-col gap-4 p-4">
-        {/* Top Header Bar */}
-        <header className="flex items-center justify-between pt-2">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 font-black text-sm">
-              M
+        {/* Top Header & Date Navigation Bar */}
+        <header className="flex flex-col gap-2.5 pt-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 font-black text-sm">
+                M
+              </div>
+              <div>
+                <h1 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-1.5">
+                  MacroAI
+                </h1>
+                <p className="text-[10px] text-emerald-400/90 flex items-center gap-1 font-mono">
+                  <ShieldCheck className="w-3 h-3" /> Adherence Neutral
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-1.5">
-                Today <span className="text-[10px] text-muted-foreground font-normal">Wed, Nov 14</span>
-              </h1>
-              <p className="text-[10px] text-emerald-400/90 flex items-center gap-1 font-mono">
-                <ShieldCheck className="w-3 h-3" /> Adherence Neutral
-              </p>
+
+            <div className="flex items-center gap-2">
+              <Link
+                href="/prototypes"
+                className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-card border border-border text-amber-400 hover:text-amber-300 transition-colors"
+              >
+                Prototypes &rarr;
+              </Link>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Link
-              href="/prototypes"
-              className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-card border border-border text-amber-400 hover:text-amber-300 transition-colors"
+          {/* Date Switcher Pill */}
+          <div className="bg-card border border-border rounded-2xl p-1.5 flex items-center justify-between shadow-xs">
+            <button
+              type="button"
+              onClick={handlePrevDay}
+              aria-label="Previous day"
+              className="p-1.5 rounded-xl hover:bg-surface-sub text-muted-foreground hover:text-foreground transition-colors"
             >
-              Prototypes &rarr;
-            </Link>
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-2">
+              <div className="text-center">
+                <span className="text-xs font-bold text-foreground tracking-tight">
+                  {dateInfo.label}
+                </span>
+                <span className="text-[10px] text-muted-foreground ml-1.5 font-mono">
+                  {dateInfo.sub}
+                </span>
+              </div>
+              {!dateInfo.isToday && (
+                <button
+                  type="button"
+                  onClick={handleToday}
+                  className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-amber-400/10 text-amber-400 hover:bg-amber-400/20 transition-colors flex items-center gap-1"
+                >
+                  <RotateCcw className="w-2.5 h-2.5" />
+                  Today
+                </button>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleNextDay}
+              aria-label="Next day"
+              className="p-1.5 rounded-xl hover:bg-surface-sub text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         </header>
 
-        {activeActionNotice && (
-          <div className="bg-amber-400/10 border border-amber-400/30 text-amber-300 text-xs px-3 py-2 rounded-xl animate-in fade-in duration-150">
-            {activeActionNotice}
-          </div>
-        )}
-
-        {/* Hero Hat: Energy Balance Summary */}
-        <section className="bg-card border border-border rounded-3xl p-4 shadow-xl">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wider">
-              <Flame className="w-3.5 h-3.5 text-amber-400" />
-              <span>Energy Balance</span>
-            </div>
-            <div className="text-[11px] font-mono text-muted-foreground">
-              Target: <span className="tabular-nums text-foreground">{targetCalories}</span> kcal
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 items-center">
-            <div>
-              <div className="text-3xl font-extrabold tracking-tight tabular-nums text-foreground">
-                {remainingCalories >= 0 ? remainingCalories : `+${Math.abs(remainingCalories)}`}
-              </div>
-              <div className="text-xs text-muted-foreground font-medium">
-                {remainingCalories >= 0 ? "calories remaining" : "neutral surplus intake"}
-              </div>
-            </div>
-
-            <div className="flex flex-col items-end text-right">
-              <div className="text-base font-bold tabular-nums text-amber-400">
-                {consumedCalories}
-                <span className="text-xs text-muted-foreground ml-1">/ {targetCalories} kcal</span>
-              </div>
-              {/* Neutral progress bar */}
-              <div className="w-full bg-surface-sub h-2.5 rounded-full mt-1.5 overflow-hidden border border-border">
-                <div
-                  className="bg-amber-400 h-full rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, Math.round((consumedCalories / targetCalories) * 100))}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Bento Grid: Protein, Carbs, Fat */}
-        <section className="grid grid-cols-3 gap-2.5">
-          {/* Protein */}
-          <div className="bg-card border border-border rounded-2xl p-3 flex flex-col justify-between">
-            <div className="flex items-center justify-between text-[11px] font-semibold text-sky-400">
-              <span>Protein</span>
-              <span className="text-[10px] text-muted-foreground tabular-nums">
-                {Math.max(0, targetProtein - consumedProtein)}g left
-              </span>
-            </div>
-            <div className="my-2">
-              <div className="text-lg font-bold tabular-nums text-foreground">
-                {consumedProtein}
-                <span className="text-[10px] text-muted-foreground ml-0.5">/ {targetProtein}g</span>
-              </div>
-            </div>
-            <div className="w-full bg-surface-sub h-1.5 rounded-full overflow-hidden">
-              <div
-                className="bg-sky-400 h-full rounded-full"
-                style={{ width: `${Math.min(100, (consumedProtein / targetProtein) * 100)}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Carbs */}
-          <div className="bg-card border border-border rounded-2xl p-3 flex flex-col justify-between">
-            <div className="flex items-center justify-between text-[11px] font-semibold text-emerald-400">
-              <span>Carbs</span>
-              <span className="text-[10px] text-muted-foreground tabular-nums">
-                {Math.max(0, targetCarbs - consumedCarbs)}g left
-              </span>
-            </div>
-            <div className="my-2">
-              <div className="text-lg font-bold tabular-nums text-foreground">
-                {consumedCarbs}
-                <span className="text-[10px] text-muted-foreground ml-0.5">/ {targetCarbs}g</span>
-              </div>
-            </div>
-            <div className="w-full bg-surface-sub h-1.5 rounded-full overflow-hidden">
-              <div
-                className="bg-emerald-400 h-full rounded-full"
-                style={{ width: `${Math.min(100, (consumedCarbs / targetCarbs) * 100)}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Fat */}
-          <div className="bg-card border border-border rounded-2xl p-3 flex flex-col justify-between">
-            <div className="flex items-center justify-between text-[11px] font-semibold text-rose-400">
-              <span>Fat</span>
-              <span className="text-[10px] text-muted-foreground tabular-nums">
-                {Math.max(0, targetFat - consumedFat)}g left
-              </span>
-            </div>
-            <div className="my-2">
-              <div className="text-lg font-bold tabular-nums text-foreground">
-                {consumedFat}
-                <span className="text-[10px] text-muted-foreground ml-0.5">/ {targetFat}g</span>
-              </div>
-            </div>
-            <div className="w-full bg-surface-sub h-1.5 rounded-full overflow-hidden">
-              <div
-                className="bg-rose-400 h-full rounded-full"
-                style={{ width: `${Math.min(100, (consumedFat / targetFat) * 100)}%` }}
-              />
-            </div>
-          </div>
-        </section>
+        {/* Bento Grid: Calorie Ring + Macros */}
+        <MacroBentoGrid summary={summary} />
 
         {/* Meal Slots Section */}
-        <section className="space-y-3 pt-1">
+        <section className="space-y-2.5 pt-1">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Meal Log
-            </h2>
-            <Link href="/log" className="text-xs text-amber-400 hover:text-amber-300 font-medium flex items-center">
-              View Log <ChevronRight className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <Utensils className="w-3.5 h-3.5 text-amber-400" />
+              <span>Meal Log</span>
+            </div>
+            <Link
+              href="/log"
+              className="text-xs text-amber-400 hover:text-amber-300 font-medium flex items-center gap-0.5"
+            >
+              View Log <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
           <div className="space-y-2.5">
-            {meals.map((meal) => (
-              <div
-                key={meal.name}
-                className="bg-card border border-border rounded-2xl p-3.5 space-y-2.5"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-bold text-foreground">{meal.name}</span>
-                    <span className="text-[11px] text-muted-foreground tabular-nums ml-2">
-                      {meal.consumedCalories} kcal
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickAction("quick-add")}
-                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                    aria-label={`Add item to ${meal.name}`}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
+            {mealSlots.map((slot) => {
+              const slotLogs = activeLogs.filter((entry) => entry.mealSlot === slot.id);
+              const slotCalories = slotLogs.reduce(
+                (sum, entry) => sum + (entry.nutritionSnapshot?.calories ?? 0),
+                0
+              );
 
-                {meal.items.length > 0 ? (
-                  <div className="space-y-1.5">
-                    {meal.items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-surface-sub border border-border"
-                      >
-                        <span className="text-foreground truncate max-w-[200px]">
-                          {item.name}
-                        </span>
-                        <span className="text-muted-foreground tabular-nums font-mono text-[11px]">
-                          {item.calories} kcal
-                        </span>
-                      </div>
-                    ))}
+              return (
+                <div
+                  key={slot.id}
+                  className="bg-card border border-border rounded-2xl p-3.5 space-y-2.5 shadow-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-foreground">{slot.name}</span>
+                      <span className="text-[11px] text-muted-foreground font-mono tabular-nums ml-2">
+                        {Math.round(slotCalories)} kcal
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => openSheet('search', slot.id)}
+                      aria-label={`Add food to ${slot.name}`}
+                      className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-sub transition-colors border border-border/40 hover:border-border"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                ) : (
-                  <div className="text-[11px] text-muted-foreground italic py-1">
-                    No foods logged yet for {meal.name}.
-                  </div>
-                )}
-              </div>
-            ))}
+
+                  {slotLogs.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {slotLogs.map((log) => (
+                        <div
+                          key={log.id}
+                          className="flex items-center justify-between text-xs py-1 px-2.5 rounded-xl bg-surface-sub border border-border/40"
+                        >
+                          <span className="text-foreground truncate max-w-[200px] text-[11px]">
+                            {log.name}{' '}
+                            <span className="text-muted-foreground text-[10px]">
+                              ({Math.round(log.amount)}
+                              {log.unit})
+                            </span>
+                          </span>
+                          <span className="text-muted-foreground tabular-nums font-mono text-[11px]">
+                            {Math.round(log.nutritionSnapshot.calories)} kcal
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-muted-foreground/70 italic py-0.5">
+                      No foods logged yet for {slot.name}.
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
+
+        {/* Micronutrient Targets Panel */}
+        <MicronutrientPanel micros={summary.micros} />
       </div>
     </AppShell>
   );
