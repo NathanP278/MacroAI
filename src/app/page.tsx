@@ -79,6 +79,7 @@ export default function HomePage() {
   const showUndoToast = useLoggerStore((s) => s.showUndoToast);
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
   const headerTouchStartX = useRef<number | null>(null);
+  const hasLoadedOnceRef = useRef(false);
 
   const windowStartDate = useMemo(() => offsetIsoDate(activeDate, -29), [activeDate]);
 
@@ -274,7 +275,11 @@ export default function HomePage() {
     else handleNextDay();
   };
 
-  const isLoadingLogs = rangeLogs === undefined;
+  if (rangeLogs !== undefined) {
+    hasLoadedOnceRef.current = true;
+  }
+
+  const isLoadingLogs = hasLoadedOnceRef.current && rangeLogs === undefined;
   const dateSlideClass =
     dateDirection === 'forward'
       ? 'slide-enter-right'

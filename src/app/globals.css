@@ -105,8 +105,8 @@
   --border-focus: rgba(255, 255, 255, 0.16);
   --shadow-ambient: 0 16px 40px -8px rgba(0, 0, 0, 0.55), 0 2px 10px -2px rgba(0, 0, 0, 0.35);
   --shadow-floating: 0 24px 56px -12px rgba(0, 0, 0, 0.7), 0 4px 16px -4px rgba(0, 0, 0, 0.45);
-  --spring-snappy: cubic-bezier(0.22, 1.18, 0.36, 1);
-  --spring-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-quint: cubic-bezier(0.16, 1, 0.3, 1);
 
   --canvas: #141416;
   --tile: #1c1c1f;
@@ -255,7 +255,7 @@
   }
   .tactile-press {
     transition:
-      transform 140ms var(--spring-snappy),
+      transform 140ms var(--ease-out-quart),
       background-color 140ms ease,
       border-color 140ms ease,
       opacity 140ms ease;
@@ -447,7 +447,7 @@ progress.macro-progress::-moz-progress-bar {
   }
 
   .stagger-item {
-    animation: macro-stagger-up 260ms var(--spring-smooth) both;
+    animation: macro-stagger-up 260ms var(--ease-out-quint) both;
     animation-delay: calc(min(var(--stagger-index, 0), 8) * 28ms);
   }
 
@@ -474,11 +474,11 @@ progress.macro-progress::-moz-progress-bar {
   }
 
   .slide-enter-right {
-    animation: macro-slide-from-right 240ms var(--spring-smooth) both;
+    animation: macro-slide-from-right 240ms var(--ease-out-quint) both;
   }
 
   .slide-enter-left {
-    animation: macro-slide-from-left 240ms var(--spring-smooth) both;
+    animation: macro-slide-from-left 240ms var(--ease-out-quint) both;
   }
 
   @keyframes macro-shimmer {
@@ -503,10 +503,10 @@ progress.macro-progress::-moz-progress-bar {
 
   /* Directional View Transitions */
   html[data-transition-direction="forward"]::view-transition-old(root) {
-    animation: 180ms var(--spring-smooth) both fade-out;
+    animation: 180ms var(--ease-out-quint) both fade-out;
   }
   html[data-transition-direction="backward"]::view-transition-old(root) {
-    animation: 180ms var(--spring-smooth) both fade-out;
+    animation: 180ms var(--ease-out-quint) both fade-out;
   }
 
   .macro-spring {

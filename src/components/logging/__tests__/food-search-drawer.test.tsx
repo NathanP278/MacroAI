@@ -393,4 +393,51 @@ describe('FoodSearchDrawer component', () => {
     expect(screen.getByText('Chicken breast, raw')).toBeInTheDocument();
     expect(screen.getByText(/searching open food facts & usda/i)).toBeInTheDocument();
   });
+
+  test('preserves results scroll position when returning Back from portion selector', async () => {
+    render(<FoodSearchDrawer open date="2026-11-14" mealSlot="lunch" onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Chicken breast, raw')).toBeInTheDocument();
+    });
+
+    const resultsEl = screen.getByTestId('food-search-results');
+    resultsEl.scrollTop = 180;
+
+    fireEvent.click(screen.getByText('Chicken breast, raw'));
+    expect(screen.getByRole('button', { name: /log food/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /back to search results/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId('food-search-results')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('food-search-results').scrollTop).toBe(180);
+  });
+
+  test('supports ArrowDown, Enter, and Escape keyboard navigation across results and portion view', async () => {
+    const handleClose = vi.fn();
+    render(<FoodSearchDrawer open date="2026-11-14" mealSlot="lunch" onClose={handleClose} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Chicken breast, raw')).toBeInTheDocument();
+    });
+
+    fireEvent.keyDown(window, { key: 'ArrowDown' });
+    const highlighted = screen.getByTestId('food-search-results').querySelector('[data-highlighted="true"]');
+    expect(highlighted).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Enter' });
+    expect(screen.getByRole('button', { name: /log food/i })).toBeInTheDocument();
+
+    // First Escape returns to results instead of closing the drawer
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.getByTestId('food-search-results')).toBeInTheDocument();
+    });
+    expect(handleClose).not.toHaveBeenCalled();
+
+    // Second Escape closes the drawer
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(handleClose).toHaveBeenCalledTimes(1);
+  });
 });

@@ -127,7 +127,7 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
       <nav
         data-testid="bottom-nav"
         aria-label="Bottom Navigation"
-        className="pointer-events-auto surface-floating-bar border-x-0 border-b-0 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        className="pointer-events-auto bg-surface-card/85 border-t border-border surface-floating-bar border-x-0 border-b-0 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
       >
         <div className="max-w-2xl mx-auto h-16 px-2 sm:px-6 flex items-center justify-between gap-1">
           {/* Left Nav items */}

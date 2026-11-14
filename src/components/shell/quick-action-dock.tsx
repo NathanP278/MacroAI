@@ -102,7 +102,7 @@ export function QuickActionDock({ onAction, onClose }: QuickActionDockProps) {
     >
       <div
         style={{ transformOrigin: "bottom center" }}
-        className="w-full max-w-lg mx-auto surface-elevated-sheet border-b-0 rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] animate-sheet-in"
+        className="w-full max-w-lg mx-auto bg-surface-elevated/92 border-t border-x border-border surface-elevated-sheet border-b-0 rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] animate-sheet-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div

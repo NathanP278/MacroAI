@@ -209,7 +209,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
       onClose();
     } catch (err: unknown) {
       console.error('Failed to log quick add entry:', err);
-      setErrorMessage('Unable to save log entry locally. Check browser storage permissions and try again.');
+      setErrorMessage('Unable to save log entry offline. Check browser storage permissions and try again.');
     } finally {
       setIsSaving(false);
     }

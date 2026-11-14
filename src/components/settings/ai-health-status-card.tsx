@@ -124,8 +124,11 @@ export function AiHealthStatusCard() {
           </div>
 
           {status.error && (
-            <div className="pt-1 text-[11px] text-[var(--neutral-over)] bg-card p-2.5 rounded-xl break-all">
-              {status.error}
+            <div className="pt-1 text-[11px] text-[var(--neutral-over)] bg-card p-2.5 rounded-xl space-y-1">
+              <p className="break-all">{status.error}</p>
+              <p className="text-muted-foreground">
+                Verify <span className="font-mono">AI_BASE_URL</span>, <span className="font-mono">AI_API_KEY</span>, and <span className="font-mono">AI_MODEL</span> on your server, then retry Test Connection.
+              </p>
             </div>
           )}
         </div>

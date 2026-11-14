@@ -127,8 +127,11 @@ export function CentralDbStatusCard() {
           )}
 
           {error && (
-            <div className="pt-1 text-[11px] text-[var(--neutral-over)] bg-card p-2.5 rounded-xl break-all">
-              {error}
+            <div className="pt-1 text-[11px] text-[var(--neutral-over)] bg-card p-2.5 rounded-xl space-y-1">
+              <p className="break-all">{error}</p>
+              <p className="text-muted-foreground">
+                Verify your Turso database URL and auth token, or restart the local server before retrying.
+              </p>
             </div>
           )}
         </div>

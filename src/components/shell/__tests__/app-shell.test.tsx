@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { AppShell } from '../app-shell';
 import { useLoggerStore } from '@/stores/logger-store';
 
@@ -11,6 +11,8 @@ describe('AppShell', () => {
       activeMealSlot: 'breakfast',
       activeSheet: null,
       aiDraft: null,
+      isCommandPaletteOpen: false,
+      undoToast: null,
     });
   });
 
@@ -75,5 +77,70 @@ describe('AppShell', () => {
 
     expect(screen.getByTestId('quick-add-drawer')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /log quick add/i })).toBeInTheDocument();
+  });
+
+  it('opens Command Palette with Ctrl/Cmd + K, filters commands, and closes on Escape', () => {
+    render(
+      <AppShell>
+        <div>Workspace</div>
+      </AppShell>
+    );
+
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    expect(screen.getByTestId('command-palette')).toBeInTheDocument();
+
+    const searchInput = screen.getByLabelText(/search commands or staple foods/i);
+    fireEvent.change(searchInput, { target: { value: 'quick add' } });
+    expect(screen.getByText('Quick Add Macros')).toBeInTheDocument();
+    expect(screen.queryByText('Scan Barcode')).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByTestId('command-palette')).not.toBeInTheDocument();
+  });
+
+  it('triggers UndoToast callback on Undo click and Ctrl+Z shortcut', async () => {
+    const onUndoClick = vi.fn().mockResolvedValue(undefined);
+    const onUndoKey = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <AppShell>
+        <div>Workspace</div>
+      </AppShell>
+    );
+
+    act(() => {
+      useLoggerStore.getState().showUndoToast({
+        message: 'Removed Chicken Breast',
+        onUndo: onUndoClick,
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('undo-toast')).toBeInTheDocument();
+      expect(screen.getByText('Removed Chicken Breast')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => {
+      expect(onUndoClick).toHaveBeenCalledTimes(1);
+      expect(screen.queryByTestId('undo-toast')).not.toBeInTheDocument();
+    });
+
+    act(() => {
+      useLoggerStore.getState().showUndoToast({
+        message: 'Removed Brown Rice',
+        onUndo: onUndoKey,
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('undo-toast')).toBeInTheDocument();
+    });
+
+    fireEvent.keyDown(window, { key: 'z', ctrlKey: true });
+    await waitFor(() => {
+      expect(onUndoKey).toHaveBeenCalledTimes(1);
+      expect(screen.queryByTestId('undo-toast')).not.toBeInTheDocument();
+    });
   });
 });

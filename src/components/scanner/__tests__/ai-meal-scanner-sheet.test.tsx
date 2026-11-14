@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
-import { useLoggerStore } from '@/stores/logger-store';
+import { useLoggerStore, type AiDraftItem } from '@/stores/logger-store';
 import { db } from '@/lib/db/macroai-db';
 import { AiMealScannerSheet, tryDeterministicRefine } from '../ai-meal-scanner-sheet';
 import { AppShell } from '@/components/shell/app-shell';
@@ -667,7 +667,7 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
   });
 
   test('tryDeterministicRefine handles local portion edits without API calls and defers qualitative edits to AI', () => {
-    const sampleItems = [
+    const sampleItems: AiDraftItem[] = [
       {
         id: 'i-chicken',
         name: 'Chicken Breast',
@@ -675,7 +675,6 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
         per100g: { calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0 },
         microsPer100g: {},
         verifiedSource: null,
-        verifiedFoodId: null,
       },
       {
         id: 'i-rice',
@@ -684,7 +683,6 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
         per100g: { calories: 130, protein: 2.7, carbs: 28, fat: 0.3, fiber: 0.4 },
         microsPer100g: {},
         verifiedSource: null,
-        verifiedFoodId: null,
       },
       {
         id: 'i-butter',
@@ -693,7 +691,6 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
         per100g: { calories: 717, protein: 0.9, carbs: 0.1, fat: 81, fiber: 0 },
         microsPer100g: {},
         verifiedSource: null,
-        verifiedFoodId: null,
       },
     ];
 

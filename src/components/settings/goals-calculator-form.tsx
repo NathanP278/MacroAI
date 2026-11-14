@@ -10,6 +10,7 @@ import {
   ACTIVITY_LEVELS,
   GOAL_DELTAS,
 } from '@/lib/nutrition/goals';
+import { triggerHaptic } from '@/lib/motion';
 import type { UserGoals, UserProfile } from '@/types/nutrition';
 
 export function GoalsCalculatorForm() {
@@ -20,6 +21,12 @@ export function GoalsCalculatorForm() {
   const [activityMultiplier, setActivityMultiplier] = useState<number>(1.55);
   const [goalDeltaKcal, setGoalDeltaKcal] = useState<number>(-300);
   const [proteinPerKg, setProteinPerKg] = useState<number>(2.0);
+  const [touched, setTouched] = useState<{
+    age?: boolean;
+    weightKg?: boolean;
+    heightCm?: boolean;
+    proteinPerKg?: boolean;
+  }>({});
 
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -90,6 +97,7 @@ export function GoalsCalculatorForm() {
       };
 
       await db.userGoals.put(updatedGoals);
+      triggerHaptic(10);
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
     } catch (err) {
@@ -143,8 +151,14 @@ export function GoalsCalculatorForm() {
               max={120}
               value={age || ''}
               onChange={(e) => setAge(Math.max(1, parseInt(e.target.value) || 0))}
+              onBlur={() => setTouched((prev) => ({ ...prev, age: true }))}
               className="w-full h-10 px-3.5 text-sm tabular-nums rounded-xl bg-surface-sub focus:outline-none focus:ring-2 focus:ring-ring text-foreground transition-shadow"
             />
+            {touched.age && (age < 12 || age > 120) && (
+              <p className="text-[11px] text-[var(--neutral-over)] mt-1">
+                Typical adult range: 12–120 years.
+              </p>
+            )}
           </div>
 
           <div>
@@ -160,8 +174,14 @@ export function GoalsCalculatorForm() {
               max={300}
               value={weightKg || ''}
               onChange={(e) => setWeightKg(Math.max(1, parseFloat(e.target.value) || 0))}
+              onBlur={() => setTouched((prev) => ({ ...prev, weightKg: true }))}
               className="w-full h-10 px-3.5 text-sm tabular-nums rounded-xl bg-surface-sub focus:outline-none focus:ring-2 focus:ring-ring text-foreground transition-shadow"
             />
+            {touched.weightKg && (weightKg < 30 || weightKg > 300) && (
+              <p className="text-[11px] text-[var(--neutral-over)] mt-1">
+                Typical range: 30–300 kg.
+              </p>
+            )}
           </div>
 
           <div>
@@ -176,8 +196,14 @@ export function GoalsCalculatorForm() {
               max={250}
               value={heightCm || ''}
               onChange={(e) => setHeightCm(Math.max(1, parseInt(e.target.value) || 0))}
+              onBlur={() => setTouched((prev) => ({ ...prev, heightCm: true }))}
               className="w-full h-10 px-3.5 text-sm tabular-nums rounded-xl bg-surface-sub focus:outline-none focus:ring-2 focus:ring-ring text-foreground transition-shadow"
             />
+            {touched.heightCm && (heightCm < 100 || heightCm > 250) && (
+              <p className="text-[11px] text-[var(--neutral-over)] mt-1">
+                Typical range: 100–250 cm.
+              </p>
+            )}
           </div>
         </div>
 
@@ -239,8 +265,14 @@ export function GoalsCalculatorForm() {
               max={3.5}
               value={proteinPerKg || ''}
               onChange={(e) => setProteinPerKg(Math.max(0.5, parseFloat(e.target.value) || 0))}
+              onBlur={() => setTouched((prev) => ({ ...prev, proteinPerKg: true }))}
               className="w-full h-10 px-3.5 text-sm tabular-nums rounded-xl bg-surface-sub focus:outline-none focus:ring-2 focus:ring-ring text-foreground transition-shadow"
             />
+            {touched.proteinPerKg && (proteinPerKg < 1.0 || proteinPerKg > 3.5) && (
+              <p className="text-[11px] text-[var(--neutral-over)] mt-1">
+                Recommended protein calibration band: 1.0–3.5 g/kg.
+              </p>
+            )}
           </div>
         </div>
 
@@ -290,7 +322,7 @@ export function GoalsCalculatorForm() {
         <button
           type="submit"
           disabled={isSaving}
-          className="macro-spring active:scale-95 w-full h-11 px-4 rounded-full bg-foreground text-background font-semibold text-[13px] hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
+          className="tactile-press w-full h-11 px-4 rounded-full bg-foreground text-background font-semibold text-[13px] hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
         >
           {savedSuccess ? (
             <span className="animate-check-pop inline-flex items-center gap-1.5">

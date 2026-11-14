@@ -453,6 +453,7 @@ export function AiMealScannerSheet({
   );
 
   // Memoize Stage 3 macro + 12-micronutrient totals
+  const draftItems = aiDraft?.items;
   const { totalCalories, totalProtein, totalCarbs, totalFat, totalFiber, totalMicros } =
     useMemo(() => {
       let calories = 0;
@@ -465,8 +466,8 @@ export function AiMealScannerSheet({
         microsMap[key] = 0;
       }
 
-      if (aiDraft?.items) {
-        for (const item of aiDraft.items) {
+      if (draftItems) {
+        for (const item of draftItems) {
           const { macros, micros } = scaleNutrition(
             item.per100g,
             item.microsPer100g ?? {},
@@ -494,7 +495,7 @@ export function AiMealScannerSheet({
         totalFiber: fiber,
         totalMicros: microsMap,
       };
-    }, [aiDraft?.items]);
+    }, [draftItems]);
 
   if (!open) return null;
 
@@ -705,7 +706,7 @@ export function AiMealScannerSheet({
         onClick={onClose}
       >
         <div
-          className="w-full max-w-lg mx-auto bg-surface-elevated border-t border-x border-border rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl animate-sheet-in max-h-[92vh] flex flex-col"
+          className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] animate-sheet-in max-h-[92vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0" aria-hidden="true" />
@@ -720,7 +721,7 @@ export function AiMealScannerSheet({
                     setScanError(null);
                   }}
                   aria-label="Back to photo upload"
-                  className="touch-target macro-spring active:scale-90 w-8 h-8 rounded-full bg-surface-sub border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card"
+                  className="touch-target tactile-press w-8 h-8 rounded-full bg-surface-sub border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card"
                   title="Choose a different photo"
                 >
                   <ArrowLeft className="w-4 h-4" aria-hidden="true" />
@@ -749,7 +750,7 @@ export function AiMealScannerSheet({
                   type="button"
                   onClick={() => setIsRescanning(true)}
                   aria-label="Re-scan or take new photo"
-                  className="touch-target macro-spring active:scale-90 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub mr-0.5"
+                  className="touch-target tactile-press p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub mr-0.5"
                   title="Edit meal context / re-scan"
                 >
                   <RotateCcw className="w-4 h-4" aria-hidden="true" />
@@ -759,7 +760,7 @@ export function AiMealScannerSheet({
                 type="button"
                 onClick={onClose}
                 aria-label="Close AI scanner"
-                className="touch-target macro-spring active:scale-90 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+                className="touch-target tactile-press p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
               >
                 <X className="w-5 h-5" aria-hidden="true" />
               </button>
@@ -773,7 +774,12 @@ export function AiMealScannerSheet({
               {scanError && (
                 <div className="p-3 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
-                  <div className="flex-1">{scanError}</div>
+                  <div className="flex-1 space-y-1">
+                    <p>{scanError}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Check your AI configuration in Settings, retry with a sharper photo, or log items manually below.
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -822,7 +828,12 @@ export function AiMealScannerSheet({
               {scanError && (
                 <div className="p-3 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
-                  <div className="flex-1">{scanError}</div>
+                  <div className="flex-1 space-y-1">
+                    <p>{scanError}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Check your AI configuration in Settings, retry with a clearer photo, or skip to manual entry below.
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -887,7 +898,7 @@ export function AiMealScannerSheet({
                   type="button"
                   onClick={handleAnalyzeMeal}
                   disabled={!imageDataUrl || isAnalyzing}
-                  className="macro-spring active:scale-95 w-full py-3 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 shadow-xs"
+                  className="tactile-press w-full py-3 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 shadow-xs"
                 >
                   {isAnalyzing ? (
                     <>
@@ -999,7 +1010,12 @@ export function AiMealScannerSheet({
               {refineError && (
                 <div className="mb-2 p-2.5 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-start gap-2 shrink-0">
                   <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span className="flex-1">{refineError}</span>
+                  <div className="flex-1 space-y-0.5">
+                    <p>{refineError}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Edit ingredient weights directly below or retry with a shorter instruction.
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -1023,7 +1039,7 @@ export function AiMealScannerSheet({
                     setSwapTargetItem(null);
                     setIsSwapModalOpen(true);
                   }}
-                  className="macro-spring active:scale-[0.98] w-full py-2.5 px-3 rounded-xl border border-dashed border-border hover:border-[var(--macro-calories)]/60 bg-surface-sub/40 hover:bg-surface-sub text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center justify-center gap-2"
+                  className="tactile-press w-full py-2.5 px-3 rounded-xl border border-dashed border-border hover:border-[var(--macro-calories)]/60 bg-surface-sub/40 hover:bg-surface-sub text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center justify-center gap-2"
                 >
                   <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>Add Missing Ingredient</span>
@@ -1045,7 +1061,7 @@ export function AiMealScannerSheet({
                   <button
                     type="submit"
                     disabled={isRefining || !refineInstruction.trim()}
-                    className="macro-spring active:scale-95 px-3.5 py-2 rounded-full bg-card border border-border text-foreground hover:bg-surface-sub font-semibold text-xs disabled:opacity-50 flex items-center gap-1 shrink-0 shadow-xs"
+                    className="tactile-press px-3.5 py-2 rounded-full bg-card border border-border text-foreground hover:bg-surface-sub font-semibold text-xs disabled:opacity-50 flex items-center gap-1 shrink-0 shadow-xs"
                   >
                     {isRefining ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
@@ -1061,7 +1077,7 @@ export function AiMealScannerSheet({
                   type="button"
                   onClick={handleConfirmAndLog}
                   disabled={isSubmittingLog || !aiDraft?.items.length}
-                  className="macro-spring active:scale-95 w-full py-3 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 shadow-xs"
+                  className="tactile-press w-full py-3 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 shadow-xs"
                 >
                   {isSubmittingLog ? (
                     <>

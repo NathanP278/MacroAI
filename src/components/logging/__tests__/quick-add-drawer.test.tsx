@@ -169,4 +169,26 @@ describe('QuickAddDrawer and Goals Calculator', () => {
 
     expect(handleClose).not.toHaveBeenCalled();
   });
+
+  test('persists draft inputs in localStorage across remount and clears on submit', async () => {
+    const onClose = vi.fn();
+    const { unmount } = render(
+      <QuickAddDrawer open date="2026-11-14" mealSlot="lunch" onClose={onClose} />
+    );
+
+    fireEvent.change(screen.getByLabelText(/description/i), { target: { value: 'Whey Isolate' } });
+    fireEvent.change(screen.getByLabelText(/protein/i), { target: { value: '30' } });
+    expect(screen.getByLabelText(/calories/i)).toHaveValue(120);
+
+    unmount();
+
+    render(<QuickAddDrawer open date="2026-11-14" mealSlot="lunch" onClose={onClose} />);
+    expect(screen.getByLabelText(/description/i)).toHaveValue('Whey Isolate');
+    expect(screen.getByLabelText(/protein/i)).toHaveValue(30);
+    expect(screen.getByLabelText(/calories/i)).toHaveValue(120);
+
+    fireEvent.click(screen.getByRole('button', { name: /log quick add/i }));
+    await waitFor(async () => expect(await db.foodLogs.count()).toBe(1));
+    expect(window.localStorage.getItem('macro_quick_add_draft_v1')).toBeNull();
+  });
 });

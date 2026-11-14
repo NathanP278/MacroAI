@@ -5,7 +5,7 @@ import { filterStaples, searchStaples, loadStaples, setStaplesCache, enrichMealI
 import { GET as usdaRouteHandler } from '@/app/api/usda/[...path]/route';
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db/macroai-db';
-import type { FoodItem } from '@/types/nutrition';
+import type { FoodItem, Micronutrients } from '@/types/nutrition';
 
 describe('USDA adapter and Staples search', () => {
   beforeEach(async () => {
@@ -319,8 +319,7 @@ describe('USDA adapter and Staples search', () => {
           vitaminB12Mcg: 0,
           folateMcg: 63,
         },
-        verified: true,
-        updatedAt: '2026-11-15T00:00:00Z',
+        updatedAt: 1700000000000,
       },
       {
         id: 'staple:salmon',
@@ -344,8 +343,7 @@ describe('USDA adapter and Staples search', () => {
           vitaminB12Mcg: 2.8,
           folateMcg: 26,
         },
-        verified: true,
-        updatedAt: '2026-11-15T00:00:00Z',
+        updatedAt: 1700000000000,
       },
     ];
 
@@ -357,14 +355,15 @@ describe('USDA adapter and Staples search', () => {
 
     setStaplesCache(sample);
     try {
-      const enriched = await enrichMealItemsWithStaples([
+      const itemsToEnrich: Array<{ name: string; microsPer100g?: Micronutrients }> = [
         {
           name: 'Steamed Broccoli',
           microsPer100g: {
             sodiumMg: 99, // Existing AI-provided value should be preserved
           },
         },
-      ]);
+      ];
+      const enriched = await enrichMealItemsWithStaples(itemsToEnrich);
 
       expect(enriched[0].microsPer100g?.sodiumMg).toBe(99);
       expect(enriched[0].microsPer100g?.vitaminCMg).toBe(89.2);
