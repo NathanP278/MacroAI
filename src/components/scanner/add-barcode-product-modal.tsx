@@ -5,6 +5,7 @@ import { X, Sparkles, Loader2, Save, AlertCircle } from 'lucide-react';
 import { db, generateId } from '@/lib/db/macroai-db';
 import { compressImageToJpeg } from '@/lib/media/image-compress';
 import { useLoggerStore } from '@/stores/logger-store';
+import { triggerHaptic } from '@/lib/motion';
 import type { FoodItem, FoodLogEntry, NutritionBasis } from '@/types/nutrition';
 
 export interface AddBarcodeProductModalProps {
@@ -46,6 +47,7 @@ export function AddBarcodeProductModal({
   const [isOcrLoading, setIsOcrLoading] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [servingError, setServingError] = useState<string | null>(null);
+  const [touchedName, setTouchedName] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -113,7 +115,7 @@ export function AddBarcodeProductModal({
       const cleanBarcode = barcode.trim();
       const rawServingSize = parseFloat(servingSize);
       if (!Number.isFinite(rawServingSize) || rawServingSize <= 0) {
-        setServingError('Serving size must be a positive number.');
+        setServingError('Serving size must be a positive number. Enter a value above 0 matching the package label.');
         return;
       }
       setServingError(null);
@@ -184,6 +186,7 @@ export function AddBarcodeProductModal({
         await db.foodLogs.add(logEntry);
       });
 
+      triggerHaptic(10);
       onSaved?.(foodItem);
       onClose();
     } catch (err) {
@@ -202,7 +205,7 @@ export function AddBarcodeProductModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg mx-auto bg-surface-elevated border-t border-x border-border rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl animate-sheet-in max-h-[92vh] flex flex-col"
+        className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] animate-sheet-in max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0" aria-hidden="true" />
@@ -220,7 +223,7 @@ export function AddBarcodeProductModal({
             type="button"
             onClick={onClose}
             aria-label="Close add product modal"
-            className="touch-target macro-spring active:scale-90 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+            className="touch-target tactile-press p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
           >
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
@@ -241,7 +244,7 @@ export function AddBarcodeProductModal({
             type="button"
             disabled={isOcrLoading}
             onClick={() => fileInputRef.current?.click()}
-            className="macro-spring active:scale-95 w-full py-2.5 px-4 rounded-full bg-[var(--macro-calories)]/15 hover:bg-[var(--macro-calories)]/25 text-[var(--macro-calories)] font-semibold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+            className="tactile-press w-full py-2.5 px-4 rounded-full bg-[var(--macro-calories)]/15 hover:bg-[var(--macro-calories)]/25 text-[var(--macro-calories)] font-semibold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {isOcrLoading ? (
               <Loader2 className="w-4 h-4 animate-spin text-[var(--macro-calories)]" aria-hidden="true" />
@@ -254,9 +257,14 @@ export function AddBarcodeProductModal({
           </button>
 
           {ocrError && (
-            <div className="mt-2 p-2.5 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
-              <span>{ocrError}</span>
+            <div className="mt-2 p-2.5 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="space-y-0.5">
+                <p>{ocrError}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Check AI service setup in Settings or enter the label nutrition values manually below.
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -273,11 +281,18 @@ export function AddBarcodeProductModal({
               aria-label="Product Name"
               type="text"
               required
+              autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onBlur={() => setTouchedName(true)}
               placeholder="e.g. Whey Isolate, Greek Yogurt"
               className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground placeholder:text-muted-foreground/50"
             />
+            {touchedName && !name.trim() && (
+              <p className="text-[11px] text-[var(--neutral-over)]">
+                Enter the product name from the package front to enable saving.
+              </p>
+            )}
           </div>
 
           {/* Brand */}
@@ -314,10 +329,18 @@ export function AddBarcodeProductModal({
                   setServingSize(e.target.value);
                   setServingError(null);
                 }}
+                onBlur={() => {
+                  const parsed = parseFloat(servingSize);
+                  if (!Number.isFinite(parsed) || parsed <= 0) {
+                    setServingError(
+                      'Serving size must be a positive number. Enter a value above 0 matching the package label.'
+                    );
+                  }
+                }}
                 className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
               />
               {servingError && (
-                <p className="text-[10px] text-destructive">{servingError}</p>
+                <p className="text-[11px] text-[var(--neutral-over)]">{servingError}</p>
               )}
             </div>
             <div className="space-y-1">
@@ -453,7 +476,7 @@ export function AddBarcodeProductModal({
             <button
               type="submit"
               disabled={isSaving || !name.trim()}
-              className="macro-spring active:scale-95 w-full py-2.5 px-4 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
+              className="tactile-press w-full py-2.5 px-4 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
             >
               {isSaving ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
