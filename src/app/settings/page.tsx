@@ -3,6 +3,7 @@
 import React from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { ThemeSwitcher } from "@/components/theme/theme-switcher";
+import { BackupPanel } from "@/components/settings/backup-panel";
 import { Moon, ShieldCheck, Database } from "lucide-react";
 
 export default function SettingsPage() {
@@ -30,6 +31,9 @@ export default function SettingsPage() {
             <ThemeSwitcher />
           </div>
         </section>
+
+        {/* Data Backup & Restore */}
+        <BackupPanel />
 
         {/* Adherence Neutrality Info */}
         <section className="bg-card border border-border rounded-2xl p-4 space-y-2.5">
