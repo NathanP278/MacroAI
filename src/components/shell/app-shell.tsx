@@ -5,6 +5,7 @@ import { BottomNav } from "./bottom-nav";
 import { QuickActionDock, QuickActionType } from "./quick-action-dock";
 import { QuickAddDrawer } from "@/components/logging/quick-add-drawer";
 import { FoodSearchDrawer } from "@/components/logging/food-search-drawer";
+import { BarcodeScannerDrawer } from "@/components/scanner/barcode-scanner-drawer";
 import { useLoggerStore } from "@/stores/logger-store";
 import { ensureDefaultUserGoals } from "@/lib/nutrition/goals";
 
@@ -70,6 +71,14 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
         {/* Food Search Drawer */}
         <FoodSearchDrawer
           open={activeSheet === "search"}
+          date={activeDate}
+          mealSlot={activeMealSlot}
+          onClose={closeSheet}
+        />
+
+        {/* Barcode Scanner Drawer */}
+        <BarcodeScannerDrawer
+          open={activeSheet === "barcode"}
           date={activeDate}
           mealSlot={activeMealSlot}
           onClose={closeSheet}
