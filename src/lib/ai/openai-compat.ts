@@ -17,11 +17,30 @@ export class AiServiceError extends Error {
 }
 
 /**
- * Strips secret API keys from error messages or logs to prevent credential leakage.
+ * Strips secret API keys and sensitive custom headers from error messages or logs
+ * to prevent credential leakage.
  */
-export function sanitizeError(message: string, apiKey?: string): string {
-  if (!apiKey || !apiKey.trim()) return message;
-  return message.replaceAll(apiKey, '[REDACTED]');
+export function sanitizeError(
+  message: string,
+  apiKey?: string,
+  customHeaders?: Record<string, string>
+): string {
+  if (!message) return '';
+  let sanitized = message;
+
+  if (apiKey && apiKey.trim()) {
+    sanitized = sanitized.replaceAll(apiKey, '[REDACTED]');
+  }
+
+  if (customHeaders) {
+    for (const val of Object.values(customHeaders)) {
+      if (typeof val === 'string' && val.trim().length >= 6) {
+        sanitized = sanitized.replaceAll(val.trim(), '[REDACTED]');
+      }
+    }
+  }
+
+  return sanitized;
 }
 
 /**
@@ -130,7 +149,7 @@ export async function callVisionChatCompletion(
 
     if (!res.ok) {
       const errorText = await res.text().catch(() => res.statusText);
-      const safeMsg = sanitizeError(errorText, config.apiKey);
+      const safeMsg = sanitizeError(errorText, config.apiKey, config.customHeaders);
       throw new AiServiceError(
         `Upstream AI service error (${res.status}): ${safeMsg}`,
         res.status >= 500 ? 502 : res.status
@@ -156,7 +175,7 @@ export async function callVisionChatCompletion(
       throw err;
     }
     const rawMsg = err instanceof Error ? err.message : String(err);
-    const safeMsg = sanitizeError(rawMsg, config.apiKey);
+    const safeMsg = sanitizeError(rawMsg, config.apiKey, config.customHeaders);
     throw new AiServiceError(`AI completion request failed: ${safeMsg}`, 502);
   }
 }

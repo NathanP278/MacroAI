@@ -15,7 +15,7 @@ import {
   callVisionChatCompletion,
   AiServiceError,
 } from '../openai-compat';
-import { GET as getHealth } from '@/app/api/ai/health/route';
+import { dynamic, GET as getHealth } from '@/app/api/ai/health/route';
 import { POST as postMealScan } from '@/app/api/ai/meal-scan/route';
 import { POST as postRefine } from '@/app/api/ai/refine/route';
 import { POST as postLabelOcr } from '@/app/api/ai/label-ocr/route';
@@ -38,6 +38,15 @@ describe('Task 9: AI Schemas & JSON Parser', () => {
     const parsed = parseAiJsonResponse(raw, AiMealScanResponseSchema);
     expect(parsed.items).toHaveLength(1);
     expect(parsed.items[0].name).toBe('White Rice');
+    expect(parsed.items[0].grams).toBe(150);
+  });
+
+  it('parses valid JSON with commentary inside markdown code fence', () => {
+    const raw =
+      '```json\nHere is the nutritional breakdown you requested:\n{"items":[{"name":"Baked Salmon","grams":150,"per100g":{"calories":206,"protein":22,"carbs":0,"fat":12,"fiber":0}}]}\nNote: estimated values\n```';
+    const parsed = parseAiJsonResponse(raw, AiMealScanResponseSchema);
+    expect(parsed.items).toHaveLength(1);
+    expect(parsed.items[0].name).toBe('Baked Salmon');
     expect(parsed.items[0].grams).toBe(150);
   });
 
@@ -275,6 +284,31 @@ describe('Task 9: OpenAI-Compatible Client Helper', () => {
     await expect(callVisionChatCompletion([{ role: 'user', content: 'ping' }]))
       .rejects.toThrowError(expect.not.stringContaining(SECRET));
   });
+
+  it('redacts both AI_API_KEY and sensitive AI_CUSTOM_HEADERS values in error responses', async () => {
+    const SECRET_API_KEY = 'sk-upstream-secret-key-99999';
+    const GATEWAY_SECRET = 'gateway-bearer-secret-token-88888';
+    process.env.AI_BASE_URL = 'https://proxy.local/v1';
+    process.env.AI_API_KEY = SECRET_API_KEY;
+    process.env.AI_MODEL = 'test-model';
+    process.env.AI_CUSTOM_HEADERS = JSON.stringify({
+      'X-Gateway-Auth': GATEWAY_SECRET,
+      'X-Short': 'abc',
+    });
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: async () => `Upstream error: ${SECRET_API_KEY} rejected by gateway ${GATEWAY_SECRET}`,
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    await expect(callVisionChatCompletion([{ role: 'user', content: 'test' }]))
+      .rejects.toThrowError(expect.not.stringContaining(SECRET_API_KEY));
+
+    await expect(callVisionChatCompletion([{ role: 'user', content: 'test' }]))
+      .rejects.toThrowError(expect.not.stringContaining(GATEWAY_SECRET));
+  });
 });
 
 describe('Task 9: Route Handlers', () => {
@@ -290,6 +324,10 @@ describe('Task 9: Route Handlers', () => {
   });
 
   describe('GET /api/ai/health', () => {
+    it('exports dynamic = "force-dynamic" to ensure fresh runtime evaluation', () => {
+      expect(dynamic).toBe('force-dynamic');
+    });
+
     it('returns 200 { configured: false, model: "", reachable: false } when unconfigured', async () => {
       delete process.env.AI_BASE_URL;
       delete process.env.AI_API_KEY;

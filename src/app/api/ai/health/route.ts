@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getServerAiConfig, callVisionChatCompletion, sanitizeError } from '@/lib/ai/openai-compat';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const config = getServerAiConfig();
 
@@ -36,7 +38,7 @@ export async function GET() {
     );
   } catch (err: unknown) {
     const rawMsg = err instanceof Error ? err.message : String(err);
-    const safeError = sanitizeError(rawMsg, config.apiKey);
+    const safeError = sanitizeError(rawMsg, config.apiKey, config.customHeaders);
 
     return NextResponse.json(
       {

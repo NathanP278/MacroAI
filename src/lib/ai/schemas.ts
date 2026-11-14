@@ -39,6 +39,7 @@ export type AiLabelOcrResponse = z.infer<typeof AiLabelOcrResponseSchema>;
 
 /**
  * Strips markdown code fences, parses JSON, and strictly validates against a Zod schema.
+ * Handles commentary/text both outside and inside code fences by finding outer JSON delimiters.
  */
 export function parseAiJsonResponse<T>(rawText: string, schema: z.ZodType<T>): T {
   if (typeof rawText !== 'string' || !rawText.trim()) {
@@ -51,24 +52,24 @@ export function parseAiJsonResponse<T>(rawText: string, schema: z.ZodType<T>): T
   const codeFenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
   if (codeFenceMatch) {
     text = codeFenceMatch[1].trim();
-  } else {
-    // If not in fences, check if embedded between JSON delimiters
-    const firstBrace = text.indexOf('{');
-    const firstBracket = text.indexOf('[');
-    let startIdx = -1;
-    let endIdx = -1;
+  }
 
-    if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
-      startIdx = firstBrace;
-      endIdx = text.lastIndexOf('}');
-    } else if (firstBracket !== -1) {
-      startIdx = firstBracket;
-      endIdx = text.lastIndexOf(']');
-    }
+  // Find outer JSON delimiters ({...} or [...]) to strip any commentary before/after inside or outside fences
+  const firstBrace = text.indexOf('{');
+  const firstBracket = text.indexOf('[');
+  let startIdx = -1;
+  let endIdx = -1;
 
-    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-      text = text.slice(startIdx, endIdx + 1).trim();
-    }
+  if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+    startIdx = firstBrace;
+    endIdx = text.lastIndexOf('}');
+  } else if (firstBracket !== -1) {
+    startIdx = firstBracket;
+    endIdx = text.lastIndexOf(']');
+  }
+
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    text = text.slice(startIdx, endIdx + 1).trim();
   }
 
   let parsed: unknown;
