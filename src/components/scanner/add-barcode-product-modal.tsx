@@ -45,6 +45,7 @@ export function AddBarcodeProductModal({
 
   const [isOcrLoading, setIsOcrLoading] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
+  const [servingError, setServingError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -110,7 +111,13 @@ export function AddBarcodeProductModal({
     setIsSaving(true);
     try {
       const cleanBarcode = barcode.trim();
-      const parsedSize = Math.max(0, parseFloat(servingSize) || 1);
+      const rawServingSize = parseFloat(servingSize);
+      if (!Number.isFinite(rawServingSize) || rawServingSize <= 0) {
+        setServingError('Serving size must be a positive number.');
+        return;
+      }
+      setServingError(null);
+      const parsedSize = rawServingSize;
       const parsedCal = Math.max(0, parseFloat(calories) || 0);
       const parsedP = Math.max(0, parseFloat(protein) || 0);
       const parsedC = Math.max(0, parseFloat(carbs) || 0);
@@ -254,7 +261,7 @@ export function AddBarcodeProductModal({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSaveAndLog} className="flex-1 overflow-y-auto space-y-3 pt-1 pr-0.5">
+        <form noValidate onSubmit={handleSaveAndLog} className="flex-1 overflow-y-auto space-y-3 pt-1 pr-0.5">
           {/* Product Name */}
           <div className="space-y-1">
             <label htmlFor="product-name" className="text-xs font-semibold text-foreground">
@@ -299,12 +306,18 @@ export function AddBarcodeProductModal({
                 aria-label="Serving Size"
                 type="number"
                 step="any"
-                min="0"
+                min="0.001"
                 required
                 value={servingSize}
-                onChange={(e) => setServingSize(e.target.value)}
+                onChange={(e) => {
+                  setServingSize(e.target.value);
+                  setServingError(null);
+                }}
                 className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
               />
+              {servingError && (
+                <p className="text-[10px] text-destructive">{servingError}</p>
+              )}
             </div>
             <div className="space-y-1">
               <label htmlFor="serving-unit" className="text-xs font-semibold text-foreground">

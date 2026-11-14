@@ -10,9 +10,11 @@ export async function compressImageToJpeg(
   const bitmap = await createImageBitmap(file);
   try {
     let { width, height } = bitmap;
-    if (width > maxWidth) {
-      height = Math.round((height * maxWidth) / width);
-      width = maxWidth;
+    const maxDim = Math.max(width, height);
+    if (maxDim > maxWidth) {
+      const scale = maxWidth / maxDim;
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
     }
     const canvas = document.createElement('canvas');
     canvas.width = width;

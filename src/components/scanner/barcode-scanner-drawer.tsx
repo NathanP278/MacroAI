@@ -55,6 +55,8 @@ export function BarcodeScannerDrawer({
   const [isLogging, setIsLogging] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const isProcessingScanRef = useRef(false);
+  const isLookingUpRef = useRef(false);
 
   // Keyboard Escape listener
   useEffect(() => {
@@ -70,16 +72,22 @@ export function BarcodeScannerDrawer({
 
   const handleLookup = async (code: string) => {
     const trimmed = code.trim();
-    if (!trimmed) return;
+    if (!trimmed || isLookingUpRef.current) return;
 
+    isLookingUpRef.current = true;
     setIsLookingUp(true);
     try {
       const res = await lookupBarcodeWaterfall(trimmed);
       setLookupResult(res);
 
       if (res.status === 'hit') {
-        setAmount(String(res.item.servingSize || 100));
-        setUnit(res.item.servingUnit || 'g');
+        if (res.item.basis === 'perServing') {
+          setAmount('1');
+          setUnit(res.item.servingUnit || 'serving');
+        } else {
+          setAmount(String(res.item.servingSize || 100));
+          setUnit(res.item.basis === 'per100ml' ? 'ml' : (res.item.servingUnit || 'g'));
+        }
       } else if (res.status === 'missing') {
         setMissingBarcode(trimmed);
         setIsAddModalOpen(true);
@@ -89,6 +97,7 @@ export function BarcodeScannerDrawer({
     } catch (err) {
       console.error('Barcode lookup failed:', err);
     } finally {
+      isLookingUpRef.current = false;
       setIsLookingUp(false);
     }
   };
@@ -103,6 +112,27 @@ export function BarcodeScannerDrawer({
     let activeStream: MediaStream | null = null;
     let html5Scanner: Html5Qrcode | null = null;
     let scanInterval: any = null;
+
+    const stopAllScanning = () => {
+      if (scanInterval) {
+        clearInterval(scanInterval);
+        scanInterval = null;
+      }
+      if (activeStream) {
+        activeStream.getTracks().forEach((t) => t.stop());
+        activeStream = null;
+      }
+      if (html5Scanner && (html5Scanner as any).isScanning) {
+        html5Scanner.stop().catch(() => {});
+      }
+    };
+
+    const handleBarcodeDetected = (rawCode: string) => {
+      if (isProcessingScanRef.current) return;
+      isProcessingScanRef.current = true;
+      stopAllScanning();
+      handleLookup(rawCode);
+    };
 
     async function startScanner() {
       setCameraError(null);
@@ -145,8 +175,7 @@ export function BarcodeScannerDrawer({
             try {
               const barcodes = await detector.detect(videoRef.current);
               if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
-                clearInterval(scanInterval);
-                handleLookup(barcodes[0].rawValue);
+                handleBarcodeDetected(barcodes[0].rawValue);
               }
             } catch {
               // Ignore frame detection errors
@@ -175,11 +204,16 @@ export function BarcodeScannerDrawer({
           },
           (decodedText) => {
             if (isMounted) {
-              handleLookup(decodedText);
+              handleBarcodeDetected(decodedText);
             }
           },
           () => {}
         );
+
+        if (!isMounted) {
+          scanner.stop().catch(() => {});
+          return;
+        }
       } catch {
         if (isMounted) {
           setCameraError('Camera access unavailable. You can enter the barcode manually below.');
@@ -191,13 +225,7 @@ export function BarcodeScannerDrawer({
 
     return () => {
       isMounted = false;
-      if (scanInterval) clearInterval(scanInterval);
-      if (activeStream) {
-        activeStream.getTracks().forEach((t) => t.stop());
-      }
-      if (html5Scanner && (html5Scanner as any).isScanning) {
-        html5Scanner.stop().catch(() => {});
-      }
+      stopAllScanning();
     };
   }, [open, lookupResult, isAddModalOpen]);
 
@@ -260,6 +288,8 @@ export function BarcodeScannerDrawer({
   };
 
   const handleResetScanner = () => {
+    isProcessingScanRef.current = false;
+    isLookingUpRef.current = false;
     setLookupResult(null);
     setManualBarcode('');
     setMissingBarcode('');
@@ -361,23 +391,58 @@ export function BarcodeScannerDrawer({
 
                 {/* Quick Presets */}
                 <div className="flex items-center gap-1.5 pt-1">
-                  {[50, 100, 150, 200, 250].map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => {
-                        setAmount(String(preset));
-                        setUnit('g');
-                      }}
-                      className={`px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-colors ${
-                        amount === String(preset) && unit === 'g'
-                          ? 'bg-foreground text-background border-foreground'
-                          : 'bg-surface-card border-border text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      {preset}g
-                    </button>
-                  ))}
+                  {lookupResult.item.basis === 'perServing' ? (
+                    [0.5, 1, 1.5, 2].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setAmount(String(preset))}
+                        className={`px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-colors ${
+                          amount === String(preset)
+                            ? 'bg-foreground text-background border-foreground'
+                            : 'bg-surface-card border-border text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        {preset}x
+                      </button>
+                    ))
+                  ) : lookupResult.item.basis === 'per100ml' ? (
+                    [50, 100, 150, 200, 250].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => {
+                          setAmount(String(preset));
+                          setUnit('ml');
+                        }}
+                        className={`px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-colors ${
+                          amount === String(preset) && unit === 'ml'
+                            ? 'bg-foreground text-background border-foreground'
+                            : 'bg-surface-card border-border text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        {preset}ml
+                      </button>
+                    ))
+                  ) : (
+                    [50, 100, 150, 200, 250].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => {
+                          setAmount(String(preset));
+                          setUnit('g');
+                        }}
+                        className={`px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-colors ${
+                          amount === String(preset) && unit === 'g'
+                            ? 'bg-foreground text-background border-foreground'
+                            : 'bg-surface-card border-border text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        {preset}g
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
 

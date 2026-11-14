@@ -63,6 +63,39 @@ describe('Task 8: Barcode Scanner & Missing-Barcode Creator', () => {
       expect(mockToDataURL).toHaveBeenCalledWith('image/jpeg', 0.8);
       expect(mockClose).toHaveBeenCalled();
     });
+
+    test('scales down portrait bitmap when height exceeds maxWidth', async () => {
+      const mockClose = vi.fn();
+      const mockBitmap = {
+        width: 800,
+        height: 2048,
+        close: mockClose,
+      };
+
+      vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(mockBitmap));
+
+      const mockDrawImage = vi.fn();
+      const mockToDataURL = vi.fn().mockReturnValue('data:image/jpeg;base64,mockportrait');
+
+      vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+        if (tagName === 'canvas') {
+          return {
+            width: 0,
+            height: 0,
+            getContext: () => ({ drawImage: mockDrawImage }),
+            toDataURL: mockToDataURL,
+          } as unknown as HTMLCanvasElement;
+        }
+        return originalCreateElement(tagName);
+      });
+
+      const blob = new Blob(['portrait'], { type: 'image/jpeg' });
+      const dataUrl = await compressImageToJpeg(blob, 1024, 0.8);
+
+      expect(dataUrl).toBe('data:image/jpeg;base64,mockportrait');
+      expect(mockDrawImage).toHaveBeenCalledWith(mockBitmap, 0, 0, 400, 1024);
+      expect(mockClose).toHaveBeenCalled();
+    });
   });
 
   describe('AddBarcodeProductModal', () => {
@@ -281,6 +314,27 @@ describe('Task 8: Barcode Scanner & Missing-Barcode Creator', () => {
         expect(screen.getByText(/OCR service failed/i)).toBeInTheDocument();
       });
     });
+
+    test('rejects negative or non-positive serving size and prevents saving', async () => {
+      render(
+        <AddBarcodeProductModal
+          open
+          barcode="999000111"
+          date="2026-11-14"
+          mealSlot="snacks"
+          onClose={() => {}}
+        />
+      );
+
+      fireEvent.change(screen.getByLabelText(/product name/i), { target: { value: 'Bad Size Food' } });
+      fireEvent.change(screen.getByLabelText(/serving size/i), { target: { value: '-10' } });
+      fireEvent.change(screen.getByLabelText(/calories/i), { target: { value: '100' } });
+      fireEvent.click(screen.getByRole('button', { name: /save & log/i }));
+
+      expect(await screen.findByText(/serving size must be a positive number/i)).toBeInTheDocument();
+      expect(await db.foodsCache.where('barcode').equals('999000111').count()).toBe(0);
+      expect(await db.foodLogs.count()).toBe(0);
+    });
   });
 
   describe('BarcodeScannerDrawer', () => {
@@ -330,6 +384,55 @@ describe('Task 8: Barcode Scanner & Missing-Barcode Creator', () => {
         expect(await db.foodLogs.count()).toBe(1);
       });
       expect(handleClose).toHaveBeenCalled();
+    });
+
+    test('on perServing hit: defaults portion to 1 serving, displays 150 kcal, and renders 1x / 2x presets', async () => {
+      await db.foodsCache.put({
+        id: 'off:per-serving-item',
+        barcode: '123456789012',
+        source: 'off',
+        name: 'Protein Cookie',
+        basis: 'perServing',
+        servingSize: 32,
+        servingUnit: 'cookie',
+        nutrientsPerBasis: { calories: 150, protein: 10, carbs: 15, fat: 5, fiber: 2 },
+        micronutrientsPerBasis: {},
+        updatedAt: Date.now(),
+      });
+
+      render(
+        <BarcodeScannerDrawer
+          open
+          date="2026-11-14"
+          mealSlot="snacks"
+          onClose={() => {}}
+        />
+      );
+
+      fireEvent.change(screen.getByLabelText(/^barcode$/i), {
+        target: { value: '123456789012' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /look up/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Protein Cookie')).toBeInTheDocument();
+      });
+
+      // Portion amount should be 1 (multiplier), unit 'cookie'
+      expect(screen.getByLabelText(/portion amount/i)).toHaveValue(1);
+      expect(screen.getByLabelText(/portion unit/i)).toHaveValue('cookie');
+
+      // Scaled nutrition should be 150 kcal (NOT 32 * 150 = 4800 kcal!)
+      expect(screen.getByText('150 kcal')).toBeInTheDocument();
+
+      // Quick presets should be multiplier-based: 0.5x, 1x, 1.5x, 2x
+      expect(screen.getByRole('button', { name: '1x' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '2x' })).toBeInTheDocument();
+
+      // Clicking 2x doubles nutrition to 300 kcal
+      fireEvent.click(screen.getByRole('button', { name: '2x' }));
+      expect(screen.getByLabelText(/portion amount/i)).toHaveValue(2);
+      expect(screen.getByText('300 kcal')).toBeInTheDocument();
     });
 
     test('opens AddBarcodeProductModal on missing barcode result', async () => {
