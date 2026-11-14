@@ -3,7 +3,7 @@
 import React from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { ThemeSwitcher } from "@/components/theme/theme-switcher";
-import { Settings, Moon, ShieldCheck, Database, Smartphone } from "lucide-react";
+import { Moon, ShieldCheck, Database } from "lucide-react";
 
 export default function SettingsPage() {
   return (
@@ -16,7 +16,7 @@ export default function SettingsPage() {
         </header>
 
         {/* Theme Section */}
-        <section className="bg-[#1B1D22] border border-white/[0.08] rounded-2xl p-4 space-y-3">
+        <section className="bg-card border border-border rounded-2xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400">
@@ -32,7 +32,7 @@ export default function SettingsPage() {
         </section>
 
         {/* Adherence Neutrality Info */}
-        <section className="bg-[#1B1D22] border border-white/[0.08] rounded-2xl p-4 space-y-2.5">
+        <section className="bg-card border border-border rounded-2xl p-4 space-y-2.5">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-emerald-400/10 border border-emerald-400/20 flex items-center justify-center text-emerald-400">
               <ShieldCheck className="w-4 h-4" />
@@ -49,7 +49,7 @@ export default function SettingsPage() {
         </section>
 
         {/* Offline & Storage Info */}
-        <section className="bg-[#1B1D22] border border-white/[0.08] rounded-2xl p-4 space-y-2.5">
+        <section className="bg-card border border-border rounded-2xl p-4 space-y-2.5">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-sky-400/10 border border-sky-400/20 flex items-center justify-center text-sky-400">
               <Database className="w-4 h-4" />

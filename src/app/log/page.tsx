@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
-import { Calendar, ChevronLeft, ChevronRight, Plus, Utensils } from "lucide-react";
+import { ChevronLeft, ChevronRight, Utensils } from "lucide-react";
 
 export default function LogPage() {
   const [selectedDate] = useState("Today, Nov 14");
@@ -16,7 +16,7 @@ export default function LogPage() {
             <h1 className="text-base font-bold tracking-tight text-foreground">Food Log</h1>
             <p className="text-[11px] text-muted-foreground">Adherence-neutral chronological diary</p>
           </div>
-          <div className="flex items-center gap-1 bg-[#1B1D22] border border-white/[0.08] px-2 py-1 rounded-xl">
+          <div className="flex items-center gap-1 bg-card border border-border px-2 py-1 rounded-xl">
             <button
               type="button"
               aria-label="Previous day"
@@ -24,7 +24,7 @@ export default function LogPage() {
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-xs font-semibold px-1">{selectedDate}</span>
+            <span className="text-xs font-semibold px-1 text-foreground">{selectedDate}</span>
             <button
               type="button"
               aria-label="Next day"
@@ -36,7 +36,7 @@ export default function LogPage() {
         </header>
 
         {/* Daily Summary Pill */}
-        <div className="bg-[#1B1D22] border border-white/[0.08] rounded-2xl p-3.5 flex items-center justify-between">
+        <div className="bg-card border border-border rounded-2xl p-3.5 flex items-center justify-between">
           <div>
             <span className="text-xs text-muted-foreground">Total Consumed</span>
             <div className="text-xl font-bold tabular-nums text-foreground mt-0.5">
@@ -66,8 +66,8 @@ export default function LogPage() {
             <span>4 items</span>
           </div>
 
-          <div className="bg-[#1B1D22] border border-white/[0.08] rounded-2xl p-4 text-center space-y-2">
-            <div className="w-10 h-10 rounded-full bg-white/[0.04] mx-auto flex items-center justify-center text-muted-foreground">
+          <div className="bg-card border border-border rounded-2xl p-4 text-center space-y-2">
+            <div className="w-10 h-10 rounded-full bg-muted mx-auto flex items-center justify-center text-muted-foreground">
               <Utensils className="w-5 h-5" />
             </div>
             <p className="text-xs text-foreground font-medium">Daily Food Log Ready</p>

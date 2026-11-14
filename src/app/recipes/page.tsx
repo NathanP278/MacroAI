@@ -2,7 +2,7 @@
 
 import React from "react";
 import { AppShell } from "@/components/shell/app-shell";
-import { ChefHat, Plus, Search, BookOpen } from "lucide-react";
+import { ChefHat, Plus, Search } from "lucide-react";
 
 export default function RecipesPage() {
   return (
@@ -16,7 +16,7 @@ export default function RecipesPage() {
           </div>
           <button
             type="button"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-[#121316] text-xs font-semibold shadow-sm transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold shadow-sm transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Create</span>
@@ -29,12 +29,12 @@ export default function RecipesPage() {
           <input
             type="text"
             placeholder="Search saved recipes..."
-            className="w-full bg-[#1B1D22] border border-white/[0.08] rounded-xl pl-9 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-amber-400"
+            className="w-full bg-card border border-border rounded-xl pl-9 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-amber-400"
           />
         </div>
 
         {/* Empty State / Library Placeholder */}
-        <div className="bg-[#1B1D22] border border-white/[0.08] rounded-2xl p-6 text-center space-y-2 mt-2">
+        <div className="bg-card border border-border rounded-2xl p-6 text-center space-y-2 mt-2">
           <div className="w-12 h-12 rounded-2xl bg-amber-400/10 border border-amber-400/20 mx-auto flex items-center justify-center text-amber-400">
             <ChefHat className="w-6 h-6" />
           </div>

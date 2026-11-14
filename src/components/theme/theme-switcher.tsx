@@ -14,7 +14,10 @@ export function ThemeSwitcher() {
   ];
 
   return (
-    <div className="flex items-center gap-1 bg-[#16181D] dark:bg-[#16181D] p-1 rounded-xl border border-white/[0.08]">
+    <div
+      data-testid="theme-switcher"
+      className="flex items-center gap-1 bg-surface-sub p-1 rounded-xl border border-border"
+    >
       {options.map((opt) => {
         const Icon = opt.icon;
         const isSelected = theme === opt.value;
@@ -25,8 +28,8 @@ export function ThemeSwitcher() {
             onClick={() => setTheme(opt.value)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               isSelected
-                ? "bg-amber-400 text-[#121316] font-semibold shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
+                ? "bg-amber-400 text-neutral-950 font-semibold shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent"
             }`}
             aria-pressed={isSelected}
           >

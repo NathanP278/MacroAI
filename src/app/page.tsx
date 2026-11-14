@@ -4,13 +4,10 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { AppShell, QuickActionType } from "@/components/shell/app-shell";
 import {
-  Calendar,
-  Sparkles,
-  ChevronRight,
-  Plus,
   Flame,
   ShieldCheck,
-  CheckCircle2,
+  ChevronRight,
+  Plus,
 } from "lucide-react";
 
 interface FoodItem {
@@ -110,7 +107,7 @@ export default function HomePage() {
           <div className="flex items-center gap-2">
             <Link
               href="/prototypes"
-              className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-[#1B1D22] border border-white/[0.08] text-amber-400 hover:text-amber-300 transition-colors"
+              className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-card border border-border text-amber-400 hover:text-amber-300 transition-colors"
             >
               Prototypes &rarr;
             </Link>
@@ -124,7 +121,7 @@ export default function HomePage() {
         )}
 
         {/* Hero Hat: Energy Balance Summary */}
-        <section className="bg-[#1B1D22] border border-white/[0.08] rounded-3xl p-4 shadow-xl">
+        <section className="bg-card border border-border rounded-3xl p-4 shadow-xl">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wider">
               <Flame className="w-3.5 h-3.5 text-amber-400" />
@@ -151,7 +148,7 @@ export default function HomePage() {
                 <span className="text-xs text-muted-foreground ml-1">/ {targetCalories} kcal</span>
               </div>
               {/* Neutral progress bar */}
-              <div className="w-full bg-[#16181D] h-2.5 rounded-full mt-1.5 overflow-hidden border border-white/[0.04]">
+              <div className="w-full bg-surface-sub h-2.5 rounded-full mt-1.5 overflow-hidden border border-border">
                 <div
                   className="bg-amber-400 h-full rounded-full transition-all duration-300"
                   style={{ width: `${Math.min(100, Math.round((consumedCalories / targetCalories) * 100))}%` }}
@@ -164,7 +161,7 @@ export default function HomePage() {
         {/* Bento Grid: Protein, Carbs, Fat */}
         <section className="grid grid-cols-3 gap-2.5">
           {/* Protein */}
-          <div className="bg-[#1B1D22] border border-white/[0.08] rounded-2xl p-3 flex flex-col justify-between">
+          <div className="bg-card border border-border rounded-2xl p-3 flex flex-col justify-between">
             <div className="flex items-center justify-between text-[11px] font-semibold text-sky-400">
               <span>Protein</span>
               <span className="text-[10px] text-muted-foreground tabular-nums">
@@ -177,7 +174,7 @@ export default function HomePage() {
                 <span className="text-[10px] text-muted-foreground ml-0.5">/ {targetProtein}g</span>
               </div>
             </div>
-            <div className="w-full bg-[#16181D] h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-surface-sub h-1.5 rounded-full overflow-hidden">
               <div
                 className="bg-sky-400 h-full rounded-full"
                 style={{ width: `${Math.min(100, (consumedProtein / targetProtein) * 100)}%` }}
@@ -186,7 +183,7 @@ export default function HomePage() {
           </div>
 
           {/* Carbs */}
-          <div className="bg-[#1B1D22] border border-white/[0.08] rounded-2xl p-3 flex flex-col justify-between">
+          <div className="bg-card border border-border rounded-2xl p-3 flex flex-col justify-between">
             <div className="flex items-center justify-between text-[11px] font-semibold text-emerald-400">
               <span>Carbs</span>
               <span className="text-[10px] text-muted-foreground tabular-nums">
@@ -199,7 +196,7 @@ export default function HomePage() {
                 <span className="text-[10px] text-muted-foreground ml-0.5">/ {targetCarbs}g</span>
               </div>
             </div>
-            <div className="w-full bg-[#16181D] h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-surface-sub h-1.5 rounded-full overflow-hidden">
               <div
                 className="bg-emerald-400 h-full rounded-full"
                 style={{ width: `${Math.min(100, (consumedCarbs / targetCarbs) * 100)}%` }}
@@ -208,7 +205,7 @@ export default function HomePage() {
           </div>
 
           {/* Fat */}
-          <div className="bg-[#1B1D22] border border-white/[0.08] rounded-2xl p-3 flex flex-col justify-between">
+          <div className="bg-card border border-border rounded-2xl p-3 flex flex-col justify-between">
             <div className="flex items-center justify-between text-[11px] font-semibold text-rose-400">
               <span>Fat</span>
               <span className="text-[10px] text-muted-foreground tabular-nums">
@@ -221,7 +218,7 @@ export default function HomePage() {
                 <span className="text-[10px] text-muted-foreground ml-0.5">/ {targetFat}g</span>
               </div>
             </div>
-            <div className="w-full bg-[#16181D] h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-surface-sub h-1.5 rounded-full overflow-hidden">
               <div
                 className="bg-rose-400 h-full rounded-full"
                 style={{ width: `${Math.min(100, (consumedFat / targetFat) * 100)}%` }}
@@ -245,7 +242,7 @@ export default function HomePage() {
             {meals.map((meal) => (
               <div
                 key={meal.name}
-                className="bg-[#1B1D22] border border-white/[0.08] rounded-2xl p-3.5 space-y-2.5"
+                className="bg-card border border-border rounded-2xl p-3.5 space-y-2.5"
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -257,7 +254,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => handleQuickAction("quick-add")}
-                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-colors"
+                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                     aria-label={`Add item to ${meal.name}`}
                   >
                     <Plus className="w-4 h-4" />
@@ -269,7 +266,7 @@ export default function HomePage() {
                     {meal.items.map((item) => (
                       <div
                         key={item.id}
-                        className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-[#16181D] border border-white/[0.03]"
+                        className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-surface-sub border border-border"
                       >
                         <span className="text-foreground truncate max-w-[200px]">
                           {item.name}

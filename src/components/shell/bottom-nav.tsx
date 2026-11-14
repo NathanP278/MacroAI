@@ -42,8 +42,9 @@ export function BottomNav({ onOpenQuickActions }: BottomNavProps) {
 
   return (
     <nav
+      data-testid="bottom-nav"
       aria-label="Bottom Navigation"
-      className="fixed bottom-0 left-0 right-0 z-40 bg-[#16181D]/95 dark:bg-[#16181D]/95 backdrop-blur-md border-t border-white/[0.08] shadow-[0_-4px_24px_rgba(0,0,0,0.4)]"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-surface-card/95 backdrop-blur-md border-t border-border shadow-[0_-4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_24px_rgba(0,0,0,0.4)]"
     >
       <div className="max-w-[430px] mx-auto h-16 px-4 flex items-center justify-between relative">
         {/* Left Nav items */}
@@ -75,7 +76,7 @@ export function BottomNav({ onOpenQuickActions }: BottomNavProps) {
             type="button"
             onClick={onOpenQuickActions}
             aria-label="Open quick actions"
-            className="w-13 h-13 rounded-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-[#121316] flex items-center justify-center shadow-lg shadow-amber-400/25 border-2 border-[#121316] transition-all focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-[#121316]"
+            className="w-13 h-13 rounded-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-neutral-950 flex items-center justify-center shadow-lg shadow-amber-400/25 border-2 border-background transition-all focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-background"
           >
             <Plus className="w-6 h-6 stroke-[2.5]" />
           </button>

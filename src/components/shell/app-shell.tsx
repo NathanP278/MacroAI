@@ -23,7 +23,10 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center">
       {/* Mobile-first centered frame container */}
-      <div className="w-full max-w-[430px] min-h-screen flex flex-col relative pb-24 shadow-2xl bg-background border-x border-white/[0.04]">
+      <div
+        data-testid="app-shell-container"
+        className="w-full max-w-[430px] min-h-screen flex flex-col relative pb-24 shadow-2xl bg-background border-x border-border"
+      >
         {/* Main page content area */}
         <main className="flex-1 flex flex-col w-full">
           {children}

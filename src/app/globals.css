@@ -43,6 +43,8 @@
   --color-surface-card: var(--surface-card);
   --color-surface-sub: var(--surface-sub);
   --color-surface-elevated: var(--surface-elevated);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-focus: var(--border-focus);
 
   /* Adherence-neutral nutrient colors */
   --color-calorie: var(--calorie);
