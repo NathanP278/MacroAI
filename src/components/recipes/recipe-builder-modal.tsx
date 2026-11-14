@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   saveCustomRecipe,
   calculateRecipeTotals,
@@ -381,20 +382,21 @@ export function RecipeBuilderModal({
     }
   };
 
-  return (
+  const modal = (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="recipe-builder-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs transition-opacity"
+      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-4 pt-[max(1rem,env(safe-area-inset-top))] bg-black/70 backdrop-blur-xs transition-opacity"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg max-h-[90vh] bg-surface-elevated border border-border rounded-3xl flex flex-col shadow-2xl overflow-hidden animate-modal-in"
+        className="w-full max-w-lg max-h-full sm:max-h-[90dvh] bg-surface-elevated border-t border-x sm:border border-border rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden animate-sheet-in sm:animate-modal-in"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="w-9 h-1 rounded-full bg-border mx-auto mt-3 mb-1 shrink-0 sm:hidden" aria-hidden="true" />
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        <div className="shrink-0 flex items-center justify-between px-5 py-3.5 sm:py-4 border-b border-border">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-2xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)]">
               <ChefHat className="w-4 h-4" aria-hidden="true" />
@@ -419,7 +421,7 @@ export function RecipeBuilderModal({
         </div>
 
         {/* Modal Content Scrollable Area */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 space-y-4 text-xs">
           {/* Recipe Name & Servings */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2 space-y-1">
@@ -432,7 +434,7 @@ export function RecipeBuilderModal({
                 placeholder="Recipe title (e.g. Avocado Toast)"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-surface-sub rounded-xl px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
+                className="w-full bg-surface-sub rounded-xl px-3 py-2 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
               />
             </div>
             <div className="space-y-1">
@@ -446,7 +448,7 @@ export function RecipeBuilderModal({
                 step="1"
                 value={defaultServings}
                 onChange={(e) => setDefaultServings(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                className="w-full bg-surface-sub rounded-xl px-3 py-2 text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
+                className="w-full bg-surface-sub rounded-xl px-3 py-2 text-base sm:text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
               />
             </div>
           </div>
@@ -458,7 +460,7 @@ export function RecipeBuilderModal({
               <button
                 type="button"
                 onClick={() => setBasis('perServing')}
-                className={`macro-spring active:scale-95 py-1.5 px-3 rounded-full text-xs text-center ${
+                className={`macro-spring active:scale-95 flex items-center justify-center py-1.5 px-3 rounded-full text-xs text-center leading-tight ${
                   basis === 'perServing'
                     ? 'bg-foreground text-background font-semibold shadow-xs'
                     : 'text-muted-foreground hover:text-foreground font-medium'
@@ -469,7 +471,7 @@ export function RecipeBuilderModal({
               <button
                 type="button"
                 onClick={() => setBasis('per100g')}
-                className={`macro-spring active:scale-95 py-1.5 px-3 rounded-full text-xs text-center ${
+                className={`macro-spring active:scale-95 flex items-center justify-center py-1.5 px-3 rounded-full text-xs text-center leading-tight ${
                   basis === 'per100g'
                     ? 'bg-foreground text-background font-semibold shadow-xs'
                     : 'text-muted-foreground hover:text-foreground font-medium'
@@ -584,7 +586,7 @@ export function RecipeBuilderModal({
                 placeholder="Search foods to add as ingredient..."
                 value={searchQuery}
                 onChange={(e) => handleSearchQueryChange(e.target.value)}
-                className="w-full bg-surface-sub rounded-xl pl-8 pr-8 py-2 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
+                className="w-full bg-surface-sub rounded-xl pl-8 pr-8 py-2 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
               />
               {isSearching && (
                 <Loader2
@@ -622,50 +624,50 @@ export function RecipeBuilderModal({
             className="space-y-2 pt-2 border-t border-border/60"
           >
             <span className="font-semibold text-foreground">Or Add Manual Ingredient</span>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <input
                 type="text"
                 placeholder="Ingredient name (e.g. Olive Oil)"
                 value={manualName}
                 onChange={(e) => setManualName(e.target.value)}
-                className="bg-surface-sub rounded-xl px-2.5 py-2 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
+                className="sm:col-span-2 bg-surface-sub rounded-xl px-2.5 py-2 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
               />
               <input
                 type="number"
                 placeholder="Weight (g)"
                 value={manualGrams}
                 onChange={(e) => setManualGrams(e.target.value)}
-                className="bg-surface-sub rounded-xl px-2.5 py-2 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
+                className="bg-surface-sub rounded-xl px-2.5 py-2 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
               />
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <input
                 type="number"
                 placeholder="Calories"
                 value={manualCals}
                 onChange={(e) => setManualCals(e.target.value)}
-                className="bg-surface-sub rounded-xl px-2 py-2 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
+                className="bg-surface-sub rounded-xl px-2.5 py-2 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
               />
               <input
                 type="number"
                 placeholder="Protein"
                 value={manualProtein}
                 onChange={(e) => setManualProtein(e.target.value)}
-                className="bg-surface-sub rounded-xl px-2 py-2 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
+                className="bg-surface-sub rounded-xl px-2.5 py-2 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
               />
               <input
                 type="number"
                 placeholder="Carbs"
                 value={manualCarbs}
                 onChange={(e) => setManualCarbs(e.target.value)}
-                className="bg-surface-sub rounded-xl px-2 py-2 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
+                className="bg-surface-sub rounded-xl px-2.5 py-2 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
               />
               <input
                 type="number"
                 placeholder="Fat"
                 value={manualFat}
                 onChange={(e) => setManualFat(e.target.value)}
-                className="bg-surface-sub rounded-xl px-2 py-2 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
+                className="bg-surface-sub rounded-xl px-2.5 py-2 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
               />
             </div>
             <button
@@ -679,7 +681,7 @@ export function RecipeBuilderModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-border bg-card/50">
+        <div className="shrink-0 flex items-center justify-end gap-2 px-5 pt-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] border-t border-border bg-card/50">
           <button
             type="button"
             onClick={onClose}
@@ -700,4 +702,6 @@ export function RecipeBuilderModal({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal;
 }

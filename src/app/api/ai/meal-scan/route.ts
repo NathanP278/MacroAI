@@ -44,10 +44,11 @@ export async function POST(request: Request) {
     'For each component:',
     '1. Provide a clear descriptive name.',
     '2. Estimate total portion weight in grams (must be > 0).',
-    '3. Provide nutritional density per 100g (calories, protein, carbs, fat, fiber).',
+    '3. Provide nutritional density per 100g: macronutrients (calories, protein, carbs, fat, fiber in g) AND estimated micronutrients (sodiumMg, potassiumMg, calciumMg, ironMg, magnesiumMg, zincMg, vitaminAMcg, vitaminCMg, vitaminDMcg, vitaminB6Mg, vitaminB12Mcg, folateMcg).',
     'CRITICAL: Do NOT double-count composite dishes. Decompose composite items into distinct sub-ingredients (e.g., bun, patty, cheese, and sauce separately).',
+    'Use exact units per 100g: mg for sodiumMg, potassiumMg, calciumMg, ironMg, magnesiumMg, zincMg, vitaminCMg, vitaminB6Mg; mcg for vitaminAMcg, vitaminDMcg, vitaminB12Mcg, folateMcg. Use 0 when a nutrient is negligible or absent.',
     'Return ONLY valid JSON matching this schema:',
-    '{ "items": [ { "name": "Ingredient Name", "grams": 150, "per100g": { "calories": 165, "protein": 31, "carbs": 0, "fat": 3.6, "fiber": 0 } } ] }',
+    '{ "items": [ { "name": "Ingredient Name", "grams": 150, "per100g": { "calories": 165, "protein": 31, "carbs": 0, "fat": 3.6, "fiber": 0 }, "microsPer100g": { "sodiumMg": 74, "potassiumMg": 256, "calciumMg": 15, "ironMg": 1.0, "magnesiumMg": 29, "zincMg": 1.0, "vitaminAMcg": 6, "vitaminCMg": 0, "vitaminDMcg": 0.1, "vitaminB6Mg": 0.6, "vitaminB12Mcg": 0.3, "folateMcg": 4 } } ] }',
   ]
     .filter(Boolean)
     .join('\n');

@@ -592,4 +592,77 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
     fireEvent.click(screen.getByRole('button', { name: '1x' }));
     expect(screen.getByTestId('hitl-total-calories')).toHaveTextContent('500');
   });
+
+  // 12. Fiber and 12 micronutrients display, live scaling, and persistence on Confirm & Log
+  test('displays estimated fiber and all 12 micronutrients, updates live on scaling, and logs them to foodLogs', async () => {
+    useLoggerStore.getState().setAiDraft({
+      imageDataUrl: 'data:image/jpeg;base64,test',
+      contextPrompt: 'spinach salmon bowl',
+      items: [
+        {
+          id: 'item-micros',
+          name: 'Spinach & Salmon',
+          grams: 100,
+          per100g: { calories: 150, protein: 16, carbs: 4, fat: 8, fiber: 2.5 },
+          microsPer100g: {
+            sodiumMg: 120,
+            potassiumMg: 450,
+            calciumMg: 80,
+            ironMg: 2.1,
+            magnesiumMg: 60,
+            zincMg: 0.9,
+            vitaminAMcg: 350,
+            vitaminCMg: 18,
+            vitaminDMcg: 5.5,
+            vitaminB6Mg: 0.4,
+            vitaminB12Mcg: 1.8,
+            folateMcg: 95,
+          },
+          verifiedSource: null,
+        },
+      ],
+    });
+
+    render(<AiMealScannerSheet open date="2026-11-14" mealSlot="lunch" onClose={() => {}} />);
+
+    // Fiber total is shown
+    expect(screen.getByTestId('hitl-total-fiber')).toHaveTextContent('2.5g');
+
+    // Expand Estimated Micronutrients (12)
+    fireEvent.click(screen.getByRole('button', { name: /estimated micronutrients/i }));
+    const microsGrid = screen.getByTestId('hitl-micronutrients-grid');
+    expect(microsGrid).toHaveTextContent('Sodium');
+    expect(microsGrid).toHaveTextContent('120mg');
+    expect(microsGrid).toHaveTextContent('Potassium');
+    expect(microsGrid).toHaveTextContent('450mg');
+    expect(microsGrid).toHaveTextContent('Folate');
+    expect(microsGrid).toHaveTextContent('95mcg');
+
+    // Scale to 2x (200g) -> values double live
+    fireEvent.click(screen.getByRole('button', { name: '2x' }));
+    expect(screen.getByTestId('hitl-total-fiber')).toHaveTextContent('5g');
+    expect(microsGrid).toHaveTextContent('240mg');
+    expect(microsGrid).toHaveTextContent('900mg');
+    expect(microsGrid).toHaveTextContent('190mcg');
+
+    // Confirm & Log persists scaled fiber and all 12 micronutrients
+    fireEvent.click(screen.getByRole('button', { name: /confirm & log/i }));
+    await waitFor(async () => expect(await db.foodLogs.count()).toBe(1));
+    const entries = await db.foodLogs.toArray();
+    expect(entries[0].nutritionSnapshot.fiber).toBe(5);
+    expect(entries[0].nutritionSnapshot.micros).toEqual({
+      sodiumMg: 240,
+      potassiumMg: 900,
+      calciumMg: 160,
+      ironMg: 4.2,
+      magnesiumMg: 120,
+      zincMg: 1.8,
+      vitaminAMcg: 700,
+      vitaminCMg: 36,
+      vitaminDMcg: 11,
+      vitaminB6Mg: 0.8,
+      vitaminB12Mcg: 3.6,
+      folateMcg: 190,
+    });
+  });
 });

@@ -1,18 +1,47 @@
 import { z } from 'zod';
 
+const optionalNonNegativeNumber = z
+  .number()
+  .nonnegative()
+  .nullable()
+  .optional()
+  .transform((v) => (typeof v === 'number' ? v : undefined));
+
 export const AiMacroNutrientsSchema = z.object({
   calories: z.number().nonnegative(),
   protein: z.number().nonnegative(),
   carbs: z.number().nonnegative(),
   fat: z.number().nonnegative(),
-  fiber: z.number().nonnegative().optional(),
+  fiber: z
+    .number()
+    .nonnegative()
+    .nullable()
+    .optional()
+    .transform((v) => (typeof v === 'number' ? v : 0)),
+});
+
+export const AiMicronutrientsSchema = z.object({
+  sodiumMg: optionalNonNegativeNumber,
+  potassiumMg: optionalNonNegativeNumber,
+  calciumMg: optionalNonNegativeNumber,
+  ironMg: optionalNonNegativeNumber,
+  magnesiumMg: optionalNonNegativeNumber,
+  zincMg: optionalNonNegativeNumber,
+  vitaminAMcg: optionalNonNegativeNumber,
+  vitaminCMg: optionalNonNegativeNumber,
+  vitaminDMcg: optionalNonNegativeNumber,
+  vitaminB6Mg: optionalNonNegativeNumber,
+  vitaminB12Mcg: optionalNonNegativeNumber,
+  folateMcg: optionalNonNegativeNumber,
 });
 
 export const AiMealItemSchema = z.object({
   name: z.string().min(1),
   grams: z.number().positive(),
   per100g: AiMacroNutrientsSchema,
-  microsPer100g: z.record(z.string(), z.number()).optional(),
+  microsPer100g: AiMicronutrientsSchema.nullable()
+    .optional()
+    .transform((v) => v ?? undefined),
 });
 
 export const AiMealScanResponseSchema = z.object({

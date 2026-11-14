@@ -13,10 +13,13 @@ import {
   RotateCcw,
   CheckCircle2,
   ArrowLeft,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { useLoggerStore, AiDraftItem } from '@/stores/logger-store';
 import { db, generateId } from '@/lib/db/macroai-db';
 import { scaleNutrition } from '@/lib/nutrition/scaling';
+import { RDA_MICRONUTRIENT_METADATA } from '@/lib/nutrition/daily-summary';
 import { compressImageToJpeg } from '@/lib/media/image-compress';
 import { HitlIngredientRow } from './hitl-ingredient-row';
 import { HitlVerificationSwapModal } from './hitl-verification-swap-modal';
@@ -58,6 +61,7 @@ export function AiMealScannerSheet({
   // Verification / Swap Modal State
   const [isSwapModalOpen, setIsSwapModalOpen] = useState(false);
   const [swapTargetItem, setSwapTargetItem] = useState<AiDraftItem | null>(null);
+  const [showMicros, setShowMicros] = useState(false);
 
   // User explicitly wants to re-scan with a new photo
   const [isRescanning, setIsRescanning] = useState(false);
@@ -166,7 +170,13 @@ export function AiMealScannerSheet({
         id: it.id || generateId(),
         name: it.name || 'Unknown food',
         grams: typeof it.grams === 'number' && it.grams > 0 ? it.grams : 100,
-        per100g: it.per100g || { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+        per100g: {
+          calories: it.per100g?.calories ?? 0,
+          protein: it.per100g?.protein ?? 0,
+          carbs: it.per100g?.carbs ?? 0,
+          fat: it.per100g?.fat ?? 0,
+          fiber: it.per100g?.fiber ?? 0,
+        },
         microsPer100g: it.microsPer100g || {},
         verifiedSource: null,
       }));
@@ -297,7 +307,13 @@ export function AiMealScannerSheet({
         id: it.id || generateId(),
         name: it.name || 'Refined item',
         grams: typeof it.grams === 'number' && it.grams > 0 ? it.grams : 100,
-        per100g: it.per100g || { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+        per100g: {
+          calories: it.per100g?.calories ?? 0,
+          protein: it.per100g?.protein ?? 0,
+          carbs: it.per100g?.carbs ?? 0,
+          fat: it.per100g?.fat ?? 0,
+          fiber: it.per100g?.fiber ?? 0,
+        },
         microsPer100g: it.microsPer100g || {},
         verifiedSource: it.verifiedSource ?? null,
         verifiedFoodId: it.verifiedFoodId,
@@ -386,10 +402,14 @@ export function AiMealScannerSheet({
   let totalCarbs = 0;
   let totalFat = 0;
   let totalFiber = 0;
+  const totalMicros: Record<string, number> = {};
+  for (const key of Object.keys(RDA_MICRONUTRIENT_METADATA)) {
+    totalMicros[key] = 0;
+  }
 
   if (aiDraft?.items) {
     for (const item of aiDraft.items) {
-      const { macros } = scaleNutrition(
+      const { macros, micros } = scaleNutrition(
         item.per100g,
         item.microsPer100g ?? {},
         'per100g',
@@ -400,6 +420,11 @@ export function AiMealScannerSheet({
       totalCarbs += macros.carbs;
       totalFat += macros.fat;
       totalFiber += macros.fiber;
+      for (const [k, v] of Object.entries(micros)) {
+        if (typeof v === 'number' && Number.isFinite(v)) {
+          totalMicros[k] = (totalMicros[k] ?? 0) + v;
+        }
+      }
     }
   }
 
@@ -662,13 +687,46 @@ export function AiMealScannerSheet({
                     <span className="block font-bold text-[var(--macro-fat)]">{Math.round(totalFat * 10) / 10}g</span>
                     <span className="text-[10px] uppercase">Fat</span>
                   </div>
-                  {totalFiber > 0 && (
-                    <div>
-                      <span className="block font-bold text-[var(--macro-fiber)]">{Math.round(totalFiber * 10) / 10}g</span>
-                      <span className="text-[10px] uppercase">Fib</span>
-                    </div>
-                  )}
+                  <div>
+                    <span className="block font-bold text-[var(--macro-fiber)]" data-testid="hitl-total-fiber">{Math.round(totalFiber * 10) / 10}g</span>
+                    <span className="text-[10px] uppercase">Fib</span>
+                  </div>
                 </div>
+              </div>
+
+              {/* Collapsible Estimated Micronutrients Summary */}
+              <div className="mb-3 rounded-2xl bg-surface-sub/60 border border-border shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowMicros((prev) => !prev)}
+                  aria-expanded={showMicros}
+                  className="w-full px-3 py-2 flex items-center justify-between text-[11px] font-medium text-muted-foreground hover:text-foreground"
+                >
+                  <span>Estimated Micronutrients (12)</span>
+                  {showMicros ? (
+                    <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
+                  )}
+                </button>
+                {showMicros && (
+                  <div
+                    data-testid="hitl-micronutrients-grid"
+                    className="px-3 pb-2.5 pt-1 border-t border-border/60 grid grid-cols-3 gap-x-3 gap-y-1.5 text-[11px] tabular-nums"
+                  >
+                    {Object.values(RDA_MICRONUTRIENT_METADATA).map((meta) => {
+                      const val = Math.round((totalMicros[meta.key] ?? 0) * 10) / 10;
+                      return (
+                        <div key={meta.key} className="flex items-center justify-between gap-1">
+                          <span className="text-muted-foreground truncate">{meta.name}</span>
+                          <span className="font-semibold text-foreground shrink-0">
+                            {val}{meta.unit}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Refine Error Banner */}

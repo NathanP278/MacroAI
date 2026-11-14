@@ -55,7 +55,7 @@ describe('Task 9: AI Schemas & JSON Parser', () => {
     expect(parsed.items[0].grams).toBe(10);
   });
 
-  it('rejects zero-gram or missing-macro malformed AI payloads', () => {
+    it('rejects zero-gram or missing-macro malformed AI payloads', () => {
     expect(() =>
       parseAiJsonResponse('{"items":[{"name":"Plate","grams":0}]}', AiMealScanResponseSchema)
     ).toThrow();
@@ -68,7 +68,64 @@ describe('Task 9: AI Schemas & JSON Parser', () => {
     expect(() =>
       parseAiJsonResponse('{"items":[]}', AiMealScanResponseSchema)
     ).toThrow();
+    expect(() =>
+      parseAiJsonResponse(
+        '{"items":[{"name":"Salad","grams":100,"per100g":{"calories":50,"protein":2,"carbs":8,"fat":1,"fiber":3},"microsPer100g":{"sodiumMg":-10}}]}',
+        AiMealScanResponseSchema
+      )
+    ).toThrow();
     expect(() => parseAiJsonResponse('not json', AiLabelOcrResponseSchema)).toThrow();
+  });
+
+  it('parses fiber and all 12 micronutrients in microsPer100g and normalizes null values', () => {
+    const raw = JSON.stringify({
+      items: [
+        {
+          name: 'Spinach & Salmon Bowl',
+          grams: 200,
+          per100g: { calories: 150, protein: 16, carbs: 4, fat: 8, fiber: 2.5 },
+          microsPer100g: {
+            sodiumMg: 120,
+            potassiumMg: 450,
+            calciumMg: 80,
+            ironMg: 2.1,
+            magnesiumMg: 60,
+            zincMg: 0.9,
+            vitaminAMcg: 350,
+            vitaminCMg: 18,
+            vitaminDMcg: 5.5,
+            vitaminB6Mg: 0.4,
+            vitaminB12Mcg: 1.8,
+            folateMcg: 95,
+          },
+        },
+        {
+          name: 'Plain Water',
+          grams: 100,
+          per100g: { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: null },
+          microsPer100g: { sodiumMg: null, calciumMg: 2 },
+        },
+      ],
+    });
+    const parsed = parseAiJsonResponse(raw, AiMealScanResponseSchema);
+    expect(parsed.items[0].per100g.fiber).toBe(2.5);
+    expect(parsed.items[0].microsPer100g).toEqual({
+      sodiumMg: 120,
+      potassiumMg: 450,
+      calciumMg: 80,
+      ironMg: 2.1,
+      magnesiumMg: 60,
+      zincMg: 0.9,
+      vitaminAMcg: 350,
+      vitaminCMg: 18,
+      vitaminDMcg: 5.5,
+      vitaminB6Mg: 0.4,
+      vitaminB12Mcg: 1.8,
+      folateMcg: 95,
+    });
+    expect(parsed.items[1].per100g.fiber).toBe(0);
+    expect(parsed.items[1].microsPer100g?.sodiumMg).toBeUndefined();
+    expect(parsed.items[1].microsPer100g?.calciumMg).toBe(2);
   });
 
   it('validates AiLabelOcrResponseSchema matching Task 8 -> Task 9 contract', () => {
@@ -453,6 +510,83 @@ describe('Task 9: Route Handlers', () => {
       expect(data.items[0].grams).toBe(200);
       expect(data.items[1].name).toBe('Steamed Asparagus');
     });
+
+    it('instructs AI to estimate fiber and all 12 micronutrients and returns microsPer100g', async () => {
+      process.env.AI_BASE_URL = 'https://api.openai.com/v1';
+      process.env.AI_API_KEY = 'sk-key';
+      process.env.AI_MODEL = 'gpt-4o';
+
+      const mockMicros = {
+        sodiumMg: 59,
+        potassiumMg: 363,
+        calciumMg: 9,
+        ironMg: 0.3,
+        magnesiumMg: 27,
+        zincMg: 0.4,
+        vitaminAMcg: 12,
+        vitaminCMg: 0,
+        vitaminDMcg: 11,
+        vitaminB6Mg: 0.6,
+        vitaminB12Mcg: 3.2,
+        folateMcg: 25,
+      };
+
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  items: [
+                    {
+                      name: 'Grilled Salmon',
+                      grams: 150,
+                      per100g: { calories: 208, protein: 20, carbs: 0, fat: 13, fiber: 0 },
+                      microsPer100g: mockMicros,
+                    },
+                  ],
+                }),
+              },
+            },
+          ],
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const req = new Request('http://localhost/api/ai/meal-scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageDataUrl: 'data:image/jpeg;base64,salmon' }),
+      });
+
+      const res = await postMealScan(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.items[0].microsPer100g).toEqual(mockMicros);
+
+      // Verify prompt includes fiber and all 12 micronutrient keys
+      const sentBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      const promptText = sentBody.messages[0].content[0].text as string;
+      for (const key of [
+        'fiber',
+        'sodiumMg',
+        'potassiumMg',
+        'calciumMg',
+        'ironMg',
+        'magnesiumMg',
+        'zincMg',
+        'vitaminAMcg',
+        'vitaminCMg',
+        'vitaminDMcg',
+        'vitaminB6Mg',
+        'vitaminB12Mcg',
+        'folateMcg',
+      ]) {
+        expect(promptText).toContain(key);
+      }
+    });
   });
 
   describe('POST /api/ai/refine', () => {
@@ -508,6 +642,92 @@ describe('Task 9: Route Handlers', () => {
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.items[0].grams).toBe(250);
+    });
+
+    it('instructs AI to include fiber and all 12 micronutrients on refine', async () => {
+      process.env.AI_BASE_URL = 'https://api.openai.com/v1';
+      process.env.AI_API_KEY = 'sk-key';
+      process.env.AI_MODEL = 'gpt-4o';
+
+      const mockMicros = {
+        sodiumMg: 79,
+        potassiumMg: 558,
+        calciumMg: 99,
+        ironMg: 2.7,
+        magnesiumMg: 79,
+        zincMg: 0.5,
+        vitaminAMcg: 469,
+        vitaminCMg: 28,
+        vitaminDMcg: 0,
+        vitaminB6Mg: 0.2,
+        vitaminB12Mcg: 0,
+        folateMcg: 194,
+      };
+
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  items: [
+                    {
+                      name: 'Steamed Spinach',
+                      grams: 100,
+                      per100g: { calories: 23, protein: 2.9, carbs: 3.6, fat: 0.4, fiber: 2.2 },
+                      microsPer100g: mockMicros,
+                    },
+                  ],
+                }),
+              },
+            },
+          ],
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const req = new Request('http://localhost/api/ai/refine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: [
+            {
+              name: 'Steamed Spinach',
+              grams: 50,
+              per100g: { calories: 23, protein: 2.9, carbs: 3.6, fat: 0.4, fiber: 2.2 },
+            },
+          ],
+          instruction: 'Double the spinach to 100g',
+        }),
+      });
+
+      const res = await postRefine(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.items[0].per100g.fiber).toBe(2.2);
+      expect(data.items[0].microsPer100g).toEqual(mockMicros);
+
+      const sentBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      const promptText = sentBody.messages[0].content as string;
+      for (const key of [
+        'fiber',
+        'sodiumMg',
+        'potassiumMg',
+        'calciumMg',
+        'ironMg',
+        'magnesiumMg',
+        'zincMg',
+        'vitaminAMcg',
+        'vitaminCMg',
+        'vitaminDMcg',
+        'vitaminB6Mg',
+        'vitaminB12Mcg',
+        'folateMcg',
+      ]) {
+        expect(promptText).toContain(key);
+      }
     });
   });
 

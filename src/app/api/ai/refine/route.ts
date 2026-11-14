@@ -48,10 +48,11 @@ export async function POST(request: Request) {
     JSON.stringify(items, null, 2),
     `User refinement instruction: "${instruction.trim()}"`,
     contextPrompt ? `Additional cooking / prep context: "${contextPrompt.trim()}"` : '',
-    'Apply the requested changes to the draft. You may modify portions in grams, add or delete ingredients, or refine per100g densities.',
+    'Apply the requested changes to the draft. You may modify portions in grams, add or delete ingredients, or refine per100g macronutrient and microsPer100g micronutrient densities.',
     'Ensure all items are non-overlapping individual ingredients with positive gram weights.',
+    'For every item, include per100g (calories, protein, carbs, fat, fiber) AND microsPer100g (sodiumMg, potassiumMg, calciumMg, ironMg, magnesiumMg, zincMg, vitaminAMcg, vitaminCMg, vitaminDMcg, vitaminB6Mg, vitaminB12Mcg, folateMcg) using exact units per 100g (mg or mcg as indicated by the key suffix; 0 if negligible). Preserve existing verified densities when only portion grams change.',
     'Return ONLY valid JSON matching this schema:',
-    '{ "items": [ { "name": "Ingredient Name", "grams": 150, "per100g": { "calories": 165, "protein": 31, "carbs": 0, "fat": 3.6, "fiber": 0 } } ] }',
+    '{ "items": [ { "name": "Ingredient Name", "grams": 150, "per100g": { "calories": 165, "protein": 31, "carbs": 0, "fat": 3.6, "fiber": 0 }, "microsPer100g": { "sodiumMg": 74, "potassiumMg": 256, "calciumMg": 15, "ironMg": 1.0, "magnesiumMg": 29, "zincMg": 1.0, "vitaminAMcg": 6, "vitaminCMg": 0, "vitaminDMcg": 0.1, "vitaminB6Mg": 0.6, "vitaminB12Mcg": 0.3, "folateMcg": 4 } } ] }',
   ]
     .filter(Boolean)
     .join('\n');

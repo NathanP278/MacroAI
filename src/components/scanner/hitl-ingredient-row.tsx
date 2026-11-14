@@ -135,12 +135,8 @@ export function HitlIngredientRow({
           <span><strong className="text-[var(--macro-carbs)]">{macros.carbs}</strong>C</span>
           <span>&bull;</span>
           <span><strong className="text-[var(--macro-fat)]">{macros.fat}</strong>F</span>
-          {typeof macros.fiber === 'number' && macros.fiber > 0 && (
-            <>
-              <span>&bull;</span>
-              <span><strong className="text-[var(--macro-fiber)]">{macros.fiber}</strong>Fib</span>
-            </>
-          )}
+          <span>&bull;</span>
+          <span><strong className="text-[var(--macro-fiber)]">{macros.fiber}</strong>Fib</span>
         </div>
       </div>
 
