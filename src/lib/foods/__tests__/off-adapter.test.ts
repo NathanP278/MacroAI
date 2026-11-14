@@ -167,6 +167,26 @@ describe('Open Food Facts Adapter & Barcode Waterfall', () => {
         expect(res.item.name).toBe('Local Bar');
       }
       expect(fetchSpy).not.toHaveBeenCalled();
+
+      // Also hits when scanned as 12-digit UPC-A vs 13-digit EAN-13 leading-zero alias
+      await db.foodsCache.put({
+        id: 'off:0049000042566',
+        barcode: '0049000042566',
+        source: 'off',
+        name: 'Coca-Cola Zero Sugar',
+        basis: 'per100ml',
+        servingSize: 100,
+        servingUnit: 'ml',
+        nutrientsPerBasis: { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+        micronutrientsPerBasis: {},
+        updatedAt: 1,
+      });
+      const aliasRes = await lookupBarcodeWaterfall('049000042566');
+      expect(aliasRes.status).toBe('hit');
+      if (aliasRes.status === 'hit') {
+        expect(aliasRes.item.name).toBe('Coca-Cola Zero Sugar');
+      }
+      expect(fetchSpy).not.toHaveBeenCalled();
     });
 
     test('fetches /api/off on cache miss, caches item, and returns hit', async () => {
@@ -290,7 +310,9 @@ describe('Open Food Facts Adapter & Barcode Waterfall', () => {
     test('forwards request to Open Food Facts with User-Agent header and returns Cache-Control on status 1', async () => {
       const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: RequestInfo | URL, init?: RequestInit) => {
         const urlStr = String(url);
-        expect(urlStr).toBe('https://world.openfoodfacts.org/api/v2/product/737628064502.json');
+        expect(urlStr).toMatch(
+          /^https:\/\/world\.openfoodfacts\.org\/api\/v2\/product\/737628064502\.json\?fields=/
+        );
         expect(new Headers(init?.headers).get('User-Agent')).toBe('MacroAI/1.0');
 
         return new Response(

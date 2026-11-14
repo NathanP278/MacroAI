@@ -12,10 +12,10 @@ import {
   ArrowLeft,
   Plus,
 } from 'lucide-react';
-import { Html5Qrcode } from 'html5-qrcode';
 import { db, generateId } from '@/lib/db/macroai-db';
 import { scaleNutrition } from '@/lib/nutrition/scaling';
 import { lookupBarcodeWaterfall, BarcodeLookupResult } from '@/hooks/use-barcode-lookup';
+import { startBarcodeVideoScan } from '@/lib/scanner/barcode-decoder';
 import { useLoggerStore } from '@/stores/logger-store';
 import { AddBarcodeProductModal } from './add-barcode-product-modal';
 import type { FoodLogEntry } from '@/types/nutrition';
@@ -43,6 +43,7 @@ function BarcodeScannerContent({
   const effectiveMealSlot = mealSlot ?? storeMealSlot ?? 'snacks';
 
   const [manualBarcode, setManualBarcode] = useState('');
+  const [detectedBarcode, setDetectedBarcode] = useState<string | null>(null);
   const [lookupResult, setLookupResult] = useState<BarcodeLookupResult | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -112,124 +113,35 @@ function BarcodeScannerContent({
     // Explicitly reset scan lock so interrupted or restarted scanning is never frozen
     isProcessingScanRef.current = false;
 
-    let isMounted = true;
-    let activeStream: MediaStream | null = null;
-    let html5Scanner: Html5Qrcode | null = null;
-    let scanInterval: ReturnType<typeof setInterval> | null = null;
-
-    const stopAllScanning = () => {
-      if (scanInterval) {
-        clearInterval(scanInterval);
-        scanInterval = null;
-      }
-      if (activeStream) {
-        activeStream.getTracks().forEach((t) => t.stop());
-        activeStream = null;
-      }
-      if (html5Scanner && (html5Scanner as { isScanning?: boolean }).isScanning) {
-        html5Scanner.stop().catch(() => {});
-      }
-    };
-
-    const handleBarcodeDetected = (rawCode: string) => {
-      if (isProcessingScanRef.current) return;
-      isProcessingScanRef.current = true;
-      stopAllScanning();
-      handleLookup(rawCode);
-    };
-
-    async function startScanner() {
-      setCameraError(null);
-
-      if (typeof navigator === 'undefined' || !navigator?.mediaDevices?.getUserMedia) {
-        if (isMounted) {
-          setCameraError('Camera access unavailable. You can enter the barcode manually below.');
-        }
-        return;
-      }
-
-      // Fast-path: Native BarcodeDetector if available
-      if (
-        typeof window !== 'undefined' &&
-        'BarcodeDetector' in window &&
-        navigator?.mediaDevices?.getUserMedia
-      ) {
-        try {
-          const BarcodeDetectorClass = (window as unknown as { BarcodeDetector: new (opts: { formats: string[] }) => { detect: (v: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> } }).BarcodeDetector;
-          const detector = new BarcodeDetectorClass({
-            formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'qr_code'],
-          });
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment' },
-          });
-
-          if (!isMounted) {
-            stream.getTracks().forEach((t) => t.stop());
-            return;
-          }
-
-          activeStream = stream;
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            await videoRef.current.play().catch(() => {});
-          }
-
-          scanInterval = setInterval(async () => {
-            if (!videoRef.current || videoRef.current.readyState < 2) return;
-            try {
-              const barcodes = await detector.detect(videoRef.current);
-              if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
-                handleBarcodeDetected(barcodes[0].rawValue);
-              }
-            } catch {
-              // Ignore frame detection errors
-            }
-          }, 200);
-
-          return;
-        } catch {
-          // Fall through to Html5Qrcode fallback
-        }
-      }
-
-      // Fallback: html5-qrcode
-      try {
-        const container = document.getElementById('macroai-barcode-scanner');
-        if (!container) return;
-
-        const scanner = new Html5Qrcode('macroai-barcode-scanner');
-        html5Scanner = scanner;
-
-        await scanner.start(
-          { facingMode: 'environment' },
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-          },
-          (decodedText) => {
-            if (isMounted) {
-              handleBarcodeDetected(decodedText);
-            }
-          },
-          () => {}
-        );
-
-        if (!isMounted) {
-          scanner.stop().catch(() => {});
-          return;
-        }
-      } catch {
-        if (isMounted) {
-          setCameraError('Camera access unavailable. You can enter the barcode manually below.');
-        }
-      }
+    const videoEl = videoRef.current;
+    if (!videoEl) {
+      return;
     }
 
-    startScanner();
+    setCameraError(null);
+
+    const stopScanning = startBarcodeVideoScan({
+      video: videoEl,
+      onDetected: (rawCode) => {
+        if (isProcessingScanRef.current) return;
+        isProcessingScanRef.current = true;
+        setDetectedBarcode(rawCode);
+        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+          try {
+            navigator.vibrate(35);
+          } catch {
+            // Ignore vibration failures
+          }
+        }
+        handleLookup(rawCode);
+      },
+      onCameraError: (message) => {
+        setCameraError(message);
+      },
+    });
 
     return () => {
-      isMounted = false;
-      stopAllScanning();
+      stopScanning();
     };
   }, [lookupResult, isAddModalOpen]);
 
@@ -291,6 +203,7 @@ function BarcodeScannerContent({
 
   const handleResetScanner = () => {
     setLookupResult(null);
+    setDetectedBarcode(null);
     setManualBarcode('');
     setMissingBarcode('');
     setIsAddModalOpen(false);
@@ -593,24 +506,30 @@ function BarcodeScannerContent({
                   <>
                     <video
                       ref={videoRef}
+                      autoPlay
                       playsInline
                       muted
                       className="absolute inset-0 w-full h-full object-cover"
                     />
-                    <div
-                      id="macroai-barcode-scanner"
-                      className="absolute inset-0 w-full h-full overflow-hidden"
-                    />
 
                     {/* Target Reticle Overlay */}
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                      <div className="w-48 h-32 border-2 border-[var(--macro-calories)]/80 rounded-xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]">
+                      <div className="w-56 h-32 border-2 border-[var(--macro-calories)]/80 rounded-xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]">
                         <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[var(--macro-calories)]" />
                         <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[var(--macro-calories)]" />
                         <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[var(--macro-calories)]" />
                         <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[var(--macro-calories)]" />
                       </div>
                     </div>
+
+                    {isLookingUp && detectedBarcode && (
+                      <div className="absolute inset-0 bg-black/70 backdrop-blur-xs flex flex-col items-center justify-center gap-2 z-10">
+                        <Loader2 className="w-6 h-6 animate-spin text-[var(--macro-calories)]" aria-hidden="true" />
+                        <span className="text-xs font-medium text-foreground">
+                          Looking up <span className="font-mono">{detectedBarcode}</span>...
+                        </span>
+                      </div>
+                    )}
 
                     <div className="absolute bottom-2 inset-x-0 text-center pointer-events-none">
                       <span className="text-[10px] bg-black/60 backdrop-blur-sm text-foreground/80 px-2.5 py-1 rounded-full border border-white/10 font-medium">

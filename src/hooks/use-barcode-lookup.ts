@@ -22,9 +22,16 @@ export async function lookupBarcodeWaterfall(rawBarcode: string): Promise<Barcod
     return { status: 'missing', barcode };
   }
 
-  // 1. Local Dexie cache lookup (offline-first)
+  // 1. Local Dexie cache lookup (offline-first, including UPC-A <-> EAN-13 leading-zero alias)
+  const cacheCandidates = [barcode];
+  if (barcode.length === 12) {
+    cacheCandidates.push(`0${barcode}`);
+  } else if (barcode.length === 13 && barcode.startsWith('0')) {
+    cacheCandidates.push(barcode.slice(1));
+  }
+
   try {
-    const cached = await db.foodsCache.where('barcode').equals(barcode).first();
+    const cached = await db.foodsCache.where('barcode').anyOf(cacheCandidates).first();
     if (cached) {
       return { status: 'hit', item: cached };
     }

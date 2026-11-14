@@ -566,6 +566,87 @@ describe('Task 8: Barcode Scanner & Missing-Barcode Creator', () => {
       fireEvent.keyDown(window, { key: 'Escape' });
       expect(handleClose).toHaveBeenCalled();
     });
+
+    test('starts HD camera stream and auto-detects barcode to display product details', async () => {
+      const stopTrack = vi.fn();
+      const mockStream = {
+        getTracks: () => [{ stop: stopTrack }],
+        getVideoTracks: () => [{ stop: stopTrack, getCapabilities: () => ({}), applyConstraints: vi.fn() }],
+      } as unknown as MediaStream;
+
+      const getUserMediaMock = vi.fn().mockResolvedValue(mockStream);
+      Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: { getUserMedia: getUserMediaMock },
+      });
+
+      const detectMock = vi.fn().mockResolvedValue([{ rawValue: '3017620422003' }]);
+      class MockBarcodeDetector {
+        static getSupportedFormats = vi.fn().mockResolvedValue(['ean_13', 'upc_a']);
+        detect = detectMock;
+      }
+      vi.stubGlobal('BarcodeDetector', MockBarcodeDetector);
+
+      vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+
+      // Mock fetch to /api/off/3017620422003 returning Nutella
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            status: 1,
+            product: {
+              product_name: 'Nutella',
+              brands: 'Ferrero',
+              nutriments: {
+                'energy-kcal_100g': 539,
+                proteins_100g: 6.3,
+                carbohydrates_100g: 57.5,
+                fat_100g: 30.9,
+              },
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+
+      render(
+        <BarcodeScannerDrawer
+          open
+          date="2026-11-14"
+          mealSlot="snacks"
+          onClose={() => {}}
+        />
+      );
+
+      await waitFor(() => {
+        expect(getUserMediaMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            video: expect.objectContaining({
+              facingMode: { ideal: 'environment' },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            }),
+          })
+        );
+      });
+
+      // Simulate ready video dimensions so frame loop runs detect()
+      const videoEl = document.querySelector('video') as HTMLVideoElement;
+      Object.defineProperty(videoEl, 'readyState', { configurable: true, value: 4 });
+      Object.defineProperty(videoEl, 'videoWidth', { configurable: true, value: 1280 });
+      Object.defineProperty(videoEl, 'videoHeight', { configurable: true, value: 720 });
+
+      await waitFor(() => {
+        expect(screen.getByText('Nutella')).toBeInTheDocument();
+      });
+      expect(stopTrack).toHaveBeenCalled();
+
+      vi.unstubAllGlobals();
+      Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: undefined,
+      });
+    });
   });
 
   describe('AppShell Integration', () => {

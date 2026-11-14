@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const OFF_BASE_URL = 'https://world.openfoodfacts.org/api/v2/product';
+const OFF_FIELDS =
+  'product_name,product_name_en,generic_name,brands,brand_owner,nutriments,product_quantity_unit,serving_quantity_unit,serving_quantity,serving_size';
 
 export async function GET(
   request: NextRequest,
@@ -22,13 +24,14 @@ export async function GET(
     );
   }
 
-  const targetUrl = `${OFF_BASE_URL}/${encodeURIComponent(barcode)}.json`;
+  const targetUrl = `${OFF_BASE_URL}/${encodeURIComponent(barcode)}.json?fields=${OFF_FIELDS}`;
 
   try {
     const upstreamRes = await fetch(targetUrl, {
       headers: {
         'User-Agent': 'MacroAI/1.0',
       },
+      next: { revalidate: 86400 },
       signal: AbortSignal.timeout(8000),
     });
 
