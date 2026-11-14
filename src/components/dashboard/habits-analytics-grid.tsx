@@ -56,9 +56,9 @@ export function HabitsAnalyticsGrid({
   );
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`space-y-4 sm:space-y-5 ${className}`}>
       {/* Insights & Nutrition Bento Section (Pic 3) */}
-      <section aria-label="Nutrition analytics" className="space-y-2.5">
+      <section aria-label="Nutrition analytics" className="space-y-2.5 sm:space-y-3">
         <div className="flex items-center justify-between px-0.5">
           <h2 className="text-base font-bold tracking-tight text-foreground">
             Nutrition
@@ -71,15 +71,15 @@ export function HabitsAnalyticsGrid({
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {/* Calories Today Card with Target Notch (Pic 2 & 3) */}
           <Link
             href="/log"
-            className="min-w-0 rounded-2xl bg-card p-3.5 flex flex-col justify-between gap-4 hover:bg-surface-sub/60 active:scale-[0.985] macro-spring group"
+            className="min-w-0 rounded-2xl bg-card p-3.5 sm:p-4 flex flex-col justify-between gap-4 hover:bg-surface-sub/60 active:scale-[0.985] macro-spring group"
           >
             <div>
               <div className="text-sm font-semibold text-foreground">Calories</div>
-              <div className="text-[11px] text-muted-foreground">Today</div>
+              <div className="text-xs text-muted-foreground">Today</div>
             </div>
 
             <div className="relative w-full h-3.5 rounded-sm bg-surface-sub overflow-hidden">
@@ -99,7 +99,7 @@ export function HabitsAnalyticsGrid({
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold tabular-nums text-foreground">
+              <span className="text-sm sm:text-base font-bold tabular-nums text-foreground">
                 {summary.calories.consumed.toLocaleString()}{' '}
                 <span className="text-xs font-normal text-muted-foreground">kcal</span>
               </span>
@@ -111,13 +111,13 @@ export function HabitsAnalyticsGrid({
           </Link>
 
           {/* Macros Last 7 Days Stacked Bar Chart (Pic 3) */}
-          <div className="min-w-0 rounded-2xl bg-card p-3.5 flex flex-col justify-between gap-3">
+          <div className="min-w-0 rounded-2xl bg-card p-3.5 sm:p-4 flex flex-col justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-foreground">Macros</div>
-              <div className="text-[11px] text-muted-foreground">Last 7 Days</div>
+              <div className="text-xs text-muted-foreground">Last 7 Days</div>
             </div>
 
-            <div className="h-10 grid grid-cols-7 items-end gap-1 pt-1">
+            <div className="h-11 grid grid-cols-7 items-end gap-1.5 pt-1">
               {weeklyDays.map((day) => {
                 const proCal = day.protein * 4;
                 const fatCal = day.fat * 9;
@@ -125,8 +125,8 @@ export function HabitsAnalyticsGrid({
                 const macroSum = proCal + fatCal + carbCal;
                 const totalHeightPct =
                   macroSum > 0
-                    ? Math.max(12, Math.min(100, Math.round((macroSum / maxStackKcal) * 100)))
-                    : 8;
+                    ? Math.max(14, Math.min(100, Math.round((macroSum / maxStackKcal) * 100)))
+                    : 16;
                 const carbShare = macroSum > 0 ? (carbCal / macroSum) * 100 : 34;
                 const fatShare = macroSum > 0 ? (fatCal / macroSum) * 100 : 33;
                 const proShare = macroSum > 0 ? (proCal / macroSum) * 100 : 33;
@@ -175,7 +175,7 @@ export function HabitsAnalyticsGrid({
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold tabular-nums text-foreground">
+              <span className="text-sm sm:text-base font-bold tabular-nums text-foreground">
                 {summary.calories.consumed.toLocaleString()}{' '}
                 <span className="text-xs font-normal text-muted-foreground">kcal</span>
               </span>
@@ -192,25 +192,25 @@ export function HabitsAnalyticsGrid({
       </section>
 
       {/* Habits & Meal Budget Row (Pic 1 exact 2-col card anatomy) */}
-      <section aria-label="Habits and remaining meal budget" className="space-y-2.5">
+      <section aria-label="Habits and remaining meal budget" className="space-y-2.5 sm:space-y-3">
         <div className="flex items-center justify-between px-0.5">
           <h2 className="text-base font-bold tracking-tight text-foreground">
             Habits
           </h2>
-          <span className="text-[11px] font-medium text-muted-foreground">
+          <span className="text-xs font-medium text-muted-foreground">
             Adherence Neutral
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {/* Food Logging 30-Day Heatmap Grid (Pic 1 right card) */}
           <Link
             href="/log"
-            className="min-w-0 rounded-2xl bg-card p-3.5 flex flex-col justify-between gap-3 hover:bg-surface-sub/60 active:scale-[0.985] macro-spring group"
+            className="min-w-0 rounded-2xl bg-card p-3.5 sm:p-4 flex flex-col justify-between gap-3 hover:bg-surface-sub/60 active:scale-[0.985] macro-spring group"
           >
             <div>
               <div className="text-sm font-semibold text-foreground">Food Logging</div>
-              <div className="text-[11px] text-muted-foreground">Last 30 Days</div>
+              <div className="text-xs text-muted-foreground">Last 30 Days</div>
             </div>
 
             <div
@@ -233,7 +233,7 @@ export function HabitsAnalyticsGrid({
 
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted-foreground tabular-nums">
-                <strong className="text-sm font-bold text-foreground">
+                <strong className="text-sm sm:text-base font-bold text-foreground">
                   {weekLoggedCount}/7
                 </strong>{' '}
                 this week
@@ -248,49 +248,49 @@ export function HabitsAnalyticsGrid({
           {/* Remaining Meal Allocation Tile */}
           <Link
             href="/log"
-            className="min-w-0 rounded-2xl bg-card p-3.5 flex flex-col justify-between gap-3 hover:bg-surface-sub/60 active:scale-[0.985] macro-spring group"
+            className="min-w-0 rounded-2xl bg-card p-3.5 sm:p-4 flex flex-col justify-between gap-3 hover:bg-surface-sub/60 active:scale-[0.985] macro-spring group"
           >
             <div>
-              <div className="text-sm font-semibold text-foreground">
+              <div className="text-sm font-semibold text-foreground truncate">
                 {nextSlotName ? `Next: ${nextSlotName}` : 'Daily Balance'}
               </div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-xs text-muted-foreground truncate">
                 Remaining Meal Allocation
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 tabular-nums">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2 tabular-nums">
               <div>
-                <div className="text-[10px] text-muted-foreground">Calories</div>
+                <div className="text-[11px] font-medium text-muted-foreground">Calories</div>
                 <div
-                  className="text-xs font-bold"
+                  className="text-sm font-bold"
                   style={{ color: 'var(--macro-calories)' }}
                 >
                   {nextSlotBudget.calories} kcal
                 </div>
               </div>
               <div>
-                <div className="text-[10px] text-muted-foreground">Protein</div>
+                <div className="text-[11px] font-medium text-muted-foreground">Protein</div>
                 <div
-                  className="text-xs font-bold"
+                  className="text-sm font-bold"
                   style={{ color: 'var(--macro-protein)' }}
                 >
                   {nextSlotBudget.protein}g
                 </div>
               </div>
               <div>
-                <div className="text-[10px] text-muted-foreground">Fat</div>
+                <div className="text-[11px] font-medium text-muted-foreground">Fat</div>
                 <div
-                  className="text-xs font-bold"
+                  className="text-sm font-bold"
                   style={{ color: 'var(--macro-fat)' }}
                 >
                   {nextSlotBudget.fat}g
                 </div>
               </div>
               <div>
-                <div className="text-[10px] text-muted-foreground">Carbs</div>
+                <div className="text-[11px] font-medium text-muted-foreground">Carbs</div>
                 <div
-                  className="text-xs font-bold"
+                  className="text-sm font-bold"
                   style={{ color: 'var(--macro-carbs)' }}
                 >
                   {nextSlotBudget.carbs}g

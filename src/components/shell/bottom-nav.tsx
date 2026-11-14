@@ -53,8 +53,8 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
     <div className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
       {/* Persistent Quick Search Strip on Dashboard & Food Log (Pic 4 style) */}
       {showQuickSearchBar && onDirectAction && (
-        <div className="max-w-2xl mx-auto px-3 sm:px-6 pb-2 pointer-events-auto">
-          <div className="bg-surface-card/95 backdrop-blur-md border border-border rounded-2xl h-11 px-3 flex items-center gap-2 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 pb-2.5 pointer-events-auto">
+          <div className="bg-surface-card/95 backdrop-blur-md border border-border rounded-2xl h-12 px-3.5 flex items-center gap-2 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
             <button
               type="button"
               onClick={() => onDirectAction("search")}
@@ -62,7 +62,7 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
               className="flex-1 flex items-center gap-2.5 text-left text-muted-foreground hover:text-foreground transition-colors h-full min-w-0"
             >
               <Search className="w-4 h-4 shrink-0" aria-hidden="true" />
-              <span className="text-xs font-medium truncate">Search for a food</span>
+              <span className="text-[13px] font-medium truncate">Search for a food</span>
             </button>
 
             <div className="flex items-center gap-1 shrink-0">
@@ -70,7 +70,7 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                 type="button"
                 onClick={() => onDirectAction("barcode")}
                 aria-label="Open barcode camera"
-                className="touch-target macro-spring active:scale-95 w-8 h-8 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+                className="touch-target macro-spring active:scale-95 w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub"
               >
                 <ScanBarcode className="w-4 h-4" aria-hidden="true" />
               </button>
@@ -78,7 +78,7 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                 type="button"
                 onClick={() => onDirectAction("ai-scan")}
                 aria-label="Open photo scanner"
-                className="touch-target macro-spring active:scale-95 w-8 h-8 rounded-xl flex items-center justify-center text-[var(--macro-calories)] hover:bg-surface-sub"
+                className="touch-target macro-spring active:scale-95 w-9 h-9 rounded-xl flex items-center justify-center text-[var(--macro-calories)] hover:bg-surface-sub"
               >
                 <Sparkles className="w-4 h-4" aria-hidden="true" />
               </button>
@@ -93,7 +93,7 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
         aria-label="Bottom Navigation"
         className="pointer-events-auto bg-surface-card/95 backdrop-blur-md border-t border-border pb-[max(0.35rem,env(safe-area-inset-bottom))]"
       >
-        <div className="max-w-2xl mx-auto h-15 px-2 sm:px-6 flex items-center justify-between gap-1">
+        <div className="max-w-2xl mx-auto h-16 px-2 sm:px-6 flex items-center justify-between gap-1">
           {/* Left Nav items */}
           <div className="flex items-center gap-0.5 flex-1 justify-around min-w-0">
             {NAV_ITEMS_LEFT.map((item) => {
@@ -111,11 +111,11 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                   aria-current={active ? "page" : undefined}
                 >
                   <Icon
-                    className={`w-[19px] h-[19px] mb-0.5 ${
+                    className={`w-5 h-5 mb-0.5 ${
                       active ? "stroke-[2.25]" : "stroke-[1.75]"
                     }`}
                   />
-                  <span className="text-[10px] tracking-tight">{item.label}</span>
+                  <span className="text-[11px] tracking-tight">{item.label}</span>
                 </Link>
               );
             })}
@@ -150,11 +150,11 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                   aria-current={active ? "page" : undefined}
                 >
                   <Icon
-                    className={`w-[19px] h-[19px] mb-0.5 ${
+                    className={`w-5 h-5 mb-0.5 ${
                       active ? "stroke-[2.25]" : "stroke-[1.75]"
                     }`}
                   />
-                  <span className="text-[10px] tracking-tight">{item.label}</span>
+                  <span className="text-[11px] tracking-tight">{item.label}</span>
                 </Link>
               );
             })}

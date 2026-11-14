@@ -50,7 +50,7 @@ function MacroColumnBar({
 }) {
   return (
     <div className="flex flex-col items-center gap-1.5 min-w-0">
-      <span className="text-[11px] font-medium text-muted-foreground truncate">
+      <span className="text-xs font-medium text-muted-foreground truncate">
         {label}
       </span>
       <progress
@@ -65,7 +65,7 @@ function MacroColumnBar({
           } as React.CSSProperties
         }
       />
-      <span className="text-[11px] font-semibold tabular-nums text-foreground whitespace-nowrap">
+      <span className="text-xs font-semibold tabular-nums text-foreground whitespace-nowrap">
         {formatMacroReadout(metric, mode)}
       </span>
     </div>
@@ -119,7 +119,7 @@ export function MacroBentoGrid({
   return (
     <section
       aria-label="Daily Nutrition Summary"
-      className={`rounded-2xl bg-card p-4 sm:p-5 space-y-4 min-w-0 ${className}`}
+      className={`rounded-2xl bg-card p-5 sm:p-6 flex flex-col justify-between gap-4 min-w-0 ${className}`}
     >
       {/* Top Card Header + Slide Switcher Dots (Pics 1 & 4) */}
       <div className="flex items-center justify-between gap-2 min-w-0">
@@ -170,16 +170,16 @@ export function MacroBentoGrid({
           <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 sm:gap-3 pt-1">
             {/* Left Flanking Metric */}
             <div className="text-center min-w-0">
-              <div className="text-base sm:text-xl font-bold tabular-nums text-foreground truncate">
+              <div className="text-lg sm:text-xl font-bold tabular-nums text-foreground truncate">
                 {leftFlankValue.toLocaleString()}
               </div>
-              <div className="text-[11px] font-medium text-muted-foreground">
+              <div className="text-xs font-medium text-muted-foreground mt-0.5">
                 {leftFlankLabel}
               </div>
             </div>
 
             {/* Center Horseshoe Arc */}
-            <div className="relative flex items-center justify-center w-[136px] h-[124px] sm:w-[164px] sm:h-[148px] shrink-0">
+            <div className="relative flex items-center justify-center w-[144px] h-[130px] sm:w-[168px] sm:h-[152px] shrink-0">
               <svg
                 viewBox={`0 0 ${size} ${size}`}
                 className="w-full h-full overflow-visible"
@@ -216,7 +216,7 @@ export function MacroBentoGrid({
               </svg>
 
               <div className="absolute inset-0 flex flex-col items-center justify-center pt-2 text-center pointer-events-none">
-                <span className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
+                <span className="text-3xl sm:text-4xl font-bold tracking-tight tabular-nums text-foreground">
                   {typeof centerPrimaryValue === 'number'
                     ? centerPrimaryValue.toLocaleString()
                     : centerPrimaryValue}
@@ -229,10 +229,10 @@ export function MacroBentoGrid({
 
             {/* Right Flanking Metric */}
             <div className="text-center min-w-0">
-              <div className="text-base sm:text-xl font-bold tabular-nums text-foreground truncate">
+              <div className="text-lg sm:text-xl font-bold tabular-nums text-foreground truncate">
                 {calories.target.toLocaleString()}
               </div>
-              <div className="text-[11px] font-medium text-muted-foreground">
+              <div className="text-xs font-medium text-muted-foreground mt-0.5">
                 Target
               </div>
             </div>
@@ -261,7 +261,7 @@ export function MacroBentoGrid({
           </div>
 
           {/* Fiber subtle secondary line */}
-          <div className="flex items-center justify-center text-[11px] text-muted-foreground tabular-nums">
+          <div className="flex items-center justify-center text-xs text-muted-foreground tabular-nums">
             <span>
               Fiber:{' '}
               <strong className="text-foreground font-semibold">
@@ -344,7 +344,7 @@ export function MacroBentoGrid({
                         />
                       </div>
                     ))}
-                    <span className="text-[10px] font-semibold text-muted-foreground mt-0.5">
+                    <span className="text-[11px] font-semibold text-muted-foreground mt-0.5">
                       {day.dayLetter}
                     </span>
                   </button>
@@ -353,7 +353,7 @@ export function MacroBentoGrid({
             </div>
 
             {/* Right Target Numeric Summary */}
-            <div className="space-y-2.5 pl-1 border-l border-border/60 tabular-nums text-left">
+            <div className="space-y-2.5 pl-3 border-l border-border/60 tabular-nums text-left">
               <div>
                 <div className="text-xs font-bold text-foreground">
                   {mode === 'consumed'
@@ -361,9 +361,9 @@ export function MacroBentoGrid({
                     : calories.overTarget
                     ? `+${calories.delta}`
                     : calories.remaining}{' '}
-                  <span className="text-[10px] font-normal text-muted-foreground">kcal</span>
+                  <span className="text-[11px] font-normal text-muted-foreground">kcal</span>
                 </div>
-                <div className="text-[10px] text-muted-foreground">
+                <div className="text-[11px] text-muted-foreground">
                   of {calories.target}
                 </div>
               </div>
@@ -374,9 +374,9 @@ export function MacroBentoGrid({
                     : protein.overTarget
                     ? `+${protein.delta}`
                     : protein.remaining}{' '}
-                  <span className="text-[10px] font-semibold text-[var(--macro-protein)]">P</span>
+                  <span className="text-[11px] font-semibold text-[var(--macro-protein)]">P</span>
                 </div>
-                <div className="text-[10px] text-muted-foreground">of {protein.target}g</div>
+                <div className="text-[11px] text-muted-foreground">of {protein.target}g</div>
               </div>
               <div>
                 <div className="text-xs font-bold text-foreground">
@@ -385,9 +385,9 @@ export function MacroBentoGrid({
                     : fat.overTarget
                     ? `+${fat.delta}`
                     : fat.remaining}{' '}
-                  <span className="text-[10px] font-semibold text-[var(--macro-fat)]">F</span>
+                  <span className="text-[11px] font-semibold text-[var(--macro-fat)]">F</span>
                 </div>
-                <div className="text-[10px] text-muted-foreground">of {fat.target}g</div>
+                <div className="text-[11px] text-muted-foreground">of {fat.target}g</div>
               </div>
               <div>
                 <div className="text-xs font-bold text-foreground">
@@ -396,9 +396,9 @@ export function MacroBentoGrid({
                     : carbs.overTarget
                     ? `+${carbs.delta}`
                     : carbs.remaining}{' '}
-                  <span className="text-[10px] font-semibold text-[var(--macro-carbs)]">C</span>
+                  <span className="text-[11px] font-semibold text-[var(--macro-carbs)]">C</span>
                 </div>
-                <div className="text-[10px] text-muted-foreground">of {carbs.target}g</div>
+                <div className="text-[11px] text-muted-foreground">of {carbs.target}g</div>
               </div>
             </div>
           </div>

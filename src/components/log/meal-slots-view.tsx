@@ -112,109 +112,113 @@ export function MealSlotsView() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start animate-card-enter">
-      {/* Left/Top Daily Consumed Bento Card */}
+    <div className="space-y-4 sm:space-y-5 animate-card-enter">
+      {/* Top Daily Consumed Bento Summary */}
       <aside
         aria-label="Daily nutrition totals"
-        className="lg:col-span-4 bg-card rounded-2xl p-4 sm:p-5 lg:sticky lg:top-6 space-y-4"
+        className="bg-card rounded-2xl p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 lg:items-center"
       >
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <span className="text-xs text-muted-foreground font-medium">Daily Consumed</span>
-            <div className="text-2xl font-bold tabular-nums text-foreground mt-0.5">
-              {Math.round(totalCalories).toLocaleString()}{' '}
-              <span className="text-xs font-normal text-muted-foreground">
-                / {activeGoals.dailyCalories.toLocaleString()} kcal
-              </span>
+        <div className="lg:col-span-5 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <span className="text-xs text-muted-foreground font-medium">Daily Consumed</span>
+              <div className="text-2xl sm:text-[26px] font-bold tabular-nums text-foreground mt-0.5">
+                {Math.round(totalCalories).toLocaleString()}{' '}
+                <span className="text-xs font-normal text-muted-foreground">
+                  / {activeGoals.dailyCalories.toLocaleString()} kcal
+                </span>
+              </div>
             </div>
+            <span
+              className={`text-xs font-semibold tabular-nums px-2.5 py-1 rounded-full bg-surface-sub shrink-0 ${
+                remainingCal < 0
+                  ? 'text-[var(--neutral-over)]'
+                  : 'text-[var(--macro-calories)]'
+              }`}
+            >
+              {remainingCal < 0
+                ? `+${Math.abs(remainingCal).toLocaleString()} surplus`
+                : `${remainingCal.toLocaleString()} left`}
+            </span>
           </div>
-          <span
-            className={`text-xs font-semibold tabular-nums px-2.5 py-1 rounded-full bg-surface-sub ${
-              remainingCal < 0
-                ? 'text-[var(--neutral-over)]'
-                : 'text-[var(--macro-calories)]'
-            }`}
-          >
-            {remainingCal < 0
-              ? `+${Math.abs(remainingCal).toLocaleString()} surplus`
-              : `${remainingCal.toLocaleString()} left`}
-          </span>
+
+          <progress
+            className="macro-progress progress-calories w-full h-2 block"
+            max={Math.max(1, activeGoals.dailyCalories)}
+            value={Math.min(activeGoals.dailyCalories, Math.max(0, Math.round(totalCalories)))}
+            aria-label="Daily calorie progress"
+          />
         </div>
 
-        <progress
-          className="macro-progress progress-calories w-full h-2 block"
-          max={Math.max(1, activeGoals.dailyCalories)}
-          value={Math.min(activeGoals.dailyCalories, Math.max(0, Math.round(totalCalories)))}
-          aria-label="Daily calorie progress"
-        />
-
-        <div className="grid grid-cols-3 gap-3 pt-1">
-          <div className="space-y-1.5">
-            <div className="flex items-baseline justify-between text-xs tabular-nums">
-              <span className="text-muted-foreground font-medium">Protein</span>
-              <span className="font-semibold text-[var(--macro-protein)]">
-                {Math.round(totalProtein)}g
-              </span>
+        <div className="lg:col-span-7 space-y-3 lg:border-l lg:border-border/60 lg:pl-6">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4">
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex items-baseline justify-between gap-1 text-xs tabular-nums">
+                <span className="text-muted-foreground font-medium truncate">Protein</span>
+                <span className="font-semibold text-[var(--macro-protein)] whitespace-nowrap">
+                  {Math.round(totalProtein)}
+                  <span className="text-[11px] text-muted-foreground font-normal">
+                    /{activeGoals.proteinG}g
+                  </span>
+                </span>
+              </div>
+              <progress
+                className="macro-progress progress-protein w-full h-1.5 block"
+                max={Math.max(1, activeGoals.proteinG)}
+                value={Math.min(activeGoals.proteinG, Math.max(0, Math.round(totalProtein)))}
+                aria-label="Protein progress"
+              />
             </div>
-            <progress
-              className="macro-progress progress-protein w-full h-1.5 block"
-              max={Math.max(1, activeGoals.proteinG)}
-              value={Math.min(activeGoals.proteinG, Math.max(0, Math.round(totalProtein)))}
-              aria-label="Protein progress"
-            />
-            <div className="text-[11px] text-muted-foreground tabular-nums">
-              / {activeGoals.proteinG}g
+
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex items-baseline justify-between gap-1 text-xs tabular-nums">
+                <span className="text-muted-foreground font-medium truncate">Fat</span>
+                <span className="font-semibold text-[var(--macro-fat)] whitespace-nowrap">
+                  {Math.round(totalFat)}
+                  <span className="text-[11px] text-muted-foreground font-normal">
+                    /{activeGoals.fatG}g
+                  </span>
+                </span>
+              </div>
+              <progress
+                className="macro-progress progress-fat w-full h-1.5 block"
+                max={Math.max(1, activeGoals.fatG)}
+                value={Math.min(activeGoals.fatG, Math.max(0, Math.round(totalFat)))}
+                aria-label="Fat progress"
+              />
+            </div>
+
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex items-baseline justify-between gap-1 text-xs tabular-nums">
+                <span className="text-muted-foreground font-medium truncate">Carbs</span>
+                <span className="font-semibold text-[var(--macro-carbs)] whitespace-nowrap">
+                  {Math.round(totalCarbs)}
+                  <span className="text-[11px] text-muted-foreground font-normal">
+                    /{activeGoals.carbsG}g
+                  </span>
+                </span>
+              </div>
+              <progress
+                className="macro-progress progress-carbs w-full h-1.5 block"
+                max={Math.max(1, activeGoals.carbsG)}
+                value={Math.min(activeGoals.carbsG, Math.max(0, Math.round(totalCarbs)))}
+                aria-label="Carbs progress"
+              />
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <div className="flex items-baseline justify-between text-xs tabular-nums">
-              <span className="text-muted-foreground font-medium">Fat</span>
-              <span className="font-semibold text-[var(--macro-fat)]">
-                {Math.round(totalFat)}g
-              </span>
-            </div>
-            <progress
-              className="macro-progress progress-fat w-full h-1.5 block"
-              max={Math.max(1, activeGoals.fatG)}
-              value={Math.min(activeGoals.fatG, Math.max(0, Math.round(totalFat)))}
-              aria-label="Fat progress"
-            />
-            <div className="text-[11px] text-muted-foreground tabular-nums">
-              / {activeGoals.fatG}g
-            </div>
+          <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs tabular-nums">
+            <span className="text-muted-foreground">Fiber</span>
+            <span className="font-semibold text-[var(--macro-fiber)]">
+              {Math.round(totalFiber)}g{' '}
+              <span className="text-muted-foreground font-normal">/ {activeGoals.fiberG}g</span>
+            </span>
           </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-baseline justify-between text-xs tabular-nums">
-              <span className="text-muted-foreground font-medium">Carbs</span>
-              <span className="font-semibold text-[var(--macro-carbs)]">
-                {Math.round(totalCarbs)}g
-              </span>
-            </div>
-            <progress
-              className="macro-progress progress-carbs w-full h-1.5 block"
-              max={Math.max(1, activeGoals.carbsG)}
-              value={Math.min(activeGoals.carbsG, Math.max(0, Math.round(totalCarbs)))}
-              aria-label="Carbs progress"
-            />
-            <div className="text-[11px] text-muted-foreground tabular-nums">
-              / {activeGoals.carbsG}g
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs tabular-nums">
-          <span className="text-muted-foreground">Fiber</span>
-          <span className="font-semibold text-[var(--macro-fiber)]">
-            {Math.round(totalFiber)}g{' '}
-            <span className="text-muted-foreground font-normal">/ {activeGoals.fiberG}g</span>
-          </span>
         </div>
       </aside>
 
       {/* Meal Slots Responsive 2-Column Bento Grid */}
-      <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {mealSlots.map((slot) => {
           const slotLogs = logs.filter((l) => l.mealSlot === slot.id);
           const yesterdaySlotLogs = yesterdayEntries.filter((l) => l.mealSlot === slot.id);

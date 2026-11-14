@@ -129,7 +129,7 @@ export function MicronutrientPanel({ micros = {}, className = '' }: Micronutrien
                         / {item.target} {item.unit}
                       </span>
                     </span>
-                    <span className="text-[11px] font-medium text-muted-foreground min-w-[34px] text-right">
+                    <span className="text-xs font-medium text-muted-foreground min-w-[38px] text-right">
                       {item.rawPercent}%
                     </span>
                   </div>

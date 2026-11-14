@@ -51,14 +51,14 @@ export default function LogPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-5 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8">
+      <div className="flex flex-col gap-5 sm:gap-6 px-4 sm:px-6 lg:px-8 pt-5 sm:pt-7 pb-8">
         {/* Header & Date Switcher matching Dashboard Obsidian Aesthetic */}
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Food Log
             </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs sm:text-[13px] text-muted-foreground mt-0.5">
               Adherence-neutral chronological diary
             </p>
           </div>

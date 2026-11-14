@@ -103,21 +103,21 @@ export default function RecipesPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-5 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8">
+      <div className="flex flex-col gap-5 sm:gap-6 px-4 sm:px-6 lg:px-8 pt-5 sm:pt-7 pb-8">
         {/* Header matching Dashboard Obsidian Aesthetic */}
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div>
+        <header className="flex items-start sm:items-end justify-between gap-3">
+          <div className="min-w-0">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Recipes & Custom Foods
             </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs sm:text-[13px] text-muted-foreground mt-0.5">
               Offline recipe book and custom ingredients
             </p>
           </div>
           <button
             type="button"
             onClick={handleOpenCreate}
-            className="macro-spring active:scale-95 flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
+            className="macro-spring active:scale-95 shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
           >
             <Plus className="w-4 h-4" aria-hidden="true" />
             <span>Create</span>
@@ -136,11 +136,11 @@ export default function RecipesPage() {
               placeholder="Search saved recipes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-11 bg-card rounded-2xl pl-10 pr-4 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring transition-shadow"
+              className="w-full h-11 sm:h-12 bg-card rounded-2xl pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring transition-shadow"
             />
           </div>
           {recipes && recipes.length > 0 && (
-            <div className="hidden sm:flex items-center h-11 px-4 rounded-2xl bg-card text-xs font-medium text-muted-foreground tabular-nums shrink-0">
+            <div className="hidden sm:flex items-center h-11 sm:h-12 px-4 rounded-2xl bg-card text-xs font-medium text-muted-foreground tabular-nums shrink-0">
               {filteredRecipes.length} {filteredRecipes.length === 1 ? 'recipe' : 'recipes'}
             </div>
           )}
@@ -277,15 +277,15 @@ export default function RecipesPage() {
           </div>
         ) : (
           /* Empty State */
-          <div className="bg-card rounded-2xl p-8 sm:p-10 text-center space-y-4 animate-card-enter">
+          <div className="bg-card rounded-2xl p-8 sm:p-12 text-center space-y-4 animate-card-enter">
             <div className="w-12 h-12 rounded-2xl bg-[var(--macro-calories)]/15 mx-auto flex items-center justify-center text-[var(--macro-calories)]">
               <ChefHat className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-foreground">
+              <h2 className="text-base sm:text-lg font-bold text-foreground">
                 {searchQuery ? 'No matching recipes' : 'Recipe Book Empty'}
               </h2>
-              <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1 leading-relaxed">
+              <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto mt-1.5 leading-relaxed">
                 {searchQuery
                   ? 'Try a different recipe name or create a new recipe with this title.'
                   : 'Build custom composite meals with calculated macro targets and serving portions. Stored 100% offline in IndexedDB.'}

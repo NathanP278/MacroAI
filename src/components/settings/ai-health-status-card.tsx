@@ -59,12 +59,12 @@ export function AiHealthStatusCard() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-2xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)]">
+          <div className="w-9 h-9 rounded-2xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)] shrink-0">
             <Sparkles className="w-4 h-4" aria-hidden="true" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-foreground tracking-tight">AI Vision & OCR Service</h2>
-            <p className="text-[11px] text-muted-foreground">Server-configured OpenAI-compatible model</p>
+            <h2 className="text-base font-bold text-foreground tracking-tight">AI Vision & OCR Service</h2>
+            <p className="text-xs text-muted-foreground">Server-configured OpenAI-compatible model</p>
           </div>
         </div>
 

@@ -78,7 +78,7 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
       {/* Dynamic responsive workspace: mobile-first full bleed, expands gracefully on tablets & laptops */}
       <div
         data-testid="app-shell-container"
-        className="w-full max-w-6xl mx-auto min-h-screen flex flex-col relative pb-36"
+        className="w-full max-w-6xl mx-auto min-h-screen flex flex-col relative pb-40"
       >
         <main className="flex-1 flex flex-col w-full">{children}</main>
 

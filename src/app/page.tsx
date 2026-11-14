@@ -209,7 +209,7 @@ export default function HomePage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-5 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8">
+      <div className="flex flex-col gap-5 sm:gap-6 px-4 sm:px-6 lg:px-8 pt-5 sm:pt-7 pb-8">
         {/* Clean MacroFactor Header (Pics 1 & 4) */}
         <header className="flex items-end justify-between gap-3">
           <div>
@@ -257,12 +257,13 @@ export default function HomePage() {
         </header>
 
         {/* Top Responsive Bento Workspace: Hero (left) + Insights & Habits (right on tablet/laptop) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start animate-card-enter">
-          <div className="lg:col-span-5">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 lg:items-stretch animate-card-enter">
+          <div className="lg:col-span-5 flex">
             <MacroBentoGrid
               summary={summary}
               weeklyDays={weeklyDays}
               onSelectDate={setActiveDate}
+              className="w-full"
             />
           </div>
 
@@ -280,11 +281,11 @@ export default function HomePage() {
 
         {/* Bottom Workspace: Logged Entries + Micronutrient Targets */}
         <div
-          className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start animate-card-enter"
+          className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start animate-card-enter"
           style={{ animationDelay: '45ms' }}
         >
           {/* Logged Entries Section */}
-          <section className="lg:col-span-7 space-y-2.5">
+          <section className="lg:col-span-7 space-y-3">
             <div className="flex items-center justify-between px-0.5">
               <h2 className="text-base font-bold tracking-tight text-foreground">
                 Logged Entries
@@ -297,7 +298,7 @@ export default function HomePage() {
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
               {mealSlots.map((slot) => {
                 const slotLogs = activeLogs.filter((entry) => entry.mealSlot === slot.id);
                 const slotTotals = slotLogs.reduce(
@@ -315,14 +316,14 @@ export default function HomePage() {
                 return (
                   <div
                     key={slot.id}
-                    className="p-4 rounded-2xl bg-card space-y-2.5"
+                    className="p-4 sm:p-[18px] rounded-2xl bg-card space-y-2.5"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
                         <div className="text-sm font-semibold text-foreground truncate">
                           {slot.name}
                         </div>
-                        <div className="text-xs text-muted-foreground tabular-nums">
+                        <div className="text-xs text-muted-foreground tabular-nums mt-0.5">
                           {slotLogs.length > 0
                             ? `${latestTime ? `${latestTime} · ` : ''}${slotLogs.length} ${
                                 slotLogs.length === 1 ? 'item' : 'items'
@@ -333,7 +334,7 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-3.5 shrink-0">
                         <div className="text-right tabular-nums">
                           <div
                             className="text-sm font-bold"
@@ -341,7 +342,7 @@ export default function HomePage() {
                           >
                             {Math.round(slotTotals.calories)} kcal
                           </div>
-                          <div className="text-[11px] text-muted-foreground">
+                          <div className="text-xs text-muted-foreground">
                             P {Math.round(slotTotals.protein)}g · C {Math.round(slotTotals.carbs)}g · F{' '}
                             {Math.round(slotTotals.fat)}g
                           </div>
@@ -351,7 +352,7 @@ export default function HomePage() {
                           type="button"
                           onClick={() => openSheet('search', slot.id)}
                           aria-label={`Add food to ${slot.name}`}
-                          className="touch-target macro-spring active:scale-95 w-8 h-8 rounded-full flex items-center justify-center bg-surface-sub hover:bg-foreground hover:text-background text-foreground"
+                          className="touch-target macro-spring active:scale-95 w-9 h-9 rounded-full flex items-center justify-center bg-surface-sub hover:bg-foreground hover:text-background text-foreground"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
