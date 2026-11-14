@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { PwaRegister } from "@/components/shell/pwa-register";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -49,6 +50,7 @@ export default function RootLayout({
         <ThemeProvider defaultTheme="dark">
           <PwaRegister />
           {children}
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>
