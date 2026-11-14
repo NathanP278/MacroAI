@@ -7,18 +7,19 @@ import { db } from '@/lib/db/macroai-db';
 import { useLoggerStore } from '@/stores/logger-store';
 import { DEFAULT_MEAL_SLOTS, DEFAULT_RDA_MICROS } from '@/lib/nutrition/goals';
 import { aggregateDailySummary } from '@/lib/nutrition/daily-summary';
+import { distributeRemainingMacros } from '@/lib/nutrition/meal-distribution';
 import { MacroBentoGrid } from '@/components/dashboard/macro-bento-grid';
 import { MicronutrientPanel } from '@/components/dashboard/micronutrient-panel';
 import { AppShell } from '@/components/shell/app-shell';
 import type { UserGoals } from '@/types/nutrition';
 import {
+  ArrowUpRight,
   ChevronLeft,
   ChevronRight,
+  Layers,
   Plus,
-  ShieldCheck,
-  Utensils,
-  ArrowRight,
   RotateCcw,
+  TrendingUp,
 } from 'lucide-react';
 
 function getTodayIsoDate(): string {
@@ -55,12 +56,18 @@ function formatDisplayDate(iso: string): { label: string; sub: string; isToday: 
   };
 }
 
+function formatSlotTime(timestamps: number[]): string | null {
+  if (timestamps.length === 0) return null;
+  const latest = Math.max(...timestamps);
+  if (!Number.isFinite(latest) || latest <= 0) return null;
+  return new Date(latest).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 export default function HomePage() {
   const activeDate = useLoggerStore((s) => s.activeDate);
   const setActiveDate = useLoggerStore((s) => s.setActiveDate);
   const openSheet = useLoggerStore((s) => s.openSheet);
 
-  // Live query for logs on active date and user goals
   const foodLogs = useLiveQuery(
     () => db.foodLogs.where('date').equals(activeDate).toArray(),
     [activeDate]
@@ -71,7 +78,6 @@ export default function HomePage() {
     []
   );
 
-  // Safe fallback before goals resolve or seed
   const fallbackGoals: UserGoals = useMemo(
     () => ({
       id: 'active',
@@ -101,6 +107,25 @@ export default function HomePage() {
       : DEFAULT_MEAL_SLOTS;
   }, [activeGoals.mealSlots]);
 
+  const distributedBudgets = useMemo(
+    () => distributeRemainingMacros({ ...activeGoals, mealSlots }, activeLogs),
+    [activeGoals, mealSlots, activeLogs]
+  );
+
+  const nextUnloggedSlot = useMemo(() => {
+    const loggedIds = new Set(activeLogs.map((entry) => entry.mealSlot));
+    return mealSlots.find((slot) => !loggedIds.has(slot.id)) ?? null;
+  }, [mealSlots, activeLogs]);
+
+  const allocationTarget = nextUnloggedSlot
+    ? distributedBudgets[nextUnloggedSlot.id] ?? { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    : {
+        calories: summary.calories.remaining,
+        protein: summary.protein.remaining,
+        carbs: summary.carbs.remaining,
+        fat: summary.fat.remaining,
+      };
+
   const dateInfo = formatDisplayDate(activeDate);
 
   const handlePrevDay = () => setActiveDate(offsetIsoDate(activeDate, -1));
@@ -110,34 +135,21 @@ export default function HomePage() {
   return (
     <AppShell>
       <div className="flex flex-col gap-4 p-4">
-        {/* Top Header & Date Navigation Bar */}
+        {/* Top Bar & Date Navigation */}
         <header className="flex flex-col gap-2.5 pt-1">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between px-0.5">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 font-black text-sm">
-                M
-              </div>
-              <div>
-                <h1 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-1.5">
-                  MacroAI
-                </h1>
-                <p className="text-[10px] text-emerald-400/90 flex items-center gap-1 font-mono">
-                  <ShieldCheck className="w-3 h-3" /> Adherence Neutral
-                </p>
-              </div>
+              <TrendingUp className="w-4 h-4 text-amber-500 dark:text-amber-400" aria-hidden="true" />
+              <h1 className="text-sm font-bold tracking-tight text-foreground">
+                MacroAI
+              </h1>
             </div>
-
-            <div className="flex items-center gap-2">
-              <Link
-                href="/prototypes"
-                className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-card border border-border text-amber-400 hover:text-amber-300 transition-colors"
-              >
-                Prototypes &rarr;
-              </Link>
-            </div>
+            <span className="text-[11px] font-mono text-muted-foreground">
+              Target Mode: Active
+            </span>
           </div>
 
-          {/* Date Switcher Pill */}
+          {/* Compact Date Switcher Pill */}
           <div className="bg-card border border-border rounded-2xl p-1.5 flex items-center justify-between shadow-xs">
             <button
               type="button"
@@ -161,7 +173,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={handleToday}
-                  className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-amber-400/10 text-amber-400 hover:bg-amber-400/20 transition-colors flex items-center gap-1"
+                  className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-amber-400/10 text-amber-500 dark:text-amber-400 hover:bg-amber-400/20 transition-colors flex items-center gap-1"
                 >
                   <RotateCcw className="w-2.5 h-2.5" />
                   Today
@@ -180,61 +192,142 @@ export default function HomePage() {
           </div>
         </header>
 
-        {/* Bento Grid: Calorie Ring + Macros */}
+        {/* Macro Bars Hero & Breakdown */}
         <MacroBentoGrid summary={summary} />
 
-        {/* Meal Slots Section */}
-        <section className="space-y-2.5 pt-1">
+        {/* Dynamic Fitia-style Remaining Meal Allocation */}
+        <section
+          aria-label="Remaining Meal Allocation"
+          className="rounded-2xl bg-surface-sub border border-border p-4 space-y-3"
+        >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <Utensils className="w-3.5 h-3.5 text-amber-400" />
-              <span>Meal Log</span>
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-purple-500 dark:text-purple-400" aria-hidden="true" />
+              <h2 className="text-xs font-semibold text-foreground">
+                Remaining Meal Allocation
+              </h2>
             </div>
             <Link
               href="/log"
-              className="text-xs text-amber-400 hover:text-amber-300 font-medium flex items-center gap-0.5"
+              aria-label="View meal allocation in log"
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              View Log <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowUpRight className="w-4 h-4" />
             </Link>
           </div>
 
-          <div className="space-y-2.5">
+          <p className="text-xs text-muted-foreground">
+            {nextUnloggedSlot
+              ? `Dynamically distributed budget for upcoming ${nextUnloggedSlot.name}:`
+              : 'All configured meal slots logged. Remaining daily balance:'}
+          </p>
+
+          <div className="grid grid-cols-4 gap-2 text-center">
+            <div className="p-2 rounded-xl bg-card border border-border">
+              <div className="text-[10px] text-muted-foreground">Calories</div>
+              <div className="font-mono font-bold text-xs tabular-nums text-amber-500 dark:text-amber-400">
+                {allocationTarget.calories}
+              </div>
+            </div>
+            <div className="p-2 rounded-xl bg-card border border-border">
+              <div className="text-[10px] text-muted-foreground">Protein</div>
+              <div className="font-mono font-bold text-xs tabular-nums text-sky-500 dark:text-sky-400">
+                {allocationTarget.protein}g
+              </div>
+            </div>
+            <div className="p-2 rounded-xl bg-card border border-border">
+              <div className="text-[10px] text-muted-foreground">Carbs</div>
+              <div className="font-mono font-bold text-xs tabular-nums text-emerald-500 dark:text-emerald-400">
+                {allocationTarget.carbs}g
+              </div>
+            </div>
+            <div className="p-2 rounded-xl bg-card border border-border">
+              <div className="text-[10px] text-muted-foreground">Fat</div>
+              <div className="font-mono font-bold text-xs tabular-nums text-rose-500 dark:text-rose-400">
+                {allocationTarget.fat}g
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Logged Entries Section */}
+        <section className="space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Logged Entries
+            </h2>
+            <Link
+              href="/log"
+              className="text-[11px] font-medium text-amber-500 dark:text-amber-400 hover:opacity-80 flex items-center gap-0.5 transition-opacity"
+            >
+              View Log <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="space-y-2">
             {mealSlots.map((slot) => {
               const slotLogs = activeLogs.filter((entry) => entry.mealSlot === slot.id);
-              const slotCalories = slotLogs.reduce(
-                (sum, entry) => sum + (entry.nutritionSnapshot?.calories ?? 0),
-                0
+              const slotTotals = slotLogs.reduce(
+                (acc, entry) => ({
+                  calories: acc.calories + (entry.nutritionSnapshot?.calories ?? 0),
+                  protein: acc.protein + (entry.nutritionSnapshot?.protein ?? 0),
+                  carbs: acc.carbs + (entry.nutritionSnapshot?.carbs ?? 0),
+                  fat: acc.fat + (entry.nutritionSnapshot?.fat ?? 0),
+                }),
+                { calories: 0, protein: 0, carbs: 0, fat: 0 }
               );
+              const latestTime = formatSlotTime(slotLogs.map((l) => l.createdAt));
+              const slotBudget = distributedBudgets[slot.id];
 
               return (
                 <div
                   key={slot.id}
-                  className="bg-card border border-border rounded-2xl p-3.5 space-y-2.5 shadow-xs"
+                  className="p-3.5 rounded-xl bg-card border border-border space-y-2.5 shadow-xs"
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-foreground">{slot.name}</span>
-                      <span className="text-[11px] text-muted-foreground font-mono tabular-nums ml-2">
-                        {Math.round(slotCalories)} kcal
-                      </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-foreground truncate">
+                        {slot.name}
+                      </div>
+                      <div className="text-[11px] font-mono text-muted-foreground">
+                        {slotLogs.length > 0
+                          ? `${latestTime ? `${latestTime} • ` : ''}${slotLogs.length} ${
+                              slotLogs.length === 1 ? 'item' : 'items'
+                            }`
+                          : `Unlogged${
+                              slotBudget ? ` • ${slotBudget.calories} kcal budget` : ''
+                            }`}
+                      </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => openSheet('search', slot.id)}
-                      aria-label={`Add food to ${slot.name}`}
-                      className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-sub transition-colors border border-border/40 hover:border-border"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <div className="text-right">
+                        <div className="text-sm font-bold font-mono tabular-nums text-amber-500 dark:text-amber-400">
+                          {Math.round(slotTotals.calories)} kcal
+                        </div>
+                        <div className="text-[10px] font-mono tabular-nums text-muted-foreground">
+                          P {Math.round(slotTotals.protein)}g • C {Math.round(slotTotals.carbs)}g • F{' '}
+                          {Math.round(slotTotals.fat)}g
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => openSheet('search', slot.id)}
+                        aria-label={`Add food to ${slot.name}`}
+                        className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-sub transition-colors border border-border/60 hover:border-border"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
 
-                  {slotLogs.length > 0 ? (
+                  {slotLogs.length > 0 && (
                     <div className="space-y-1.5">
                       {slotLogs.map((log) => (
                         <div
                           key={log.id}
-                          className="flex items-center justify-between text-xs py-1 px-2.5 rounded-xl bg-surface-sub border border-border/40"
+                          className="flex items-center justify-between text-xs py-1 px-2.5 rounded-lg bg-surface-sub border border-border/50"
                         >
                           <span className="text-foreground truncate max-w-[200px] text-[11px]">
                             {log.name}{' '}
@@ -248,10 +341,6 @@ export default function HomePage() {
                           </span>
                         </div>
                       ))}
-                    </div>
-                  ) : (
-                    <div className="text-[11px] text-muted-foreground/70 italic py-0.5">
-                      No foods logged yet for {slot.name}.
                     </div>
                   )}
                 </div>

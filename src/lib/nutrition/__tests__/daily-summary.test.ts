@@ -426,7 +426,10 @@ describe('aggregateDailySummary & Adherence-Neutral Analytics', () => {
 
       const { container } = render(React.createElement(MacroBentoGrid, { summary }));
 
-      // Must display +200 kcal or +200 analytical surplus delta
+      expect(screen.getByText('Daily Energy Target')).toBeInTheDocument();
+      expect(screen.getByText('Macronutrient Breakdown')).toBeInTheDocument();
+
+      // Must display +200 kcal surplus or +200kcal over target without punitive styling
       const deltaMatches = screen.getAllByText(/\+200/);
       expect(deltaMatches.length).toBeGreaterThan(0);
 
@@ -497,10 +500,14 @@ describe('aggregateDailySummary & Adherence-Neutral Analytics', () => {
 
       render(React.createElement(HomePage));
 
-      // Header checks
+      // Header & Macro Bars layout checks
       expect(screen.getByText('MacroAI')).toBeInTheDocument();
-      expect(screen.getByText('Energy Balance')).toBeInTheDocument();
-      expect(screen.getByText('Meal Log')).toBeInTheDocument();
+      expect(screen.getByText('Target Mode: Active')).toBeInTheDocument();
+      expect(screen.getByText('Daily Energy Target')).toBeInTheDocument();
+      expect(screen.getByText('Macronutrient Breakdown')).toBeInTheDocument();
+      expect(screen.getByText('Remaining Meal Allocation')).toBeInTheDocument();
+      expect(screen.getByText(/dynamically distributed budget for upcoming breakfast:/i)).toBeInTheDocument();
+      expect(screen.getByText('Logged Entries')).toBeInTheDocument();
 
       // Date navigation: click previous day
       const prevBtn = screen.getByRole('button', { name: /previous day/i });

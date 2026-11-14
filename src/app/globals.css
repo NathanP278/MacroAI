@@ -118,6 +118,7 @@
 }
 
 .light {
+  color-scheme: light;
   --background: #f8fafc;
   --foreground: #0f172a;
   --card: #ffffff;
@@ -179,5 +180,41 @@
 @layer utilities {
   .tabular-nums {
     font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Native <progress> styling per modern-web-guidance:
+   separate -webkit- and -moz- pseudo-element rules so neither drops the other. */
+progress.macro-progress {
+  appearance: none;
+  border: 0 solid;
+  border-radius: 9999px;
+  overflow: clip;
+  background: var(--progress-bar-track, var(--surface-sub));
+}
+
+progress.macro-progress::-webkit-progress-bar {
+  background: transparent;
+}
+
+progress.macro-progress::-webkit-progress-value {
+  background: var(--progress-bar-fill, var(--macro-calories));
+  border-radius: 9999px;
+  transition: inline-size 0.3s ease-out;
+}
+
+progress.macro-progress::-moz-progress-bar {
+  background: var(--progress-bar-fill, var(--macro-calories));
+  border-radius: 9999px;
+  transition: inline-size 0.3s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  progress.macro-progress::-webkit-progress-value {
+    transition: none;
+  }
+
+  progress.macro-progress::-moz-progress-bar {
+    transition: none;
   }
 }

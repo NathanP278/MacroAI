@@ -53,7 +53,7 @@ export function BottomNav({ onOpenQuickActions }: BottomNavProps) {
                 href={item.href}
                 className={`flex flex-col items-center justify-center min-w-[56px] py-1 transition-colors ${
                   active
-                    ? "text-amber-400 font-semibold"
+                    ? "text-amber-500 dark:text-amber-400 font-semibold"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
                 aria-current={active ? "page" : undefined}
@@ -66,16 +66,15 @@ export function BottomNav({ onOpenQuickActions }: BottomNavProps) {
         </div>
 
         {/* Prominent Center Action Button */}
-        <div className="flex flex-col items-center justify-center px-2 relative -top-3">
+        <div className="px-3">
           <button
             type="button"
             onClick={onOpenQuickActions}
             aria-label="Open quick actions"
-            className="w-[52px] h-[52px] rounded-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-neutral-950 flex items-center justify-center shadow-lg shadow-amber-400/25 border-2 border-background transition-all focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-background"
+            className="w-12 h-12 -mt-5 rounded-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-neutral-950 flex items-center justify-center shadow-lg shadow-amber-400/20 border-2 border-background transition-all focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-background"
           >
             <Plus className="w-6 h-6 stroke-[2.5]" />
           </button>
-          <span className="text-[10px] font-medium text-muted-foreground mt-0.5">Quick Add</span>
         </div>
 
         {/* Right Nav items */}
@@ -89,7 +88,7 @@ export function BottomNav({ onOpenQuickActions }: BottomNavProps) {
                 href={item.href}
                 className={`flex flex-col items-center justify-center min-w-[56px] py-1 transition-colors ${
                   active
-                    ? "text-amber-400 font-semibold"
+                    ? "text-amber-500 dark:text-amber-400 font-semibold"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
                 aria-current={active ? "page" : undefined}

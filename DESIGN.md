@@ -109,13 +109,14 @@ When intake exceeds a daily target:
   - Collapsible meal slots (Breakfast, Lunch, Dinner, Snacks) with food item pills and one-tap `+` log triggers.
 - **Best For:** Users who love high visual hierarchy and instant glanceable status.
 
-### Variant B: "Macro Bars" (`variant-bars.tsx`)
-- **Key Characteristics:**
-  - High-density horizontal bar progress layout.
-  - Exact target threshold pins and neutral surplus track extension.
-  - Quick macro balance card displaying dynamic remaining macros split across unlogged meals.
-  - Grouped meal slots with direct nutrition subtotals.
-- **Best For:** Data-first trackers focused on precise gram targets and horizontal progress.
+### Variant B: "Macro Bars" (`variant-bars.tsx`) — SELECTED PRODUCTION LAYOUT
+- **Canonical Choice:** Selected as MacroAI's primary dashboard layout (`/`), locking in:
+  - Compact top header (`TrendingUp` accent glyph + **MacroAI**, right-aligned `Target Mode: Active` mono status, plus date switcher pill).
+  - **Daily Energy Target** hero bar card (`bg-card`, `rounded-2xl`) showing large consumed kcal `/ target`, right-aligned amber remaining or neutral surplus pill, and full-width `h-2.5` horizontal calorie progress bar.
+  - **Macronutrient Breakdown** bento module listing Calories (amber), Protein (sky), Carbohydrates (emerald), Fat (rose), and Fiber (lavender) as stacked horizontal progress rows with bordered `%` pill badges, `consumed / target` right-aligned figures, `h-2` `<progress>` bars, and `% fulfilled` + `left` / `+over target` adherence-neutral footers.
+  - Inset **Remaining Meal Allocation** card (`bg-surface-sub`) powered by `distributeRemainingMacros` showing the upcoming unlogged meal budget across 4 compact macro columns (`Calories`, `Protein`, `Carbs`, `Fat`).
+  - **Logged Entries** stacked dark meal-slot cards (`bg-card`, `rounded-xl`) with slot name, item count/meta, amber `{kcal} kcal`, `P · C · F` summary, expandable logged food items, and 1-tap `+` quick log button.
+  - **High-density horizontal bar progress** with native semantic `<progress>` tracks respecting `prefers-reduced-motion` and full light/dark theme tokens.
 
 ### Variant C: "Timeline Feed" (`variant-timeline.tsx`)
 - **Key Characteristics:**
