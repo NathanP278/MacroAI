@@ -6,6 +6,7 @@ import { QuickActionDock, QuickActionType } from "./quick-action-dock";
 import { QuickAddDrawer } from "@/components/logging/quick-add-drawer";
 import { FoodSearchDrawer } from "@/components/logging/food-search-drawer";
 import { BarcodeScannerDrawer } from "@/components/scanner/barcode-scanner-drawer";
+import { AiMealScannerSheet } from "@/components/scanner/ai-meal-scanner-sheet";
 import { useLoggerStore } from "@/stores/logger-store";
 import { ensureDefaultUserGoals } from "@/lib/nutrition/goals";
 
@@ -79,6 +80,14 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
         {/* Barcode Scanner Drawer */}
         <BarcodeScannerDrawer
           open={activeSheet === "barcode"}
+          date={activeDate}
+          mealSlot={activeMealSlot}
+          onClose={closeSheet}
+        />
+
+        {/* AI Meal Scanner Sheet */}
+        <AiMealScannerSheet
+          open={activeSheet === "ai-scan"}
           date={activeDate}
           mealSlot={activeMealSlot}
           onClose={closeSheet}
