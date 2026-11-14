@@ -1,0 +1,359 @@
+import 'fake-indexeddb/auto';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { parseOffProduct } from '../off-adapter';
+import { lookupBarcodeWaterfall, useBarcodeLookup } from '@/hooks/use-barcode-lookup';
+import { GET as offRouteHandler } from '@/app/api/off/[barcode]/route';
+import { NextRequest } from 'next/server';
+import { db } from '@/lib/db/macroai-db';
+
+describe('Open Food Facts Adapter & Barcode Waterfall', () => {
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  describe('parseOffProduct', () => {
+    test('returns null on OFF status === 0 even when HTTP 200', () => {
+      expect(parseOffProduct('999999', { status: 0, status_verbose: 'product not found' })).toBeNull();
+    });
+
+    test('returns null on invalid payloads or missing product object', () => {
+      expect(parseOffProduct('999999', null)).toBeNull();
+      expect(parseOffProduct('999999', {})).toBeNull();
+      expect(parseOffProduct('999999', { status: 1 })).toBeNull();
+    });
+
+    test('uses energy-kcal_100g and ignores kJ energy field; falls back to perServing', () => {
+      const item = parseOffProduct('0111', {
+        status: 1,
+        product: {
+          product_name: 'Oat Milk',
+          nutriments: {
+            energy: 192,
+            'energy-kcal_100g': 46,
+            proteins_100g: 1,
+            carbohydrates_100g: 6.5,
+            fat_100g: 1.5,
+          },
+        },
+      });
+      expect(item).not.toBeNull();
+      expect(item?.basis).toBe('per100g');
+      expect(item?.nutrientsPerBasis.calories).toBe(46);
+      expect(item?.nutrientsPerBasis.protein).toBe(1);
+      expect(item?.nutrientsPerBasis.carbs).toBe(6.5);
+      expect(item?.nutrientsPerBasis.fat).toBe(1.5);
+      expect(item?.id).toBe('off:0111');
+      expect(item?.barcode).toBe('0111');
+      expect(item?.source).toBe('off');
+
+      const servingOnly = parseOffProduct('0222', {
+        status: 1,
+        product: {
+          product_name: 'Electrolyte Tab',
+          serving_quantity: 1,
+          nutriments: {
+            energy: 420,
+            'energy-kcal_serving': 15,
+            carbohydrates_serving: 3,
+          },
+        },
+      });
+      expect(servingOnly).not.toBeNull();
+      expect(servingOnly?.basis).toBe('perServing');
+      expect(servingOnly?.nutrientsPerBasis.calories).toBe(15);
+      expect(servingOnly?.nutrientsPerBasis.carbs).toBe(3);
+    });
+
+    test('determines per100ml basis when liquid units or 100ml fields are present', () => {
+      const liquid1 = parseOffProduct('0333', {
+        status: 1,
+        product: {
+          product_name: 'Cold Brew Coffee',
+          product_quantity_unit: 'ml',
+          nutriments: {
+            'energy-kcal_100ml': 3,
+            proteins_100ml: 0.3,
+            carbohydrates_100ml: 0.5,
+            fat_100ml: 0,
+          },
+        },
+      });
+      expect(liquid1?.basis).toBe('per100ml');
+      expect(liquid1?.servingUnit).toBe('ml');
+      expect(liquid1?.nutrientsPerBasis.calories).toBe(3);
+
+      const liquid2 = parseOffProduct('0444', {
+        status: 1,
+        product: {
+          product_name: 'Orange Juice',
+          serving_quantity_unit: 'ml',
+          nutriments: {
+            'energy-kcal_100g': 45,
+            carbohydrates_100g: 10,
+          },
+        },
+      });
+      expect(liquid2?.basis).toBe('per100ml');
+      expect(liquid2?.nutrientsPerBasis.calories).toBe(45);
+    });
+
+    test('converts sodium from grams to sodiumMg (* 1000) and falls back to salt * 400', () => {
+      const withSodium = parseOffProduct('0555', {
+        status: 1,
+        product: {
+          product_name: 'Salted Crackers',
+          nutriments: {
+            'energy-kcal_100g': 420,
+            sodium_100g: 0.65, // 0.65g -> 650mg
+          },
+        },
+      });
+      expect(withSodium?.micronutrientsPerBasis.sodiumMg).toBe(650);
+
+      const withSalt = parseOffProduct('0666', {
+        status: 1,
+        product: {
+          product_name: 'Pretzels',
+          nutriments: {
+            'energy-kcal_100g': 380,
+            salt_100g: 2.5, // 2.5g salt -> 1000mg sodium
+          },
+        },
+      });
+      expect(withSalt?.micronutrientsPerBasis.sodiumMg).toBe(1000);
+
+      const withServingSodium = parseOffProduct('0777', {
+        status: 1,
+        product: {
+          product_name: 'Single Snack Pack',
+          serving_quantity: 1,
+          nutriments: {
+            'energy-kcal_serving': 110,
+            sodium_serving: 0.15, // 0.15g -> 150mg
+          },
+        },
+      });
+      expect(withServingSodium?.basis).toBe('perServing');
+      expect(withServingSodium?.micronutrientsPerBasis.sodiumMg).toBe(150);
+    });
+  });
+
+  describe('lookupBarcodeWaterfall', () => {
+    test('checks MacroAIDB.foodsCache before calling /api/off', async () => {
+      await db.foodsCache.put({
+        id: 'custom:1',
+        barcode: '888',
+        source: 'custom_barcode',
+        name: 'Local Bar',
+        basis: 'perServing',
+        servingSize: 1,
+        servingUnit: 'serving',
+        nutrientsPerBasis: { calories: 210, protein: 20, carbs: 18, fat: 7, fiber: 3 },
+        micronutrientsPerBasis: {},
+        updatedAt: 1,
+      });
+
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      const res = await lookupBarcodeWaterfall('888');
+
+      expect(res.status).toBe('hit');
+      if (res.status === 'hit') {
+        expect(res.item.name).toBe('Local Bar');
+      }
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    test('fetches /api/off on cache miss, caches item, and returns hit', async () => {
+      const mockOffData = {
+        status: 1,
+        product: {
+          product_name: 'Greek Yogurt',
+          brands: 'Chobani',
+          nutriments: {
+            'energy-kcal_100g': 97,
+            proteins_100g: 10,
+            carbohydrates_100g: 4,
+            fat_100g: 5,
+            fiber_100g: 0,
+          },
+        },
+      };
+
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify(mockOffData), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+
+      const res = await lookupBarcodeWaterfall('001234567890');
+      expect(res.status).toBe('hit');
+      if (res.status === 'hit') {
+        expect(res.item.name).toBe('Greek Yogurt');
+        expect(res.item.brand).toBe('Chobani');
+        expect(res.item.nutrientsPerBasis.calories).toBe(97);
+      }
+      expect(fetchSpy).toHaveBeenCalledWith('/api/off/001234567890');
+
+      // Verify it was cached in Dexie
+      const cached = await db.foodsCache.where('barcode').equals('001234567890').first();
+      expect(cached).toBeDefined();
+      expect(cached?.name).toBe('Greek Yogurt');
+    });
+
+    test('returns missing when OFF product is not found (status 0)', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify({ status: 0, status_verbose: 'product not found' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+
+      const res = await lookupBarcodeWaterfall('99999999');
+      expect(res.status).toBe('missing');
+      if (res.status === 'missing') {
+        expect(res.barcode).toBe('99999999');
+      }
+    });
+
+    test('returns missing when /api/off returns 404', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify({ error: 'Product not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+
+      const res = await lookupBarcodeWaterfall('40404040');
+      expect(res.status).toBe('missing');
+    });
+
+    test('returns offline-miss when network fetch fails / rejects', async () => {
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Failed to fetch (offline)'));
+
+      const res = await lookupBarcodeWaterfall('12345678');
+      expect(res.status).toBe('offline-miss');
+      if (res.status === 'offline-miss') {
+        expect(res.barcode).toBe('12345678');
+      }
+    });
+
+    test('returns offline-miss when /api/off returns 502 / 5xx', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify({ error: 'Bad Gateway' }), {
+          status: 502,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+
+      const res = await lookupBarcodeWaterfall('502502502');
+      expect(res.status).toBe('offline-miss');
+    });
+  });
+
+  describe('/api/off/[barcode] route handler', () => {
+    test('validates barcode matches 4-18 digits and rejects non-numeric or short barcodes with 400', async () => {
+      const shortReq = new NextRequest('http://localhost:3000/api/off/123');
+      const shortRes = await offRouteHandler(shortReq, { params: Promise.resolve({ barcode: '123' }) });
+      expect(shortRes.status).toBe(400);
+
+      const alphaReq = new NextRequest('http://localhost:3000/api/off/abc12345');
+      const alphaRes = await offRouteHandler(alphaReq, { params: Promise.resolve({ barcode: 'abc12345' }) });
+      expect(alphaRes.status).toBe(400);
+
+      const tooLongReq = new NextRequest('http://localhost:3000/api/off/1234567890123456789');
+      const tooLongRes = await offRouteHandler(tooLongReq, { params: Promise.resolve({ barcode: '1234567890123456789' }) });
+      expect(tooLongRes.status).toBe(400);
+    });
+
+    test('forwards request to Open Food Facts with User-Agent header and returns Cache-Control on status 1', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: any, init?: any) => {
+        const urlStr = String(url);
+        expect(urlStr).toBe('https://world.openfoodfacts.org/api/v2/product/737628064502.json');
+        expect(init?.headers?.['User-Agent']).toBe('MacroAI/1.0');
+
+        return new Response(
+          JSON.stringify({
+            status: 1,
+            product: { product_name: 'Peanut Butter' },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      });
+
+      const req = new NextRequest('http://localhost:3000/api/off/737628064502');
+      const res = await offRouteHandler(req, { params: Promise.resolve({ barcode: '737628064502' }) });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('Cache-Control')).toBe('public, max-age=86400');
+      expect(fetchSpy).toHaveBeenCalled();
+    });
+
+    test('sets Cache-Control: no-store when product not found (status 0)', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({ status: 0, status_verbose: 'product not found' }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+
+      const req = new NextRequest('http://localhost:3000/api/off/99999999');
+      const res = await offRouteHandler(req, { params: Promise.resolve({ barcode: '99999999' }) });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('Cache-Control')).toBe('no-store');
+    });
+
+    test('returns 502 cleanly on upstream timeout or network failure', async () => {
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Gateway timeout'));
+
+      const req = new NextRequest('http://localhost:3000/api/off/12345678');
+      const res = await offRouteHandler(req, { params: Promise.resolve({ barcode: '12345678' }) });
+      expect(res.status).toBe(502);
+      expect(res.headers.get('Cache-Control')).toBe('no-store');
+      const body = await res.json();
+      expect(body.error).toBe('Failed to communicate with Open Food Facts API');
+    });
+  });
+
+  describe('useBarcodeLookup React hook', () => {
+    test('manages loading state and returns lookup result', async () => {
+      await db.foodsCache.put({
+        id: 'off:55555',
+        barcode: '55555',
+        source: 'off',
+        name: 'Hook Almond Milk',
+        basis: 'per100ml',
+        servingSize: 100,
+        servingUnit: 'ml',
+        nutrientsPerBasis: { calories: 30, protein: 1, carbs: 1, fat: 2.5, fiber: 0 },
+        micronutrientsPerBasis: {},
+        updatedAt: 10,
+      });
+
+      const { result } = renderHook(() => useBarcodeLookup());
+
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.result).toBeNull();
+
+      let lookupRes: any;
+      await act(async () => {
+        lookupRes = await result.current.lookup('55555');
+      });
+
+      expect(result.current.isLoading).toBe(false);
+      expect(lookupRes.status).toBe('hit');
+      expect(lookupRes.item.name).toBe('Hook Almond Milk');
+      expect(result.current.result?.status).toBe('hit');
+
+      act(() => {
+        result.current.reset();
+      });
+      expect(result.current.result).toBeNull();
+    });
+  });
+});
