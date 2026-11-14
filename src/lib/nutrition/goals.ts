@@ -134,7 +134,7 @@ export async function ensureDefaultUserGoals(): Promise<UserGoals> {
     fiberG: 30,
     micronutrientTargets: { ...DEFAULT_RDA_MICROS },
     mealSlots: [...DEFAULT_MEAL_SLOTS],
-    updatedAt: Date.now(),
+    updatedAt: 0,
   };
 
   await db.userGoals.put(defaultGoals);

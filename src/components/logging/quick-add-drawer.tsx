@@ -132,22 +132,23 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
       aria-modal="true"
       aria-label="Quick Add Macros"
       data-testid="quick-add-drawer"
-      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm transition-opacity"
+      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs transition-opacity"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[430px] mx-auto bg-surface-elevated border-t border-x border-border rounded-t-3xl p-5 shadow-2xl animate-in slide-in-from-bottom duration-200"
+        className="w-full max-w-lg mx-auto bg-surface-elevated border-t border-x border-border rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl animate-sheet-in"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3" aria-hidden="true" />
         {/* Drawer Header */}
         <div className="flex items-center justify-between pb-3 border-b border-border">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-rose-400/10 border border-rose-400/20 flex items-center justify-center text-rose-400">
-              <Zap className="w-4 h-4" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[var(--macro-fat)]/15 flex items-center justify-center text-[var(--macro-fat)]">
+              <Zap className="w-4 h-4" aria-hidden="true" />
             </div>
             <div>
               <h2 className="text-sm font-semibold text-foreground">Quick Add Macros</h2>
-              <p className="text-[10px] text-muted-foreground capitalize">
+              <p className="text-[11px] text-muted-foreground capitalize">
                 Logging to {effectiveMealSlot} &bull; {effectiveDate}
               </p>
             </div>
@@ -156,9 +157,9 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
             type="button"
             onClick={onClose}
             aria-label="Close quick add"
-            className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="touch-target macro-spring active:scale-90 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -175,7 +176,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Protein shake, Snack"
-              className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground placeholder:text-muted-foreground/50 transition-colors"
+              className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground/50 transition-shadow"
             />
           </div>
 
@@ -189,9 +190,12 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
                 type="button"
                 onClick={handleSyncToMacros}
                 aria-label="Sync to macros"
-                className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors px-2 py-0.5 rounded-lg bg-surface-card border border-border"
+                className="macro-spring active:scale-95 inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2.5 py-1 rounded-full bg-card border border-border"
               >
-                <RefreshCw className={`w-2.5 h-2.5 ${isCalorieOverridden ? 'text-amber-400' : ''}`} />
+                <RefreshCw
+                  className={`w-2.5 h-2.5 ${isCalorieOverridden ? 'text-[var(--macro-calories)]' : ''}`}
+                  aria-hidden="true"
+                />
                 <span>Sync to macros</span>
               </button>
             </div>
@@ -203,11 +207,11 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
                 step="any"
                 value={calories}
                 onChange={(e) => handleCaloriesChange(e.target.value)}
-                className="w-full px-3 py-2 text-sm font-semibold tabular-nums rounded-lg bg-surface-card border border-border focus:border-border-focus focus:outline-none text-foreground"
+                className="w-full px-3 py-2 text-sm font-semibold tabular-nums rounded-xl bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
               />
             </div>
             {isCalorieOverridden && (
-              <p className="text-[10px] text-amber-400/90 font-mono">
+              <p className="text-[10px] text-[var(--macro-calories)] font-medium">
                 Manual calorie override active (does not recalculate from macros)
               </p>
             )}
@@ -216,7 +220,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
           {/* Macro grid */}
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-surface-sub border border-border rounded-xl p-2.5">
-              <label htmlFor="quick-add-protein" className="block text-[10px] font-medium text-emerald-400 mb-1">
+              <label htmlFor="quick-add-protein" className="block text-[10px] font-semibold text-[var(--macro-protein)] mb-1">
                 Protein (g)
               </label>
               <input
@@ -227,12 +231,12 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
                 value={protein}
                 onChange={(e) => handleMacroChange('p', e.target.value)}
                 placeholder="0"
-                className="w-full px-2 py-1.5 text-xs font-semibold tabular-nums rounded-lg bg-surface-card border border-border focus:border-border-focus focus:outline-none text-foreground"
+                className="w-full px-2 py-1.5 text-xs font-semibold tabular-nums rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
               />
             </div>
 
             <div className="bg-surface-sub border border-border rounded-xl p-2.5">
-              <label htmlFor="quick-add-carbs" className="block text-[10px] font-medium text-sky-400 mb-1">
+              <label htmlFor="quick-add-carbs" className="block text-[10px] font-semibold text-[var(--macro-carbs)] mb-1">
                 Carbs (g)
               </label>
               <input
@@ -243,12 +247,12 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
                 value={carbs}
                 onChange={(e) => handleMacroChange('c', e.target.value)}
                 placeholder="0"
-                className="w-full px-2 py-1.5 text-xs font-semibold tabular-nums rounded-lg bg-surface-card border border-border focus:border-border-focus focus:outline-none text-foreground"
+                className="w-full px-2 py-1.5 text-xs font-semibold tabular-nums rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
               />
             </div>
 
             <div className="bg-surface-sub border border-border rounded-xl p-2.5">
-              <label htmlFor="quick-add-fat" className="block text-[10px] font-medium text-amber-400 mb-1">
+              <label htmlFor="quick-add-fat" className="block text-[10px] font-semibold text-[var(--macro-fat)] mb-1">
                 Fat (g)
               </label>
               <input
@@ -259,7 +263,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
                 value={fat}
                 onChange={(e) => handleMacroChange('f', e.target.value)}
                 placeholder="0"
-                className="w-full px-2 py-1.5 text-xs font-semibold tabular-nums rounded-lg bg-surface-card border border-border focus:border-border-focus focus:outline-none text-foreground"
+                className="w-full px-2 py-1.5 text-xs font-semibold tabular-nums rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
               />
             </div>
           </div>
@@ -277,7 +281,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
               value={fiber}
               onChange={(e) => setFiber(e.target.value)}
               placeholder="0"
-              className="w-24 px-2 py-1 text-xs tabular-nums text-right rounded-lg bg-surface-card border border-border focus:border-border-focus focus:outline-none text-foreground"
+              className="w-24 px-2 py-1 text-xs tabular-nums text-right rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
             />
           </div>
 
@@ -285,9 +289,9 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
           {errorMessage && (
             <div
               role="alert"
-              className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2"
+              className="p-2.5 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-center gap-2"
             >
-              <AlertCircle className="w-4 h-4 shrink-0" />
+              <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
               <span>{errorMessage}</span>
             </div>
           )}
@@ -296,9 +300,9 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
           <button
             type="submit"
             disabled={isSaving}
-            className="w-full py-2.5 px-4 rounded-xl bg-foreground text-background font-semibold text-xs hover:opacity-90 active:scale-[0.99] disabled:opacity-50 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+            className="macro-spring active:scale-95 w-full py-2.5 px-4 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
           >
-            <Zap className="w-3.5 h-3.5" />
+            <Zap className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Log Quick Add</span>
           </button>
         </form>

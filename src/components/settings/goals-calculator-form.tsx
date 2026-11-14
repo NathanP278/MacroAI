@@ -100,15 +100,15 @@ export function GoalsCalculatorForm() {
   };
 
   return (
-    <section className="bg-card border border-border rounded-2xl p-4 space-y-4">
+    <section className="bg-card rounded-2xl p-4 sm:p-5 space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-xl bg-purple-400/10 border border-purple-400/20 flex items-center justify-center text-purple-400">
-          <Calculator className="w-4 h-4" />
+      <div className="flex items-center gap-2.5">
+        <div className="w-9 h-9 rounded-2xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)]">
+          <Calculator className="w-4 h-4" aria-hidden="true" />
         </div>
         <div>
-          <h2 className="text-xs font-semibold text-foreground">Goals & TDEE Calculator</h2>
-          <p className="text-[10px] text-muted-foreground">Mifflin-St Jeor metabolic target estimation</p>
+          <h2 className="text-sm font-bold text-foreground tracking-tight">Goals & TDEE Calculator</h2>
+          <p className="text-[11px] text-muted-foreground">Mifflin-St Jeor metabolic target estimation</p>
         </div>
       </div>
 
@@ -124,7 +124,7 @@ export function GoalsCalculatorForm() {
               aria-label="Biological Sex"
               value={sex}
               onChange={(e) => setSex(e.target.value as 'male' | 'female')}
-              className="w-full px-2.5 py-1.5 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground transition-colors"
+              className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub focus:outline-none focus:ring-2 focus:ring-ring text-foreground transition-shadow"
             >
               <option value="male">Male</option>
               <option value="female">Female</option>
@@ -143,7 +143,7 @@ export function GoalsCalculatorForm() {
               max={120}
               value={age || ''}
               onChange={(e) => setAge(Math.max(1, parseInt(e.target.value) || 0))}
-              className="w-full px-2.5 py-1.5 text-xs tabular-nums rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground"
+              className="w-full px-3 py-2 text-xs tabular-nums rounded-xl bg-surface-sub focus:outline-none focus:ring-2 focus:ring-ring text-foreground transition-shadow"
             />
           </div>
 
@@ -160,7 +160,7 @@ export function GoalsCalculatorForm() {
               max={300}
               value={weightKg || ''}
               onChange={(e) => setWeightKg(Math.max(1, parseFloat(e.target.value) || 0))}
-              className="w-full px-2.5 py-1.5 text-xs tabular-nums rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground"
+              className="w-full px-3 py-2 text-xs tabular-nums rounded-xl bg-surface-sub focus:outline-none focus:ring-2 focus:ring-ring text-foreground transition-shadow"
             />
           </div>
 
@@ -176,7 +176,7 @@ export function GoalsCalculatorForm() {
               max={250}
               value={heightCm || ''}
               onChange={(e) => setHeightCm(Math.max(1, parseInt(e.target.value) || 0))}
-              className="w-full px-2.5 py-1.5 text-xs tabular-nums rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground"
+              className="w-full px-3 py-2 text-xs tabular-nums rounded-xl bg-surface-sub focus:outline-none focus:ring-2 focus:ring-ring text-foreground transition-shadow"
             />
           </div>
         </div>
@@ -192,7 +192,7 @@ export function GoalsCalculatorForm() {
               aria-label="Activity Level"
               value={activityMultiplier}
               onChange={(e) => setActivityMultiplier(parseFloat(e.target.value))}
-              className="w-full px-2.5 py-1.5 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground transition-colors"
+              className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub focus:outline-none focus:ring-2 focus:ring-ring text-foreground transition-shadow"
             >
               {ACTIVITY_LEVELS.map((act) => (
                 <option key={act.value} value={act.value}>
@@ -211,7 +211,7 @@ export function GoalsCalculatorForm() {
               aria-label="Caloric Goal"
               value={goalDeltaKcal}
               onChange={(e) => setGoalDeltaKcal(parseInt(e.target.value))}
-              className="w-full px-2.5 py-1.5 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground transition-colors"
+              className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub focus:outline-none focus:ring-2 focus:ring-ring text-foreground transition-shadow"
             >
               {GOAL_DELTAS.map((delta) => (
                 <option key={delta.value} value={delta.value}>
@@ -226,7 +226,7 @@ export function GoalsCalculatorForm() {
               <label htmlFor="goals-protein-per-kg" className="text-[11px] font-medium text-muted-foreground">
                 Protein per kg
               </label>
-              <span className="text-[10px] text-muted-foreground tabular-nums">
+              <span className="text-[11px] text-muted-foreground tabular-nums">
                 {proteinPerKg.toFixed(1)} g/kg
               </span>
             </div>
@@ -239,48 +239,48 @@ export function GoalsCalculatorForm() {
               max={3.5}
               value={proteinPerKg || ''}
               onChange={(e) => setProteinPerKg(Math.max(0.5, parseFloat(e.target.value) || 0))}
-              className="w-full px-2.5 py-1.5 text-xs tabular-nums rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground"
+              className="w-full px-3 py-2 text-xs tabular-nums rounded-xl bg-surface-sub focus:outline-none focus:ring-2 focus:ring-ring text-foreground transition-shadow"
             />
           </div>
         </div>
 
         {/* Calculated Targets Preview */}
-        <div className="bg-surface-sub border border-border rounded-xl p-3 space-y-2.5">
+        <div className="bg-surface-sub rounded-2xl p-3.5 space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-medium text-muted-foreground">Target Daily Nutrition</span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-foreground tabular-nums">
-              <Flame className="w-3.5 h-3.5 text-amber-400" />
+            <span className="inline-flex items-center gap-1 text-xs font-bold text-foreground tabular-nums">
+              <Flame className="w-3.5 h-3.5 text-[var(--macro-calories)]" aria-hidden="true" />
               {targets.dailyCalories} kcal
             </span>
           </div>
 
-          <div className="grid grid-cols-4 gap-2 pt-1">
-            <div className="p-2 rounded-lg bg-surface-card border border-border text-center">
-              <div className="flex items-center justify-center gap-1 text-[10px] text-emerald-400 font-medium">
-                <Dumbbell className="w-2.5 h-2.5" />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+            <div className="p-2.5 rounded-xl bg-card text-center">
+              <div className="flex items-center justify-center gap-1 text-[10px] text-[var(--macro-protein)] font-semibold">
+                <Dumbbell className="w-2.5 h-2.5" aria-hidden="true" />
                 <span>Protein</span>
               </div>
               <p className="text-xs font-bold text-foreground tabular-nums mt-0.5">{targets.proteinG}g</p>
             </div>
 
-            <div className="p-2 rounded-lg bg-surface-card border border-border text-center">
-              <div className="flex items-center justify-center gap-1 text-[10px] text-sky-400 font-medium">
-                <Wheat className="w-2.5 h-2.5" />
-                <span>Carbs</span>
-              </div>
-              <p className="text-xs font-bold text-foreground tabular-nums mt-0.5">{targets.carbsG}g</p>
-            </div>
-
-            <div className="p-2 rounded-lg bg-surface-card border border-border text-center">
-              <div className="flex items-center justify-center gap-1 text-[10px] text-amber-400 font-medium">
-                <Droplets className="w-2.5 h-2.5" />
+            <div className="p-2.5 rounded-xl bg-card text-center">
+              <div className="flex items-center justify-center gap-1 text-[10px] text-[var(--macro-fat)] font-semibold">
+                <Droplets className="w-2.5 h-2.5" aria-hidden="true" />
                 <span>Fat</span>
               </div>
               <p className="text-xs font-bold text-foreground tabular-nums mt-0.5">{targets.fatG}g</p>
             </div>
 
-            <div className="p-2 rounded-lg bg-surface-card border border-border text-center">
-              <div className="text-[10px] text-muted-foreground font-medium">Fiber</div>
+            <div className="p-2.5 rounded-xl bg-card text-center">
+              <div className="flex items-center justify-center gap-1 text-[10px] text-[var(--macro-carbs)] font-semibold">
+                <Wheat className="w-2.5 h-2.5" aria-hidden="true" />
+                <span>Carbs</span>
+              </div>
+              <p className="text-xs font-bold text-foreground tabular-nums mt-0.5">{targets.carbsG}g</p>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-card text-center">
+              <div className="text-[10px] text-[var(--macro-fiber)] font-semibold">Fiber</div>
               <p className="text-xs font-bold text-foreground tabular-nums mt-0.5">{targets.fiberG}g</p>
             </div>
           </div>
@@ -290,13 +290,13 @@ export function GoalsCalculatorForm() {
         <button
           type="submit"
           disabled={isSaving}
-          className="w-full py-2.5 px-4 rounded-xl bg-foreground text-background font-semibold text-xs hover:opacity-90 active:scale-[0.99] disabled:opacity-50 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+          className="macro-spring active:scale-95 w-full py-2.5 px-4 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
         >
           {savedSuccess ? (
-            <>
-              <Check className="w-3.5 h-3.5 text-emerald-500" />
+            <span className="animate-check-pop inline-flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-[var(--macro-carbs)]" aria-hidden="true" />
               <span>Goals Saved!</span>
-            </>
+            </span>
           ) : (
             <span>Save Nutrition Goals</span>
           )}

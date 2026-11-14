@@ -209,7 +209,7 @@ export default function HomePage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-5 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
+      <div className="flex flex-col gap-5 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8">
         {/* Clean MacroFactor Header (Pics 1 & 4) */}
         <header className="flex items-end justify-between gap-3">
           <div>
@@ -226,12 +226,12 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             {!dateInfo.isToday && (
               <button
                 type="button"
                 onClick={handleToday}
-                className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-surface-sub text-foreground hover:bg-surface-elevated transition-colors flex items-center gap-1 mr-1"
+                className="touch-target macro-spring active:scale-95 px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-surface-sub text-foreground hover:bg-surface-elevated flex items-center gap-1 mr-1"
               >
                 <RotateCcw className="w-3 h-3" aria-hidden="true" />
                 Today
@@ -241,7 +241,7 @@ export default function HomePage() {
               type="button"
               onClick={handlePrevDay}
               aria-label="Previous day"
-              className="w-9 h-9 rounded-full flex items-center justify-center bg-card hover:bg-surface-sub text-muted-foreground hover:text-foreground transition-colors"
+              className="touch-target macro-spring active:scale-95 w-9 h-9 rounded-full flex items-center justify-center bg-card hover:bg-surface-sub text-muted-foreground hover:text-foreground"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -249,7 +249,7 @@ export default function HomePage() {
               type="button"
               onClick={handleNextDay}
               aria-label="Next day"
-              className="w-9 h-9 rounded-full flex items-center justify-center bg-card hover:bg-surface-sub text-muted-foreground hover:text-foreground transition-colors"
+              className="touch-target macro-spring active:scale-95 w-9 h-9 rounded-full flex items-center justify-center bg-card hover:bg-surface-sub text-muted-foreground hover:text-foreground"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -257,7 +257,7 @@ export default function HomePage() {
         </header>
 
         {/* Top Responsive Bento Workspace: Hero (left) + Insights & Habits (right on tablet/laptop) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start animate-card-enter">
           <div className="lg:col-span-5">
             <MacroBentoGrid
               summary={summary}
@@ -279,7 +279,10 @@ export default function HomePage() {
         </div>
 
         {/* Bottom Workspace: Logged Entries + Micronutrient Targets */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        <div
+          className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start animate-card-enter"
+          style={{ animationDelay: '45ms' }}
+        >
           {/* Logged Entries Section */}
           <section className="lg:col-span-7 space-y-2.5">
             <div className="flex items-center justify-between px-0.5">
@@ -348,7 +351,7 @@ export default function HomePage() {
                           type="button"
                           onClick={() => openSheet('search', slot.id)}
                           aria-label={`Add food to ${slot.name}`}
-                          className="w-8 h-8 rounded-full flex items-center justify-center bg-surface-sub hover:bg-surface-elevated text-foreground transition-colors"
+                          className="touch-target macro-spring active:scale-95 w-8 h-8 rounded-full flex items-center justify-center bg-surface-sub hover:bg-foreground hover:text-background text-foreground"
                         >
                           <Plus className="w-4 h-4" />
                         </button>

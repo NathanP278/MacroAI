@@ -254,13 +254,14 @@ export function HitlVerificationSwapModal({
       role="dialog"
       aria-modal="true"
       aria-label={targetItem ? 'Verify or swap food' : 'Add ingredient'}
-      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs transition-opacity"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[430px] mx-auto bg-surface-elevated border-t border-x border-border rounded-t-3xl p-5 shadow-2xl flex flex-col max-h-[85vh] animate-in slide-in-from-bottom duration-200"
+        className="w-full max-w-lg mx-auto bg-surface-elevated border-t border-x border-border rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl flex flex-col max-h-[85vh] animate-sheet-in"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0" aria-hidden="true" />
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-border shrink-0">
           <div>
@@ -277,9 +278,9 @@ export function HitlVerificationSwapModal({
             type="button"
             onClick={onClose}
             aria-label="Close modal"
-            className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="touch-target macro-spring active:scale-90 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -287,17 +288,17 @@ export function HitlVerificationSwapModal({
         <div className="pt-3 flex-1 overflow-y-auto space-y-4 pr-0.5 min-h-0">
           {/* Search Input */}
           <div className="relative">
-            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" aria-hidden="true" />
             <input
               type="text"
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
               placeholder="Search staples, USDA, or saved foods..."
-              className="w-full pl-9 pr-9 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:border-border-focus text-foreground placeholder:text-muted-foreground/60"
+              className="w-full pl-9 pr-9 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground/60"
               autoFocus
             />
             {isSearching && (
-              <Loader2 className="w-4 h-4 text-primary animate-spin absolute right-3 top-1/2 -translate-y-1/2" />
+              <Loader2 className="w-4 h-4 text-[var(--macro-calories)] animate-spin absolute right-3 top-1/2 -translate-y-1/2" aria-hidden="true" />
             )}
           </div>
 
@@ -312,14 +313,14 @@ export function HitlVerificationSwapModal({
                   key={food.id}
                   type="button"
                   onClick={() => handleSelectFood(food)}
-                  className="w-full text-left p-3 rounded-xl bg-surface-sub border border-border hover:border-primary/50 hover:bg-muted/50 transition-all flex items-center justify-between gap-3 group"
+                  className="macro-spring active:scale-[0.985] w-full text-left p-3 rounded-xl bg-surface-sub border border-border hover:border-border-focus hover:bg-accent flex items-center justify-between gap-3 group"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-xs text-foreground truncate group-hover:text-primary transition-colors">
+                      <span className="font-semibold text-xs text-foreground truncate">
                         {food.name}
                       </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated border border-border text-muted-foreground uppercase font-mono">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated border border-border text-muted-foreground uppercase font-medium">
                         {food.source}
                       </span>
                     </div>
@@ -327,15 +328,23 @@ export function HitlVerificationSwapModal({
                       <p className="text-[11px] text-muted-foreground truncate">{food.brand}</p>
                     )}
                     <p className="text-[11px] text-muted-foreground/80 mt-1 tabular-nums">
-                      {Math.round(food.nutrientsPerBasis.calories)} kcal &bull; {food.nutrientsPerBasis.protein}g P &bull; {food.nutrientsPerBasis.carbs}g C &bull; {food.nutrientsPerBasis.fat}g F
+                      <span className="text-[var(--macro-calories)] font-semibold">
+                        {Math.round(food.nutrientsPerBasis.calories)} kcal
+                      </span>{' '}
+                      &bull;{' '}
+                      <span className="text-[var(--macro-protein)]">{food.nutrientsPerBasis.protein}g P</span>{' '}
+                      &bull;{' '}
+                      <span className="text-[var(--macro-carbs)]">{food.nutrientsPerBasis.carbs}g C</span>{' '}
+                      &bull;{' '}
+                      <span className="text-[var(--macro-fat)]">{food.nutrientsPerBasis.fat}g F</span>
                       <span className="text-[10px] ml-1 opacity-70">
                         ({food.basis === 'perServing' ? `${food.servingSize}${food.servingUnit}` : 'per 100g'})
                       </span>
                     </p>
                   </div>
                   <div className="shrink-0">
-                    <span className="p-1.5 rounded-lg bg-surface-elevated text-muted-foreground group-hover:bg-primary group-hover:text-white transition-all flex items-center justify-center">
-                      <Check className="w-3.5 h-3.5" />
+                    <span className="p-1.5 rounded-full bg-surface-elevated text-muted-foreground group-hover:bg-foreground group-hover:text-background transition-all flex items-center justify-center">
+                      <Check className="w-3.5 h-3.5" aria-hidden="true" />
                     </span>
                   </div>
                 </button>
@@ -447,9 +456,9 @@ export function HitlVerificationSwapModal({
                   <button
                     type="submit"
                     disabled={!manualName.trim()}
-                    className="w-full py-2.5 rounded-xl bg-foreground text-background font-semibold text-xs hover:opacity-90 active:scale-[0.98] disabled:opacity-50 transition-all flex items-center justify-center gap-1.5"
+                    className="macro-spring active:scale-95 w-full py-2.5 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-1.5"
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                     <span>Add to Meal</span>
                   </button>
                 </div>

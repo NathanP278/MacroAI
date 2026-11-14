@@ -103,23 +103,23 @@ export function BackupPanel({ className }: BackupPanelProps) {
   };
 
   return (
-    <section className={`bg-surface-card border border-border rounded-2xl p-4 space-y-4 ${className || ""}`}>
+    <section className={`bg-card rounded-2xl p-4 sm:p-5 space-y-4 ${className || ""}`}>
       {/* Header */}
       <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-          <Database className="w-4 h-4" />
+        <div className="w-9 h-9 rounded-2xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)]">
+          <Database className="w-4 h-4" aria-hidden="true" />
         </div>
         <div>
-          <h2 className="text-xs font-semibold text-foreground">Data Backup & Restore</h2>
-          <p className="text-[10px] text-muted-foreground">Versioned local JSON export and atomic import</p>
+          <h2 className="text-sm font-bold text-foreground tracking-tight">Data Backup & Restore</h2>
+          <p className="text-[11px] text-muted-foreground">Versioned local JSON export and atomic import</p>
         </div>
       </div>
 
       {/* Export Section */}
-      <div className="bg-surface-sub border border-border/50 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div className="bg-surface-sub rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="space-y-0.5">
-          <div className="text-xs font-medium text-foreground">Export Backup</div>
-          <div className="text-[10px] text-muted-foreground">
+          <div className="text-xs font-semibold text-foreground">Export Backup</div>
+          <div className="text-[11px] text-muted-foreground">
             Download a portable snapshot of logs, cached foods, recipes, and goals
           </div>
         </div>
@@ -127,31 +127,31 @@ export function BackupPanel({ className }: BackupPanelProps) {
           type="button"
           onClick={handleExport}
           disabled={isExporting}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+          className="macro-spring active:scale-95 bg-foreground text-background hover:opacity-90 font-semibold px-3.5 py-2 rounded-full text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0 shadow-xs"
         >
-          <Download className="w-3.5 h-3.5" />
+          <Download className="w-3.5 h-3.5" aria-hidden="true" />
           <span>{isExporting ? "Exporting..." : "Export Backup"}</span>
         </button>
       </div>
 
       {/* Import Section */}
-      <div className="bg-surface-sub border border-border/50 rounded-xl p-3 space-y-3">
+      <div className="bg-surface-sub rounded-xl p-3 space-y-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <div className="space-y-0.5">
-            <div className="text-xs font-medium text-foreground">Import Backup</div>
-            <div className="text-[10px] text-muted-foreground">
-              Restore data from a valid <code className="font-mono text-[9px]">macroai-backup.json</code> file
+            <div className="text-xs font-semibold text-foreground">Import Backup</div>
+            <div className="text-[11px] text-muted-foreground">
+              Restore data from a valid <code className="font-mono text-[10px]">macroai-backup.json</code> file
             </div>
           </div>
 
           {/* Mode Selector */}
-          <div className="flex items-center bg-surface-card border border-border rounded-lg p-0.5 text-xs">
+          <div className="flex items-center bg-card rounded-full p-0.5 text-xs shrink-0">
             <button
               type="button"
               onClick={() => setImportMode("merge")}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
+              className={`macro-spring active:scale-95 px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap cursor-pointer ${
                 importMode === "merge"
-                  ? "bg-primary text-primary-foreground font-semibold"
+                  ? "bg-foreground text-background font-semibold shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -160,9 +160,9 @@ export function BackupPanel({ className }: BackupPanelProps) {
             <button
               type="button"
               onClick={() => setImportMode("replace")}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
+              className={`macro-spring active:scale-95 px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap cursor-pointer ${
                 importMode === "replace"
-                  ? "bg-destructive text-destructive-foreground font-semibold"
+                  ? "bg-[var(--neutral-over)] text-background font-semibold shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -172,17 +172,17 @@ export function BackupPanel({ className }: BackupPanelProps) {
         </div>
 
         {importMode === "replace" && (
-          <div className="flex items-start gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-[11px]">
-            <ShieldAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+          <div className="flex items-start gap-2 p-2.5 rounded-xl bg-card text-[var(--neutral-over)] text-[11px]">
+            <ShieldAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
             <div>
-              <strong>Replace mode:</strong> Wipes all local nutrition logs, custom recipes, and user goals before restoring.
+              <strong className="text-foreground">Replace mode:</strong> Wipes all local nutrition logs, custom recipes, and user goals before restoring.
             </div>
           </div>
         )}
 
         {importMode === "merge" && (
-          <div className="text-[10px] text-muted-foreground">
-            <strong>Merge mode:</strong> Safely upserts logs and recipes by ID, and resolves user goals by updatedAt timestamp.
+          <div className="text-[11px] text-muted-foreground">
+            <strong className="text-foreground">Merge mode:</strong> Safely upserts logs and recipes by ID, and resolves user goals by updatedAt timestamp.
           </div>
         )}
 
@@ -199,9 +199,9 @@ export function BackupPanel({ className }: BackupPanelProps) {
           type="button"
           onClick={triggerFileInput}
           disabled={isImporting}
-          className="w-full bg-surface-card hover:bg-surface-card/80 border border-border text-foreground font-medium px-3.5 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+          className="macro-spring active:scale-95 w-full bg-card hover:bg-surface-elevated text-foreground font-semibold px-3.5 py-2 rounded-full text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
         >
-          <Upload className="w-3.5 h-3.5 text-muted-foreground" />
+          <Upload className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
           <span>{isImporting ? "Importing..." : `Select JSON File to ${importMode === "replace" ? "Replace" : "Merge"}`}</span>
         </button>
       </div>
@@ -209,16 +209,16 @@ export function BackupPanel({ className }: BackupPanelProps) {
       {/* Status Messages */}
       {statusMessage && (
         <div
-          className={`p-2.5 rounded-xl border flex items-center gap-2 text-xs ${
+          className={`p-2.5 rounded-xl flex items-center gap-2 text-xs ${
             statusType === "success"
-              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-              : "bg-destructive/10 border-destructive/20 text-destructive"
+              ? "bg-[var(--macro-carbs)]/15 text-[var(--macro-carbs)] animate-check-pop"
+              : "bg-surface-sub text-[var(--neutral-over)]"
           }`}
         >
           {statusType === "success" ? (
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
           ) : (
-            <AlertCircle className="w-4 h-4 shrink-0" />
+            <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
           )}
           <span className="leading-snug">{statusMessage}</span>
         </div>

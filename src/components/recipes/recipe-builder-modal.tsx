@@ -386,17 +386,18 @@ export function RecipeBuilderModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="recipe-builder-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs transition-opacity"
+      onClick={onClose}
     >
       <div
-        className="w-full max-w-lg max-h-[90vh] bg-card border border-border rounded-2xl flex flex-col shadow-2xl overflow-hidden"
+        className="w-full max-w-lg max-h-[90vh] bg-surface-elevated border border-border rounded-3xl flex flex-col shadow-2xl overflow-hidden animate-modal-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400">
-              <ChefHat className="w-4 h-4" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-2xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)]">
+              <ChefHat className="w-4 h-4" aria-hidden="true" />
             </div>
             <div>
               <h2 id="recipe-builder-title" className="text-sm font-bold text-foreground">
@@ -411,9 +412,9 @@ export function RecipeBuilderModal({
             type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+            className="touch-target macro-spring active:scale-90 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -431,7 +432,7 @@ export function RecipeBuilderModal({
                 placeholder="Recipe title (e.g. Avocado Toast)"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-surface-sub border border-border rounded-xl px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-amber-400"
+                className="w-full bg-surface-sub rounded-xl px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
               />
             </div>
             <div className="space-y-1">
@@ -445,7 +446,7 @@ export function RecipeBuilderModal({
                 step="1"
                 value={defaultServings}
                 onChange={(e) => setDefaultServings(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                className="w-full bg-surface-sub border border-border rounded-xl px-3 py-2 text-foreground focus:outline-hidden focus:ring-1 focus:ring-amber-400 font-mono"
+                className="w-full bg-surface-sub rounded-xl px-3 py-2 text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
               />
             </div>
           </div>
@@ -453,14 +454,14 @@ export function RecipeBuilderModal({
           {/* Basis Toggle */}
           <div className="space-y-1.5">
             <span className="font-semibold text-foreground">Nutrition Basis</span>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-surface-sub rounded-full">
               <button
                 type="button"
                 onClick={() => setBasis('perServing')}
-                className={`py-2 px-3 rounded-xl border font-medium text-center transition-all ${
+                className={`macro-spring active:scale-95 py-1.5 px-3 rounded-full text-xs text-center ${
                   basis === 'perServing'
-                    ? 'bg-amber-400/10 border-amber-400 text-amber-400 font-semibold'
-                    : 'bg-surface-sub border-border text-muted-foreground hover:text-foreground'
+                    ? 'bg-foreground text-background font-semibold shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground font-medium'
                 }`}
               >
                 Per Serving ({defaultServings} serving{defaultServings > 1 ? 's' : ''})
@@ -468,10 +469,10 @@ export function RecipeBuilderModal({
               <button
                 type="button"
                 onClick={() => setBasis('per100g')}
-                className={`py-2 px-3 rounded-xl border font-medium text-center transition-all ${
+                className={`macro-spring active:scale-95 py-1.5 px-3 rounded-full text-xs text-center ${
                   basis === 'per100g'
-                    ? 'bg-amber-400/10 border-amber-400 text-amber-400 font-semibold'
-                    : 'bg-surface-sub border-border text-muted-foreground hover:text-foreground'
+                    ? 'bg-foreground text-background font-semibold shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground font-medium'
                 }`}
               >
                 Per 100g ({totals.totalGrams}g total)
@@ -480,31 +481,31 @@ export function RecipeBuilderModal({
           </div>
 
           {/* Live Nutrition Preview Pill */}
-          <div className="bg-surface-sub border border-border rounded-2xl p-3 flex items-center justify-between">
+          <div className="bg-surface-sub rounded-2xl p-3.5 flex items-center justify-between">
             <div>
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
+              <span className="text-[11px] text-muted-foreground font-medium">
                 Preview ({basis === 'perServing' ? '1 serving' : '100g'})
               </span>
-              <div className="text-base font-bold text-foreground tabular-nums">
+              <div className="text-base font-bold text-[var(--macro-calories)] tabular-nums mt-0.5">
                 {previewNutrients.calories}{' '}
                 <span className="text-xs font-normal text-muted-foreground">kcal</span>
               </div>
             </div>
-            <div className="flex gap-3 text-right font-mono text-xs">
+            <div className="flex gap-3 text-right text-xs tabular-nums">
               <div>
-                <div className="text-sky-400 font-semibold tabular-nums">
+                <div className="text-[var(--macro-protein)] font-semibold">
                   {previewNutrients.protein}g
                 </div>
                 <div className="text-[10px] text-muted-foreground">Pro</div>
               </div>
               <div>
-                <div className="text-emerald-400 font-semibold tabular-nums">
+                <div className="text-[var(--macro-carbs)] font-semibold">
                   {previewNutrients.carbs}g
                 </div>
                 <div className="text-[10px] text-muted-foreground">Carb</div>
               </div>
               <div>
-                <div className="text-rose-400 font-semibold tabular-nums">
+                <div className="text-[var(--macro-fat)] font-semibold">
                   {previewNutrients.fat}g
                 </div>
                 <div className="text-[10px] text-muted-foreground">Fat</div>
@@ -518,7 +519,7 @@ export function RecipeBuilderModal({
               <span className="font-semibold text-foreground">
                 Ingredients ({ingredients.length})
               </span>
-              <span className="text-muted-foreground font-mono text-[11px]">
+              <span className="text-muted-foreground tabular-nums text-[11px]">
                 {totals.totalGrams}g total weight
               </span>
             </div>
@@ -528,11 +529,11 @@ export function RecipeBuilderModal({
                 {ingredients.map((ing, idx) => (
                   <div
                     key={`${ing.foodId}-${idx}`}
-                    className="flex items-center justify-between bg-surface-sub rounded-xl px-3 py-2 border border-border/60"
+                    className="flex items-center justify-between bg-surface-sub rounded-xl px-3 py-2"
                   >
                     <div className="min-w-0 flex-1 pr-2">
                       <div className="font-medium text-foreground truncate">{ing.name}</div>
-                      <div className="text-[10px] text-muted-foreground font-mono">
+                      <div className="text-[11px] text-muted-foreground tabular-nums">
                         {Math.round(ing.nutritionSnapshot.calories)} kcal ·{' '}
                         {Math.round(ing.nutritionSnapshot.protein)}P ·{' '}
                         {Math.round(ing.nutritionSnapshot.carbs)}C ·{' '}
@@ -546,18 +547,18 @@ export function RecipeBuilderModal({
                         step="any"
                         value={ing.amountStr !== undefined ? ing.amountStr : ing.amount}
                         onChange={(e) => handleUpdateIngredientAmount(idx, e.target.value)}
-                        className="w-16 bg-card border border-border rounded-lg px-2 py-1 text-center font-mono text-xs text-foreground focus:outline-hidden"
+                        className="w-16 bg-card rounded-lg px-2 py-1 text-center tabular-nums text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
                       />
-                      <span className="text-muted-foreground font-mono text-[10px]">
+                      <span className="text-muted-foreground text-[11px]">
                         {ing.unit}
                       </span>
                       <button
                         type="button"
                         onClick={() => handleRemoveIngredient(idx)}
                         aria-label={`Remove ${ing.name}`}
-                        className="p-1 text-muted-foreground hover:text-rose-400 transition-colors"
+                        className="touch-target macro-spring active:scale-90 p-1 rounded-full text-muted-foreground hover:text-foreground"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                       </button>
                     </div>
                   </div>
@@ -571,35 +572,41 @@ export function RecipeBuilderModal({
           </div>
 
           {/* Search Staples to Add */}
-          <div className="space-y-2 pt-1 border-t border-border/60">
+          <div className="space-y-2 pt-2 border-t border-border/60">
             <span className="font-semibold text-foreground">Add from Food Staples</span>
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search
+                className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2"
+                aria-hidden="true"
+              />
               <input
                 type="text"
                 placeholder="Search foods to add as ingredient..."
                 value={searchQuery}
                 onChange={(e) => handleSearchQueryChange(e.target.value)}
-                className="w-full bg-surface-sub border border-border rounded-xl pl-8 pr-8 py-1.5 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-amber-400"
+                className="w-full bg-surface-sub rounded-xl pl-8 pr-8 py-2 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
               />
               {isSearching && (
-                <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin absolute right-3 top-1/2 -translate-y-1/2" />
+                <Loader2
+                  className="w-3.5 h-3.5 text-[var(--macro-calories)] animate-spin absolute right-3 top-1/2 -translate-y-1/2"
+                  aria-hidden="true"
+                />
               )}
             </div>
 
             {searchResults.length > 0 && (
-              <div className="max-h-36 overflow-y-auto space-y-1 bg-surface-sub/80 border border-border rounded-xl p-1.5">
+              <div className="max-h-36 overflow-y-auto space-y-1 bg-surface-sub/90 rounded-xl p-1.5">
                 {searchResults.map((food) => (
                   <button
                     key={food.id}
                     type="button"
                     onClick={() => handleAddFoodItem(food)}
-                    className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-card flex items-center justify-between text-xs transition-colors"
+                    className="macro-spring active:scale-[0.98] w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-card flex items-center justify-between text-xs"
                   >
                     <span className="truncate text-foreground font-medium pr-2">
                       {food.name}
                     </span>
-                    <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                    <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
                       {food.nutrientsPerBasis.calories} kcal /{' '}
                       {food.basis === 'perServing' ? 'srv' : '100g'}
                     </span>
@@ -612,7 +619,7 @@ export function RecipeBuilderModal({
           {/* Manual Ingredient Quick Form */}
           <form
             onSubmit={handleAddManualIngredient}
-            className="space-y-2 pt-1 border-t border-border/60"
+            className="space-y-2 pt-2 border-t border-border/60"
           >
             <span className="font-semibold text-foreground">Or Add Manual Ingredient</span>
             <div className="grid grid-cols-2 gap-2">
@@ -621,14 +628,14 @@ export function RecipeBuilderModal({
                 placeholder="Ingredient name (e.g. Olive Oil)"
                 value={manualName}
                 onChange={(e) => setManualName(e.target.value)}
-                className="bg-surface-sub border border-border rounded-xl px-2.5 py-1.5 text-foreground placeholder:text-muted-foreground focus:outline-hidden"
+                className="bg-surface-sub rounded-xl px-2.5 py-2 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
               />
               <input
                 type="number"
                 placeholder="Weight (g)"
                 value={manualGrams}
                 onChange={(e) => setManualGrams(e.target.value)}
-                className="bg-surface-sub border border-border rounded-xl px-2.5 py-1.5 text-foreground placeholder:text-muted-foreground focus:outline-hidden font-mono"
+                className="bg-surface-sub rounded-xl px-2.5 py-2 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
               />
             </div>
             <div className="grid grid-cols-4 gap-2">
@@ -637,46 +644,46 @@ export function RecipeBuilderModal({
                 placeholder="Calories"
                 value={manualCals}
                 onChange={(e) => setManualCals(e.target.value)}
-                className="bg-surface-sub border border-border rounded-xl px-2 py-1.5 text-foreground placeholder:text-muted-foreground focus:outline-hidden font-mono"
+                className="bg-surface-sub rounded-xl px-2 py-2 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
               />
               <input
                 type="number"
                 placeholder="Protein"
                 value={manualProtein}
                 onChange={(e) => setManualProtein(e.target.value)}
-                className="bg-surface-sub border border-border rounded-xl px-2 py-1.5 text-foreground placeholder:text-muted-foreground focus:outline-hidden font-mono"
+                className="bg-surface-sub rounded-xl px-2 py-2 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
               />
               <input
                 type="number"
                 placeholder="Carbs"
                 value={manualCarbs}
                 onChange={(e) => setManualCarbs(e.target.value)}
-                className="bg-surface-sub border border-border rounded-xl px-2 py-1.5 text-foreground placeholder:text-muted-foreground focus:outline-hidden font-mono"
+                className="bg-surface-sub rounded-xl px-2 py-2 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
               />
               <input
                 type="number"
                 placeholder="Fat"
                 value={manualFat}
                 onChange={(e) => setManualFat(e.target.value)}
-                className="bg-surface-sub border border-border rounded-xl px-2 py-1.5 text-foreground placeholder:text-muted-foreground focus:outline-hidden font-mono"
+                className="bg-surface-sub rounded-xl px-2 py-2 text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
               />
             </div>
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-xl bg-surface-sub hover:bg-surface border border-border text-foreground font-medium transition-colors"
+              className="macro-spring active:scale-[0.98] w-full flex items-center justify-center gap-1.5 py-2 rounded-full bg-surface-sub hover:bg-surface-elevated text-foreground font-semibold"
             >
-              <Plus className="w-3.5 h-3.5 text-amber-400" />
+              <Plus className="w-3.5 h-3.5 text-[var(--macro-calories)]" aria-hidden="true" />
               <span>Add Ingredient</span>
             </button>
           </form>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border bg-surface-sub/50">
+        <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-border bg-card/50">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+            className="macro-spring active:scale-95 px-4 py-2 rounded-full text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-surface-sub"
           >
             Cancel
           </button>
@@ -684,9 +691,9 @@ export function RecipeBuilderModal({
             type="button"
             onClick={handleSave}
             disabled={!name.trim()}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-neutral-950 text-xs font-semibold shadow-xs transition-colors"
+            className="macro-spring active:scale-95 flex items-center gap-1.5 px-5 py-2 rounded-full bg-foreground hover:opacity-90 disabled:opacity-45 text-background text-xs font-semibold shadow-xs"
           >
-            <Check className="w-3.5 h-3.5" />
+            <Check className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Save Recipe</span>
           </button>
         </div>

@@ -55,16 +55,16 @@ export function AiHealthStatusCard() {
   }, []);
 
   return (
-    <section className="bg-card border border-border rounded-2xl p-4 space-y-3">
+    <section className="bg-card rounded-2xl p-4 sm:p-5 space-y-3.5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-            <Sparkles className="w-4 h-4" />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-2xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)]">
+            <Sparkles className="w-4 h-4" aria-hidden="true" />
           </div>
           <div>
-            <h2 className="text-xs font-semibold text-foreground">AI Vision & OCR Service</h2>
-            <p className="text-[10px] text-muted-foreground">Server-configured OpenAI-compatible model</p>
+            <h2 className="text-sm font-bold text-foreground tracking-tight">AI Vision & OCR Service</h2>
+            <p className="text-[11px] text-muted-foreground">Server-configured OpenAI-compatible model</p>
           </div>
         </div>
 
@@ -72,26 +72,26 @@ export function AiHealthStatusCard() {
           type="button"
           onClick={checkHealth}
           disabled={isLoading}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 transition-colors"
+          className="macro-spring active:scale-95 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-surface-sub text-foreground hover:bg-surface-elevated disabled:opacity-50"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
           <span>{isLoading ? 'Checking...' : 'Test AI Connection'}</span>
         </button>
       </div>
 
       {/* Status Details */}
       {status && (
-        <div className="bg-muted/30 border border-border/50 rounded-xl p-3 space-y-2 text-xs">
+        <div className="bg-surface-sub rounded-xl p-3 space-y-2 text-xs">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Configured in Server:</span>
             {status.configured ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400">
-                <CheckCircle2 className="w-3.5 h-3.5" />
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--macro-carbs)]">
+                <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>Yes</span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400/90">
-                <AlertTriangle className="w-3.5 h-3.5" />
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--neutral-over)]">
+                <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>Not configured</span>
               </span>
             )}
@@ -100,7 +100,7 @@ export function AiHealthStatusCard() {
           {status.model && (
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Model:</span>
-              <span className="font-mono text-[11px] text-foreground bg-muted px-2 py-0.5 rounded-md">
+              <span className="font-mono text-[11px] text-foreground bg-card px-2 py-0.5 rounded-md">
                 {status.model}
               </span>
             </div>
@@ -109,13 +109,13 @@ export function AiHealthStatusCard() {
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Endpoint Reachability:</span>
             {status.reachable ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400">
-                <CheckCircle2 className="w-3.5 h-3.5" />
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--macro-carbs)]">
+                <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>Reachable</span>
               </span>
             ) : hasTested ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400/90">
-                <AlertTriangle className="w-3.5 h-3.5" />
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--neutral-over)]">
+                <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>Unreachable</span>
               </span>
             ) : (
@@ -124,7 +124,7 @@ export function AiHealthStatusCard() {
           </div>
 
           {status.error && (
-            <div className="pt-1 text-[10px] text-amber-400/90 bg-amber-500/5 p-2 rounded-lg border border-amber-500/20 break-all">
+            <div className="pt-1 text-[11px] text-[var(--neutral-over)] bg-card p-2.5 rounded-xl break-all">
               {status.error}
             </div>
           )}
@@ -133,9 +133,9 @@ export function AiHealthStatusCard() {
 
       {/* Security & Setup Note */}
       <div className="flex items-start gap-2 pt-1 text-[11px] text-muted-foreground leading-relaxed">
-        <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+        <ShieldCheck className="w-4 h-4 text-[var(--macro-carbs)] shrink-0 mt-0.5" aria-hidden="true" />
         <p>
-          Configured safely via server environment variables (<code className="text-[10px] bg-muted px-1 py-0.5 rounded font-mono">.env.local</code>):{' '}
+          Configured safely via server environment variables (<code className="text-[10px] bg-surface-sub px-1.5 py-0.5 rounded font-mono">.env.local</code>):{' '}
           <span className="font-mono text-[10px] text-foreground">AI_BASE_URL</span>,{' '}
           <span className="font-mono text-[10px] text-foreground">AI_API_KEY</span>,{' '}
           <span className="font-mono text-[10px] text-foreground">AI_MODEL</span>, and optional{' '}

@@ -64,6 +64,7 @@ export function MealSlotsView() {
   let totalProtein = 0;
   let totalCarbs = 0;
   let totalFat = 0;
+  let totalFiber = 0;
 
   for (const entry of logs) {
     if (entry.nutritionSnapshot) {
@@ -71,8 +72,11 @@ export function MealSlotsView() {
       totalProtein += Number(entry.nutritionSnapshot.protein) || 0;
       totalCarbs += Number(entry.nutritionSnapshot.carbs) || 0;
       totalFat += Number(entry.nutritionSnapshot.fat) || 0;
+      totalFiber += Number(entry.nutritionSnapshot.fiber) || 0;
     }
   }
+
+  const remainingCal = Math.round(activeGoals.dailyCalories - totalCalories);
 
   const handleCopyYesterday = async (slotId: string, slotName: string) => {
     try {
@@ -108,42 +112,109 @@ export function MealSlotsView() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Daily Consumed Summary Banner (Adherence-Neutral) */}
-      <div className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between shadow-xs">
-        <div>
-          <span className="text-xs text-muted-foreground font-medium">Daily Consumed</span>
-          <div className="text-xl font-bold tabular-nums text-foreground mt-0.5">
-            {Math.round(totalCalories).toLocaleString()}{' '}
-            <span className="text-xs font-normal text-muted-foreground">
-              / {activeGoals.dailyCalories.toLocaleString()} kcal
-            </span>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start animate-card-enter">
+      {/* Left/Top Daily Consumed Bento Card */}
+      <aside
+        aria-label="Daily nutrition totals"
+        className="lg:col-span-4 bg-card rounded-2xl p-4 sm:p-5 lg:sticky lg:top-6 space-y-4"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <span className="text-xs text-muted-foreground font-medium">Daily Consumed</span>
+            <div className="text-2xl font-bold tabular-nums text-foreground mt-0.5">
+              {Math.round(totalCalories).toLocaleString()}{' '}
+              <span className="text-xs font-normal text-muted-foreground">
+                / {activeGoals.dailyCalories.toLocaleString()} kcal
+              </span>
+            </div>
           </div>
+          <span
+            className={`text-xs font-semibold tabular-nums px-2.5 py-1 rounded-full bg-surface-sub ${
+              remainingCal < 0
+                ? 'text-[var(--neutral-over)]'
+                : 'text-[var(--macro-calories)]'
+            }`}
+          >
+            {remainingCal < 0
+              ? `+${Math.abs(remainingCal).toLocaleString()} surplus`
+              : `${remainingCal.toLocaleString()} left`}
+          </span>
         </div>
-        <div className="flex gap-3 text-right font-mono text-xs">
-          <div>
-            <div className="text-sky-400 font-semibold tabular-nums">
-              {Math.round(totalProtein)}g
-            </div>
-            <div className="text-[10px] text-muted-foreground">Pro</div>
-          </div>
-          <div>
-            <div className="text-emerald-400 font-semibold tabular-nums">
-              {Math.round(totalCarbs)}g
-            </div>
-            <div className="text-[10px] text-muted-foreground">Carb</div>
-          </div>
-          <div>
-            <div className="text-rose-400 font-semibold tabular-nums">
-              {Math.round(totalFat)}g
-            </div>
-            <div className="text-[10px] text-muted-foreground">Fat</div>
-          </div>
-        </div>
-      </div>
 
-      {/* Meal Slots List */}
-      <div className="space-y-4">
+        <progress
+          className="macro-progress progress-calories w-full h-2 block"
+          max={Math.max(1, activeGoals.dailyCalories)}
+          value={Math.min(activeGoals.dailyCalories, Math.max(0, Math.round(totalCalories)))}
+          aria-label="Daily calorie progress"
+        />
+
+        <div className="grid grid-cols-3 gap-3 pt-1">
+          <div className="space-y-1.5">
+            <div className="flex items-baseline justify-between text-xs tabular-nums">
+              <span className="text-muted-foreground font-medium">Protein</span>
+              <span className="font-semibold text-[var(--macro-protein)]">
+                {Math.round(totalProtein)}g
+              </span>
+            </div>
+            <progress
+              className="macro-progress progress-protein w-full h-1.5 block"
+              max={Math.max(1, activeGoals.proteinG)}
+              value={Math.min(activeGoals.proteinG, Math.max(0, Math.round(totalProtein)))}
+              aria-label="Protein progress"
+            />
+            <div className="text-[11px] text-muted-foreground tabular-nums">
+              / {activeGoals.proteinG}g
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-baseline justify-between text-xs tabular-nums">
+              <span className="text-muted-foreground font-medium">Fat</span>
+              <span className="font-semibold text-[var(--macro-fat)]">
+                {Math.round(totalFat)}g
+              </span>
+            </div>
+            <progress
+              className="macro-progress progress-fat w-full h-1.5 block"
+              max={Math.max(1, activeGoals.fatG)}
+              value={Math.min(activeGoals.fatG, Math.max(0, Math.round(totalFat)))}
+              aria-label="Fat progress"
+            />
+            <div className="text-[11px] text-muted-foreground tabular-nums">
+              / {activeGoals.fatG}g
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-baseline justify-between text-xs tabular-nums">
+              <span className="text-muted-foreground font-medium">Carbs</span>
+              <span className="font-semibold text-[var(--macro-carbs)]">
+                {Math.round(totalCarbs)}g
+              </span>
+            </div>
+            <progress
+              className="macro-progress progress-carbs w-full h-1.5 block"
+              max={Math.max(1, activeGoals.carbsG)}
+              value={Math.min(activeGoals.carbsG, Math.max(0, Math.round(totalCarbs)))}
+              aria-label="Carbs progress"
+            />
+            <div className="text-[11px] text-muted-foreground tabular-nums">
+              / {activeGoals.carbsG}g
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs tabular-nums">
+          <span className="text-muted-foreground">Fiber</span>
+          <span className="font-semibold text-[var(--macro-fiber)]">
+            {Math.round(totalFiber)}g{' '}
+            <span className="text-muted-foreground font-normal">/ {activeGoals.fiberG}g</span>
+          </span>
+        </div>
+      </aside>
+
+      {/* Meal Slots Responsive 2-Column Bento Grid */}
+      <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-4">
         {mealSlots.map((slot) => {
           const slotLogs = logs.filter((l) => l.mealSlot === slot.id);
           const yesterdaySlotLogs = yesterdayEntries.filter((l) => l.mealSlot === slot.id);
@@ -168,16 +239,18 @@ export function MealSlotsView() {
             <div
               key={slot.id}
               data-testid={`meal-slot-card-${slot.id}`}
-              className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-3 shadow-xs"
+              className="bg-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3.5"
             >
               {/* Slot Header */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className="text-sm font-bold text-foreground tracking-tight">{slot.name}</h3>
-                  <p className="text-[11px] text-muted-foreground tabular-nums">
-                    {Math.round(slotCalories)} kcal
+                  <h3 className="text-base font-bold text-foreground tracking-tight">{slot.name}</h3>
+                  <p className="text-xs text-muted-foreground tabular-nums mt-0.5">
+                    <span className="font-semibold text-[var(--macro-calories)]">
+                      {Math.round(slotCalories)} kcal
+                    </span>
                     {slotLogs.length > 0 && (
-                      <span className="ml-1.5 font-mono text-[10px] text-muted-foreground">
+                      <span className="ml-1.5 text-[11px] text-muted-foreground">
                         ({Math.round(slotProtein)}P · {Math.round(slotCarbs)}C ·{' '}
                         {Math.round(slotFat)}F)
                       </span>
@@ -185,58 +258,67 @@ export function MealSlotsView() {
                   </p>
                 </div>
 
-                {/* Per-Slot Add Actions */}
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => openSheet('search', slot.id)}
-                    aria-label={`Add food to ${slot.name}`}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-surface-sub hover:bg-surface border border-border text-xs font-medium text-foreground transition-colors"
-                  >
-                    <Plus className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Add</span>
-                  </button>
-                </div>
+                {/* Per-Slot Add Action */}
+                <button
+                  type="button"
+                  onClick={() => openSheet('search', slot.id)}
+                  aria-label={`Add food to ${slot.name}`}
+                  className="touch-target macro-spring active:scale-95 flex items-center gap-1 px-3 py-1.5 rounded-full bg-surface-sub hover:bg-foreground hover:text-background text-xs font-semibold text-foreground"
+                >
+                  <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Add</span>
+                </button>
               </div>
 
               {/* Fitia-Style Recommendation Chip on Unlogged Slot */}
               {isUnlogged && budget && (
                 <div
                   data-testid={`budget-chip-${slot.id}`}
-                  className="bg-surface-sub border border-border/80 rounded-xl px-3 py-2 flex items-center justify-between text-xs"
+                  className="bg-surface-sub rounded-xl px-3 py-2.5 flex flex-col gap-1.5 text-xs"
                 >
-                  <div className="flex items-center gap-1.5 text-amber-400 font-medium">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Recommended</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 text-[var(--macro-calories)] font-medium">
+                      <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                      <span>Recommended</span>
+                    </div>
+                    <span className="text-[11px] font-semibold text-foreground tabular-nums">
+                      ~{budget.calories} kcal
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2 font-mono text-[11px] text-foreground">
-                    <span className="font-semibold tabular-nums">~{budget.calories} kcal</span>
+                  <div className="flex items-center gap-2.5 text-[11px] tabular-nums">
+                    <span className="text-[var(--macro-protein)] font-semibold">
+                      {budget.protein}g P
+                    </span>
                     <span className="text-muted-foreground">·</span>
-                    <span className="text-sky-400 tabular-nums">{budget.protein}g P</span>
-                    <span className="text-emerald-400 tabular-nums">{budget.carbs}g C</span>
-                    <span className="text-rose-400 tabular-nums">{budget.fat}g F</span>
+                    <span className="text-[var(--macro-carbs)] font-semibold">
+                      {budget.carbs}g C
+                    </span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-[var(--macro-fat)] font-semibold">
+                      {budget.fat}g F
+                    </span>
                   </div>
                 </div>
               )}
 
               {/* 1-Tap Copy Yesterday's Meal Slot */}
               {hasYesterday && (
-                <div className="flex items-center justify-between pt-0.5">
+                <div className="flex items-center justify-between gap-2 pt-0.5">
                   <button
                     type="button"
                     onClick={() => handleCopyYesterday(slot.id, slot.name)}
                     aria-label={`Copy Yesterday's ${slot.name}`}
-                    className="flex items-center gap-1.5 text-xs text-amber-400/90 hover:text-amber-300 font-medium transition-colors"
+                    className="macro-spring active:scale-95 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-sub hover:bg-surface-elevated text-xs text-foreground font-medium"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
+                    <RotateCcw className="w-3.5 h-3.5 text-[var(--macro-calories)]" aria-hidden="true" />
                     <span>Copy Yesterday&apos;s {slot.name}</span>
-                    <span className="text-[10px] text-muted-foreground font-mono">
+                    <span className="text-[11px] text-muted-foreground tabular-nums">
                       ({yesterdaySlotLogs.length})
                     </span>
                   </button>
                   {feedback && (
-                    <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
-                      <Check className="w-3 h-3" />
+                    <span className="animate-check-pop text-[11px] text-[var(--macro-carbs)] flex items-center gap-1 font-semibold">
+                      <Check className="w-3.5 h-3.5" aria-hidden="true" />
                       {feedback}
                     </span>
                   )}
@@ -245,36 +327,44 @@ export function MealSlotsView() {
 
               {/* Logged Entries in this Slot */}
               {slotLogs.length > 0 ? (
-                <div className="space-y-2 pt-1 border-t border-border/50">
+                <div className="space-y-2 pt-1.5 border-t border-border/60">
                   {slotLogs.map((entry) => (
                     <div
                       key={entry.id}
-                      className="flex items-center justify-between bg-surface-sub/50 hover:bg-surface-sub rounded-xl px-3 py-2 text-xs transition-colors"
+                      className="flex items-center justify-between bg-surface-sub/60 hover:bg-surface-sub rounded-xl px-3 py-2.5 text-xs transition-colors"
                     >
                       <div className="min-w-0 flex-1 pr-2">
                         <div className="font-medium text-foreground truncate">{entry.name}</div>
-                        <div className="text-[10px] text-muted-foreground font-mono">
+                        <div className="text-[11px] text-muted-foreground tabular-nums mt-0.5">
                           {entry.amount} {entry.unit} · {Math.round(entry.nutritionSnapshot?.calories || 0)} kcal ·{' '}
-                          {Math.round(entry.nutritionSnapshot?.protein || 0)}P ·{' '}
-                          {Math.round(entry.nutritionSnapshot?.carbs || 0)}C ·{' '}
-                          {Math.round(entry.nutritionSnapshot?.fat || 0)}F
+                          <span className="text-[var(--macro-protein)]">
+                            {Math.round(entry.nutritionSnapshot?.protein || 0)}P
+                          </span>{' '}
+                          ·{' '}
+                          <span className="text-[var(--macro-carbs)]">
+                            {Math.round(entry.nutritionSnapshot?.carbs || 0)}C
+                          </span>{' '}
+                          ·{' '}
+                          <span className="text-[var(--macro-fat)]">
+                            {Math.round(entry.nutritionSnapshot?.fat || 0)}F
+                          </span>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleDeleteEntry(entry.id)}
                         aria-label={`Delete ${entry.name}`}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-rose-400 transition-colors"
+                        className="touch-target macro-spring active:scale-90 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-elevated"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                       </button>
                     </div>
                   ))}
                 </div>
               ) : (
                 !hasYesterday && (
-                  <div className="text-[11px] text-muted-foreground py-1 text-center flex items-center justify-center gap-1">
-                    <Utensils className="w-3 h-3 opacity-60" />
+                  <div className="text-xs text-muted-foreground py-2 text-center flex items-center justify-center gap-1.5">
+                    <Utensils className="w-3.5 h-3.5 opacity-60" aria-hidden="true" />
                     <span>No entries logged yet</span>
                   </div>
                 )

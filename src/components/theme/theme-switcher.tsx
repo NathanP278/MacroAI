@@ -16,7 +16,7 @@ export function ThemeSwitcher() {
   return (
     <div
       data-testid="theme-switcher"
-      className="flex items-center gap-1 bg-surface-sub p-1 rounded-xl border border-border"
+      className="flex items-center gap-1 bg-surface-sub p-1 rounded-full border border-border"
     >
       {options.map((opt) => {
         const Icon = opt.icon;
@@ -26,14 +26,14 @@ export function ThemeSwitcher() {
             key={opt.value}
             type="button"
             onClick={() => setTheme(opt.value)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`macro-spring active:scale-95 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
               isSelected
-                ? "bg-amber-400 text-neutral-950 font-semibold shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                ? "bg-foreground text-background font-semibold shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
             }`}
             aria-pressed={isSelected}
           >
-            <Icon className="w-3.5 h-3.5" />
+            <Icon className="w-3.5 h-3.5" aria-hidden="true" />
             <span>{opt.label}</span>
           </button>
         );

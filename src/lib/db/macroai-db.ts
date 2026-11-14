@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import type { FoodItem, FoodLogEntry, CustomRecipe, UserGoals } from '@/types/nutrition';
+import { createCentralSyncMiddleware } from './cloud-sync';
 
 export class MacroAIDB extends Dexie {
   foodLogs!: Table<FoodLogEntry, string>;
@@ -15,6 +16,7 @@ export class MacroAIDB extends Dexie {
       customRecipes: 'id, name, createdAt',
       userGoals: 'id, updatedAt',
     });
+    this.use(createCentralSyncMiddleware(() => this));
   }
 }
 

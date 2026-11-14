@@ -198,13 +198,14 @@ export function AddBarcodeProductModal({
       role="dialog"
       aria-modal="true"
       aria-label="Add Missing Product"
-      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm transition-opacity"
+      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs transition-opacity"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[430px] mx-auto bg-surface-elevated border-t border-x border-border rounded-t-3xl p-5 shadow-2xl animate-in slide-in-from-bottom duration-200 max-h-[92vh] flex flex-col"
+        className="w-full max-w-lg mx-auto bg-surface-elevated border-t border-x border-border rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl animate-sheet-in max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0" aria-hidden="true" />
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-border">
           <div>
@@ -219,9 +220,9 @@ export function AddBarcodeProductModal({
             type="button"
             onClick={onClose}
             aria-label="Close add product modal"
-            className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="touch-target macro-spring active:scale-90 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -240,12 +241,12 @@ export function AddBarcodeProductModal({
             type="button"
             disabled={isOcrLoading}
             onClick={() => fileInputRef.current?.click()}
-            className="w-full py-2 px-3 rounded-xl bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 text-amber-400 font-semibold text-xs transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            className="macro-spring active:scale-95 w-full py-2.5 px-4 rounded-full bg-[var(--macro-calories)]/15 hover:bg-[var(--macro-calories)]/25 text-[var(--macro-calories)] font-semibold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {isOcrLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+              <Loader2 className="w-4 h-4 animate-spin text-[var(--macro-calories)]" aria-hidden="true" />
             ) : (
-              <Sparkles className="w-4 h-4 text-amber-400" />
+              <Sparkles className="w-4 h-4 text-[var(--macro-calories)]" aria-hidden="true" />
             )}
             <span>
               {isOcrLoading ? 'Scanning Label with AI...' : 'Scan Nutrition Label (AI OCR)'}
@@ -253,8 +254,8 @@ export function AddBarcodeProductModal({
           </button>
 
           {ocrError && (
-            <div className="mt-2 p-2.5 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="mt-2 p-2.5 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
               <span>{ocrError}</span>
             </div>
           )}
@@ -452,12 +453,12 @@ export function AddBarcodeProductModal({
             <button
               type="submit"
               disabled={isSaving || !name.trim()}
-              className="w-full py-2.5 px-4 rounded-xl bg-foreground text-background font-semibold text-xs hover:opacity-90 active:scale-[0.99] disabled:opacity-50 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+              className="macro-spring active:scale-95 w-full py-2.5 px-4 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
             >
               {isSaving ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
               ) : (
-                <Save className="w-3.5 h-3.5" />
+                <Save className="w-3.5 h-3.5" aria-hidden="true" />
               )}
               <span>Save & Log</span>
             </button>

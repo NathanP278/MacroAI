@@ -12,6 +12,7 @@ import {
   Send,
   RotateCcw,
   CheckCircle2,
+  ArrowLeft,
 } from 'lucide-react';
 import { useLoggerStore, AiDraftItem } from '@/stores/logger-store';
 import { db, generateId } from '@/lib/db/macroai-db';
@@ -111,9 +112,13 @@ export function AiMealScannerSheet({
 
   if (!open) return null;
 
-  // Decide active stage
+  // Decide active stage:
+  // 1) Stage 1 (Image Intake): no draft items (or rescanning) and no image yet
+  // 2) Stage 2 (Pre-Scan HITL): image captured, user describes what's in it before vision scan
+  // 3) Stage 3 (Post-Scan Review): draft items present and not rescanning
   const hasDraftItems = Boolean(aiDraft && aiDraft.items && aiDraft.items.length > 0);
-  const showStage2 = hasDraftItems && !isRescanning;
+  const showReviewStage = hasDraftItems && !isRescanning;
+  const showPreScanHitl = !showReviewStage && Boolean(imageDataUrl);
 
   // Image upload handling (Stage 1)
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -182,6 +187,9 @@ export function AiMealScannerSheet({
 
   // Manual draft creation without photo
   const handleStartManualDraft = () => {
+    setImageDataUrl(null);
+    setContextPrompt('');
+    setScanError(null);
     setAiDraft({
       imageDataUrl: null,
       contextPrompt: '',
@@ -402,94 +410,99 @@ export function AiMealScannerSheet({
         aria-modal="true"
         aria-label="AI Meal Scanner"
         data-testid="ai-meal-scanner-sheet"
-        className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs transition-opacity"
         onClick={onClose}
       >
         <div
-          className="w-full max-w-[430px] mx-auto bg-surface-elevated border-t border-x border-border rounded-t-3xl p-5 shadow-2xl animate-in slide-in-from-bottom duration-200 max-h-[92vh] flex flex-col"
+          className="w-full max-w-lg mx-auto bg-surface-elevated border-t border-x border-border rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl animate-sheet-in max-h-[92vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
+          <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0" aria-hidden="true" />
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-border">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-                <Sparkles className="w-4 h-4" />
-              </div>
+            <div className="flex items-center gap-2.5">
+              {showPreScanHitl ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImageDataUrl(null);
+                    setScanError(null);
+                  }}
+                  aria-label="Back to photo upload"
+                  className="touch-target macro-spring active:scale-90 w-8 h-8 rounded-full bg-surface-sub border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card"
+                  title="Choose a different photo"
+                >
+                  <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+                </button>
+              ) : (
+                <div className="w-8 h-8 rounded-xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)]">
+                  <Sparkles className="w-4 h-4" aria-hidden="true" />
+                </div>
+              )}
               <div>
                 <h2 className="text-sm font-semibold text-foreground">
-                  {showStage2 ? 'Review AI Meal' : 'AI Meal Scanner'}
+                  {showReviewStage
+                    ? 'Review AI Meal'
+                    : showPreScanHitl
+                      ? "What's in this meal?"
+                      : 'AI Meal Scanner'}
                 </h2>
-                <p className="text-[10px] text-muted-foreground capitalize">
+                <p className="text-[11px] text-muted-foreground capitalize">
                   Logging to {effectiveMealSlot} &bull; {effectiveDate}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-1">
-              {showStage2 && (
+              {showReviewStage && (
                 <button
                   type="button"
                   onClick={() => setIsRescanning(true)}
                   aria-label="Re-scan or take new photo"
-                  className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors mr-1"
-                  title="Take new photo / re-scan"
+                  className="touch-target macro-spring active:scale-90 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub mr-0.5"
+                  title="Edit meal context / re-scan"
                 >
-                  <RotateCcw className="w-4 h-4" />
+                  <RotateCcw className="w-4 h-4" aria-hidden="true" />
                 </button>
               )}
               <button
                 type="button"
                 onClick={onClose}
                 aria-label="Close AI scanner"
-                className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="touch-target macro-spring active:scale-90 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
           </div>
 
-          {/* Body: Stage 1 or Stage 2 */}
-          {!showStage2 ? (
-            /* STAGE 1: Pre-Scan Context & Image Upload */
+          {/* Body: Stage 1 (Image Intake) -> Stage 2 (Pre-Scan HITL) -> Stage 3 (Review) */}
+          {!showReviewStage && !showPreScanHitl ? (
+            /* STAGE 1: Image Intake Only */
             <div className="pt-4 flex-1 overflow-y-auto space-y-4">
               {scanError && (
-                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div className="p-3 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
                   <div className="flex-1">{scanError}</div>
                 </div>
               )}
 
-              {/* Photo Upload Area */}
               <div>
                 <label
                   htmlFor="meal-photo-upload"
                   aria-label="Upload meal photo"
                   className="block cursor-pointer"
                 >
-                  {imageDataUrl ? (
-                    <div className="relative rounded-2xl overflow-hidden border border-border group">
-                      <img
-                        src={imageDataUrl}
-                        alt="Meal preview"
-                        className="w-full h-48 object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white text-xs font-medium">
-                        <Upload className="w-4 h-4" />
-                        <span>Change Photo</span>
-                      </div>
+                  <div className="w-full h-52 rounded-2xl border-2 border-dashed border-border hover:border-[var(--macro-calories)]/60 bg-surface-sub/50 flex flex-col items-center justify-center p-4 transition-colors">
+                    <div className="w-12 h-12 rounded-full bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)] mb-2.5">
+                      <Camera className="w-6 h-6" aria-hidden="true" />
                     </div>
-                  ) : (
-                    <div className="w-full h-44 rounded-2xl border-2 border-dashed border-border hover:border-primary/50 bg-surface-sub/50 flex flex-col items-center justify-center p-4 transition-colors">
-                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
-                        <Camera className="w-6 h-6" />
-                      </div>
-                      <span className="text-xs font-semibold text-foreground">
-                        Take photo or upload image
-                      </span>
-                      <span className="text-[10px] text-muted-foreground mt-0.5">
-                        High quality JPEG compressed on-device
-                      </span>
-                    </div>
-                  )}
+                    <span className="text-xs font-semibold text-foreground">
+                      Take photo or upload image
+                    </span>
+                    <span className="text-[11px] text-muted-foreground mt-1 text-center">
+                      Next, tell the AI what&apos;s in your meal before scanning for higher accuracy
+                    </span>
+                  </div>
                   <input
                     id="meal-photo-upload"
                     type="file"
@@ -502,39 +515,93 @@ export function AiMealScannerSheet({
                 </label>
               </div>
 
-              {/* Prep / Hidden Context Textarea */}
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={handleStartManualDraft}
+                  className="text-xs text-muted-foreground hover:text-foreground font-medium underline-offset-4 hover:underline"
+                >
+                  Skip photo &amp; log ingredients manually
+                </button>
+              </div>
+            </div>
+          ) : !showReviewStage && showPreScanHitl ? (
+            /* STAGE 2: Pre-Scan Human-in-the-Loop Context */
+            <div className="pt-4 flex-1 overflow-y-auto space-y-4">
+              {scanError && (
+                <div className="p-3 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                  <div className="flex-1">{scanError}</div>
+                </div>
+              )}
+
+              {/* Captured Photo Preview (tap to replace) */}
+              <div>
+                <label
+                  htmlFor="meal-photo-upload"
+                  aria-label="Upload meal photo"
+                  className="block cursor-pointer"
+                >
+                  <div className="relative rounded-2xl overflow-hidden border border-border group">
+                    <img
+                      src={imageDataUrl ?? undefined}
+                      alt="Meal preview"
+                      className="w-full h-44 object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white text-xs font-medium">
+                      <Upload className="w-4 h-4" />
+                      <span>Change Photo</span>
+                    </div>
+                  </div>
+                  <input
+                    id="meal-photo-upload"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    aria-label="Upload meal photo"
+                    onChange={handleImageFileChange}
+                    className="sr-only"
+                  />
+                </label>
+              </div>
+
+              {/* Human-in-the-Loop Pre-Scan Prompt */}
               <div className="space-y-1.5">
                 <label
                   htmlFor="meal-context-prompt"
                   className="text-xs font-semibold text-foreground flex items-center justify-between"
                 >
-                  <span>Tell what&apos;s in the meal (Optional)</span>
-                  <span className="text-[10px] font-normal text-muted-foreground">
-                    Prep & hidden ingredients
+                  <span>Tell AI what&apos;s in the meal</span>
+                  <span className="text-[10px] font-medium text-primary">
+                    Before vision scan
                   </span>
                 </label>
                 <textarea
                   id="meal-context-prompt"
                   value={contextPrompt}
                   onChange={(e) => setContextPrompt(e.target.value)}
-                  placeholder="Cooking oil, sauces, prep style, portion hints (e.g. 2 tbsp olive oil, grilled chicken, basmati rice)..."
+                  placeholder="List ingredients, cooking oil, sauces, prep style, or weights (e.g. 2 tbsp olive oil, grilled chicken breast, basmati rice)..."
                   rows={3}
+                  autoFocus
                   className="w-full p-3 text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:border-border-focus text-foreground placeholder:text-muted-foreground/60 resize-none"
                 />
+                <p className="text-[10px] text-muted-foreground">
+                  The AI combines your notes with the photo so hidden oils, sauces, and ingredients aren&apos;t guessed wrong.
+                </p>
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-2 space-y-2">
+              <div className="pt-1 space-y-2">
                 <button
                   type="button"
                   onClick={handleAnalyzeMeal}
                   disabled={!imageDataUrl || isAnalyzing}
-                  className="w-full py-3 rounded-xl bg-foreground text-background font-semibold text-xs hover:opacity-90 active:scale-[0.98] disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-sm"
+                  className="macro-spring active:scale-95 w-full py-3 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 shadow-xs"
                 >
                   {isAnalyzing ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Analyzing meal components...</span>
+                      <span>Analyzing meal with your notes...</span>
                     </>
                   ) : (
                     <>
@@ -550,13 +617,13 @@ export function AiMealScannerSheet({
                     onClick={handleStartManualDraft}
                     className="text-xs text-muted-foreground hover:text-foreground font-medium underline-offset-4 hover:underline"
                   >
-                    Skip photo & log ingredients manually
+                    Skip photo &amp; log ingredients manually
                   </button>
                 </div>
               </div>
             </div>
           ) : (
-            /* STAGE 2: Post-Scan Interactive HITL Review */
+            /* STAGE 3: Post-Scan Interactive HITL Review */
             <div className="pt-3 flex-1 flex flex-col min-h-0">
               {/* Summary Totals Banner */}
               <div className="bg-surface-sub rounded-2xl p-3 border border-border mb-3 flex items-center justify-between shrink-0">
@@ -572,7 +639,7 @@ export function AiMealScannerSheet({
                     <div className="flex items-baseline gap-1">
                       <span
                         data-testid="hitl-total-calories"
-                        className="text-xl font-bold text-foreground tabular-nums tracking-tight"
+                        className="text-xl font-bold text-[var(--macro-calories)] tabular-nums tracking-tight"
                       >
                         {Math.round(totalCalories)}
                       </span>
@@ -582,22 +649,22 @@ export function AiMealScannerSheet({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-right text-xs tabular-nums text-muted-foreground">
+                <div className="flex items-center gap-2.5 text-right text-xs tabular-nums text-muted-foreground">
                   <div>
-                    <span className="block font-bold text-foreground">{Math.round(totalProtein * 10) / 10}g</span>
+                    <span className="block font-bold text-[var(--macro-protein)]">{Math.round(totalProtein * 10) / 10}g</span>
                     <span className="text-[10px] uppercase">Prot</span>
                   </div>
                   <div>
-                    <span className="block font-bold text-foreground">{Math.round(totalCarbs * 10) / 10}g</span>
+                    <span className="block font-bold text-[var(--macro-carbs)]">{Math.round(totalCarbs * 10) / 10}g</span>
                     <span className="text-[10px] uppercase">Carb</span>
                   </div>
                   <div>
-                    <span className="block font-bold text-foreground">{Math.round(totalFat * 10) / 10}g</span>
+                    <span className="block font-bold text-[var(--macro-fat)]">{Math.round(totalFat * 10) / 10}g</span>
                     <span className="text-[10px] uppercase">Fat</span>
                   </div>
                   {totalFiber > 0 && (
                     <div>
-                      <span className="block font-bold text-foreground">{Math.round(totalFiber * 10) / 10}g</span>
+                      <span className="block font-bold text-[var(--macro-fiber)]">{Math.round(totalFiber * 10) / 10}g</span>
                       <span className="text-[10px] uppercase">Fib</span>
                     </div>
                   )}
@@ -606,8 +673,8 @@ export function AiMealScannerSheet({
 
               {/* Refine Error Banner */}
               {refineError && (
-                <div className="mb-2 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-start gap-2 shrink-0">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <div className="mb-2 p-2.5 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-start gap-2 shrink-0">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
                   <span className="flex-1">{refineError}</span>
                 </div>
               )}
@@ -632,9 +699,9 @@ export function AiMealScannerSheet({
                     setSwapTargetItem(null);
                     setIsSwapModalOpen(true);
                   }}
-                  className="w-full py-2.5 px-3 rounded-xl border border-dashed border-border hover:border-primary/60 bg-surface-sub/40 hover:bg-surface-sub text-xs font-semibold text-muted-foreground hover:text-foreground transition-all flex items-center justify-center gap-2"
+                  className="macro-spring active:scale-[0.98] w-full py-2.5 px-3 rounded-xl border border-dashed border-border hover:border-[var(--macro-calories)]/60 bg-surface-sub/40 hover:bg-surface-sub text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center justify-center gap-2"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>Add Missing Ingredient</span>
                 </button>
               </div>
@@ -649,17 +716,17 @@ export function AiMealScannerSheet({
                     onChange={(e) => setRefineInstruction(e.target.value)}
                     placeholder="E.g., remove the cheese, make the chicken 200g..."
                     disabled={isRefining}
-                    className="flex-1 px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:border-border-focus text-foreground placeholder:text-muted-foreground/60"
+                    className="flex-1 px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground/60"
                   />
                   <button
                     type="submit"
                     disabled={isRefining || !refineInstruction.trim()}
-                    className="px-3 py-2 rounded-xl bg-surface-elevated border border-border text-foreground hover:bg-muted font-semibold text-xs transition-all disabled:opacity-50 flex items-center gap-1 shrink-0 shadow-xs"
+                    className="macro-spring active:scale-95 px-3.5 py-2 rounded-full bg-card border border-border text-foreground hover:bg-surface-sub font-semibold text-xs disabled:opacity-50 flex items-center gap-1 shrink-0 shadow-xs"
                   >
                     {isRefining ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
                     ) : (
-                      <Send className="w-3.5 h-3.5 text-primary" />
+                      <Send className="w-3.5 h-3.5 text-[var(--macro-calories)]" aria-hidden="true" />
                     )}
                     <span>Refine</span>
                   </button>
@@ -670,7 +737,7 @@ export function AiMealScannerSheet({
                   type="button"
                   onClick={handleConfirmAndLog}
                   disabled={isSubmittingLog || !aiDraft?.items.length}
-                  className="w-full py-3 rounded-xl bg-foreground text-background font-semibold text-xs hover:opacity-90 active:scale-[0.98] disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-sm"
+                  className="macro-spring active:scale-95 w-full py-3 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 shadow-xs"
                 >
                   {isSubmittingLog ? (
                     <>

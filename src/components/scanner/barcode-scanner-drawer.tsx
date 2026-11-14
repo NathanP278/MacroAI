@@ -307,28 +307,29 @@ function BarcodeScannerContent({
         aria-modal="true"
         aria-label="Barcode Scanner"
         data-testid="barcode-scanner-drawer"
-        className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs transition-opacity"
         onClick={onClose}
       >
         <div
-          className="w-full max-w-[430px] mx-auto bg-surface-elevated border-t border-x border-border rounded-t-3xl p-5 shadow-2xl animate-in slide-in-from-bottom duration-200 max-h-[90vh] flex flex-col"
+          className="w-full max-w-lg mx-auto bg-surface-elevated border-t border-x border-border rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl animate-sheet-in max-h-[90vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
+          <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0" aria-hidden="true" />
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-border">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               {lookupResult ? (
                 <button
                   type="button"
                   onClick={handleResetScanner}
                   aria-label="Back to camera scanner"
-                  className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-sub transition-colors mr-1"
+                  className="touch-target macro-spring active:scale-90 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub mr-0.5"
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <ArrowLeft className="w-4 h-4" aria-hidden="true" />
                 </button>
               ) : (
-                <div className="w-8 h-8 rounded-xl bg-sky-400/10 border border-sky-400/20 flex items-center justify-center text-sky-400">
-                  <ScanBarcode className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-xl bg-[var(--macro-protein)]/15 flex items-center justify-center text-[var(--macro-protein)]">
+                  <ScanBarcode className="w-4 h-4" aria-hidden="true" />
                 </div>
               )}
               <div>
@@ -337,7 +338,7 @@ function BarcodeScannerContent({
                     ? lookupResult.item.name
                     : 'Scan Food Barcode'}
                 </h2>
-                <p className="text-[10px] text-muted-foreground capitalize">
+                <p className="text-[11px] text-muted-foreground capitalize">
                   Logging to {effectiveMealSlot} &bull; {effectiveDate}
                 </p>
               </div>
@@ -346,9 +347,9 @@ function BarcodeScannerContent({
               type="button"
               onClick={onClose}
               aria-label="Close barcode scanner"
-              className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="touch-target macro-spring active:scale-90 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
 
@@ -402,10 +403,10 @@ function BarcodeScannerContent({
                         key={preset}
                         type="button"
                         onClick={() => setAmount(String(preset))}
-                        className={`px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-colors ${
+                        className={`macro-spring active:scale-95 px-2.5 py-1 text-[11px] font-semibold rounded-full ${
                           amount === String(preset)
-                            ? 'bg-foreground text-background border-foreground'
-                            : 'bg-surface-card border-border text-muted-foreground hover:text-foreground'
+                            ? 'bg-foreground text-background shadow-xs'
+                            : 'bg-card text-muted-foreground hover:text-foreground'
                         }`}
                       >
                         {preset}x
@@ -420,10 +421,10 @@ function BarcodeScannerContent({
                           setAmount(String(preset));
                           setUnit('ml');
                         }}
-                        className={`px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-colors ${
+                        className={`macro-spring active:scale-95 px-2.5 py-1 text-[11px] font-semibold rounded-full ${
                           amount === String(preset) && unit === 'ml'
-                            ? 'bg-foreground text-background border-foreground'
-                            : 'bg-surface-card border-border text-muted-foreground hover:text-foreground'
+                            ? 'bg-foreground text-background shadow-xs'
+                            : 'bg-card text-muted-foreground hover:text-foreground'
                         }`}
                       >
                         {preset}ml
@@ -438,10 +439,10 @@ function BarcodeScannerContent({
                           setAmount(String(preset));
                           setUnit('g');
                         }}
-                        className={`px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-colors ${
+                        className={`macro-spring active:scale-95 px-2.5 py-1 text-[11px] font-semibold rounded-full ${
                           amount === String(preset) && unit === 'g'
-                            ? 'bg-foreground text-background border-foreground'
-                            : 'bg-surface-card border-border text-muted-foreground hover:text-foreground'
+                            ? 'bg-foreground text-background shadow-xs'
+                            : 'bg-card text-muted-foreground hover:text-foreground'
                         }`}
                       >
                         {preset}g
@@ -456,31 +457,31 @@ function BarcodeScannerContent({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between px-1">
                     <span className="text-xs font-semibold text-foreground">Scaled Nutrition</span>
-                    <span className="text-xs font-bold text-foreground tabular-nums">
+                    <span className="text-xs font-bold text-[var(--macro-calories)] tabular-nums">
                       {scaledNutrition.macros.calories} kcal
                     </span>
                   </div>
                   <div className="grid grid-cols-4 gap-2 text-center">
                     <div className="bg-surface-sub border border-border rounded-xl p-2">
-                      <span className="text-[10px] text-emerald-400 font-medium block">Protein</span>
+                      <span className="text-[10px] text-[var(--macro-protein)] font-semibold block">Protein</span>
                       <span className="text-xs font-semibold tabular-nums text-foreground">
                         {scaledNutrition.macros.protein}g
                       </span>
                     </div>
                     <div className="bg-surface-sub border border-border rounded-xl p-2">
-                      <span className="text-[10px] text-sky-400 font-medium block">Carbs</span>
+                      <span className="text-[10px] text-[var(--macro-carbs)] font-semibold block">Carbs</span>
                       <span className="text-xs font-semibold tabular-nums text-foreground">
                         {scaledNutrition.macros.carbs}g
                       </span>
                     </div>
                     <div className="bg-surface-sub border border-border rounded-xl p-2">
-                      <span className="text-[10px] text-amber-400 font-medium block">Fat</span>
+                      <span className="text-[10px] text-[var(--macro-fat)] font-semibold block">Fat</span>
                       <span className="text-xs font-semibold tabular-nums text-foreground">
                         {scaledNutrition.macros.fat}g
                       </span>
                     </div>
                     <div className="bg-surface-sub border border-border rounded-xl p-2">
-                      <span className="text-[10px] text-muted-foreground font-medium block">Fiber</span>
+                      <span className="text-[10px] text-[var(--macro-fiber)] font-semibold block">Fiber</span>
                       <span className="text-xs font-semibold tabular-nums text-foreground">
                         {scaledNutrition.macros.fiber}g
                       </span>
@@ -501,12 +502,12 @@ function BarcodeScannerContent({
                   type="button"
                   onClick={handleLogHitFood}
                   disabled={isLogging || parsedAmount <= 0}
-                  className="w-full py-2.5 px-4 rounded-xl bg-foreground text-background font-semibold text-xs hover:opacity-90 active:scale-[0.99] disabled:opacity-50 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                  className="macro-spring active:scale-95 w-full py-2.5 px-4 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
                 >
                   {isLogging ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
                   ) : (
-                    <Check className="w-3.5 h-3.5" />
+                    <Check className="w-3.5 h-3.5" aria-hidden="true" />
                   )}
                   <span>Log Food</span>
                 </button>
@@ -515,8 +516,8 @@ function BarcodeScannerContent({
           ) : lookupResult?.status === 'offline-miss' ? (
             /* Offline-miss View */
             <div className="pt-4 flex-1 flex flex-col justify-center items-center text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400">
-                <AlertTriangle className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-2xl bg-[var(--neutral-over)]/15 flex items-center justify-center text-[var(--neutral-over)]">
+                <AlertTriangle className="w-6 h-6" aria-hidden="true" />
               </div>
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-foreground">
@@ -530,15 +531,15 @@ function BarcodeScannerContent({
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(true)}
-                  className="w-full py-2.5 px-4 rounded-xl bg-foreground text-background font-semibold text-xs hover:opacity-90 active:scale-[0.99] transition-all flex items-center justify-center gap-1.5"
+                  className="macro-spring active:scale-95 w-full py-2.5 px-4 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 flex items-center justify-center gap-1.5"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>Add Product Offline</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleResetScanner}
-                  className="w-full py-2 px-4 rounded-xl bg-surface-sub hover:bg-muted border border-border text-foreground font-medium text-xs transition-colors"
+                  className="macro-spring active:scale-95 w-full py-2 px-4 rounded-full bg-surface-sub hover:bg-card text-foreground font-medium text-xs"
                 >
                   Try Another Barcode
                 </button>
@@ -547,8 +548,8 @@ function BarcodeScannerContent({
           ) : lookupResult?.status === 'missing' ? (
             /* Missing View */
             <div className="pt-4 flex-1 flex flex-col justify-center items-center text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-sky-400/10 border border-sky-400/20 flex items-center justify-center text-sky-400">
-                <Search className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-2xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)]">
+                <Search className="w-6 h-6" aria-hidden="true" />
               </div>
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-foreground">
@@ -562,15 +563,15 @@ function BarcodeScannerContent({
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(true)}
-                  className="w-full py-2.5 px-4 rounded-xl bg-foreground text-background font-semibold text-xs hover:opacity-90 active:scale-[0.99] transition-all flex items-center justify-center gap-1.5"
+                  className="macro-spring active:scale-95 w-full py-2.5 px-4 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 flex items-center justify-center gap-1.5"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>Add Product Details</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleResetScanner}
-                  className="w-full py-2 px-4 rounded-xl bg-surface-sub hover:bg-muted border border-border text-foreground font-medium text-xs transition-colors"
+                  className="macro-spring active:scale-95 w-full py-2 px-4 rounded-full bg-surface-sub hover:bg-card text-foreground font-medium text-xs"
                 >
                   Scan Another
                 </button>
@@ -603,11 +604,11 @@ function BarcodeScannerContent({
 
                     {/* Target Reticle Overlay */}
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                      <div className="w-48 h-32 border-2 border-sky-400/80 rounded-xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]">
-                        <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-sky-400" />
-                        <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-sky-400" />
-                        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-sky-400" />
-                        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-sky-400" />
+                      <div className="w-48 h-32 border-2 border-[var(--macro-calories)]/80 rounded-xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]">
+                        <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[var(--macro-calories)]" />
+                        <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[var(--macro-calories)]" />
+                        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[var(--macro-calories)]" />
+                        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[var(--macro-calories)]" />
                       </div>
                     </div>
 
@@ -643,13 +644,13 @@ function BarcodeScannerContent({
                       placeholder="Enter barcode digits..."
                       value={manualBarcode}
                       onChange={(e) => setManualBarcode(e.target.value)}
-                      className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground placeholder:text-muted-foreground/50 font-mono"
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground/50 font-mono"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={isLookingUp || !manualBarcode.trim()}
-                    className="py-2 px-3 rounded-xl bg-foreground text-background font-semibold text-xs hover:opacity-90 active:scale-[0.98] disabled:opacity-50 transition-all flex items-center gap-1.5 shrink-0"
+                    className="macro-spring active:scale-95 py-2 px-4 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5 shrink-0"
                   >
                     {isLookingUp ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />

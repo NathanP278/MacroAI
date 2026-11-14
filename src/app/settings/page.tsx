@@ -6,76 +6,104 @@ import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import { BackupPanel } from "@/components/settings/backup-panel";
 import { GoalsCalculatorForm } from "@/components/settings/goals-calculator-form";
 import { AiHealthStatusCard } from "@/components/settings/ai-health-status-card";
+import { CentralDbStatusCard } from "@/components/settings/central-db-status-card";
 import { Moon, ShieldCheck, Database } from "lucide-react";
 
 export default function SettingsPage() {
   return (
     <AppShell>
-      <div className="flex flex-col gap-4 p-4">
-        {/* Header */}
-        <header className="pt-2">
-          <h1 className="text-base font-bold tracking-tight text-foreground">Settings & Preferences</h1>
-          <p className="text-[11px] text-muted-foreground">App appearance, storage, and adherence neutrality</p>
+      <div className="flex flex-col gap-5 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8">
+        {/* Header matching Dashboard Obsidian Aesthetic */}
+        <header>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            Settings & Preferences
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Targets, appearance, AI vision health & local database backups
+          </p>
         </header>
 
-        {/* Theme Section */}
-        <section className="bg-card border border-border rounded-2xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400">
-                <Moon className="w-4 h-4" />
+        {/* Responsive 12-Column Obsidian Bento Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start animate-card-enter">
+          {/* Primary Calculator Column */}
+          <div className="lg:col-span-7">
+            <GoalsCalculatorForm />
+          </div>
+
+          {/* Right Column: Appearance, AI Vision, Backup & Privacy */}
+          <div className="lg:col-span-5 space-y-4">
+            {/* Theme Section */}
+            <section className="bg-card rounded-2xl p-4 sm:p-5 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-2xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)]">
+                    <Moon className="w-4 h-4" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-foreground tracking-tight">
+                      Theme & Appearance
+                    </h2>
+                    <p className="text-[11px] text-muted-foreground">
+                      Dark, light, or match system
+                    </p>
+                  </div>
+                </div>
+                <ThemeSwitcher />
               </div>
-              <div>
-                <h2 className="text-xs font-semibold text-foreground">Theme & Appearance</h2>
-                <p className="text-[10px] text-muted-foreground">Dark, light, or match system</p>
-              </div>
+            </section>
+
+            {/* Central Database Sync */}
+            <CentralDbStatusCard />
+
+            {/* AI Vision & OCR Service */}
+            <AiHealthStatusCard />
+
+            {/* Data Backup & Restore */}
+            <BackupPanel />
+
+            {/* Adherence Neutrality & Offline Privacy */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+              <section className="bg-card rounded-2xl p-4 sm:p-5 space-y-2.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-2xl bg-[var(--macro-carbs)]/15 flex items-center justify-center text-[var(--macro-carbs)]">
+                    <ShieldCheck className="w-4 h-4" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-foreground tracking-tight">
+                      Adherence-Neutral Analytics
+                    </h2>
+                    <p className="text-[11px] text-[var(--macro-carbs)] font-medium">
+                      Active & Non-judgmental
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Surplus calorie and macronutrient intake is represented as neutral scientific data.
+                  Exceeding daily targets never triggers red alert borders, shaming badges, or penalties.
+                </p>
+              </section>
+
+              <section className="bg-card rounded-2xl p-4 sm:p-5 space-y-2.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-2xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)]">
+                    <Database className="w-4 h-4" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-foreground tracking-tight">
+                      Offline Storage & Privacy
+                    </h2>
+                    <p className="text-[11px] text-[var(--macro-calories)] font-medium">
+                      Hybrid IndexedDB Cache + Central Turso DB
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Entries cache locally in browser IndexedDB for instant offline use and automatically sync to your central Turso (libSQL) database across devices.
+                </p>
+              </section>
             </div>
-            <ThemeSwitcher />
           </div>
-        </section>
-
-        {/* Goals & TDEE Calculator */}
-        <GoalsCalculatorForm />
-
-        {/* AI Vision & OCR Service */}
-        <AiHealthStatusCard />
-
-        {/* Data Backup & Restore */}
-        <BackupPanel />
-
-        {/* Adherence Neutrality Info */}
-        <section className="bg-card border border-border rounded-2xl p-4 space-y-2.5">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-emerald-400/10 border border-emerald-400/20 flex items-center justify-center text-emerald-400">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-xs font-semibold text-foreground">Adherence-Neutral Analytics</h2>
-              <p className="text-[10px] text-emerald-400/90 font-mono">Active & Non-judgmental</p>
-            </div>
-          </div>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Surplus calorie and macronutrient intake is represented as neutral scientific data.
-            Exceeding daily targets never triggers red alert borders, shaming badges, or penalties.
-          </p>
-        </section>
-
-        {/* Offline & Storage Info */}
-        <section className="bg-card border border-border rounded-2xl p-4 space-y-2.5">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-sky-400/10 border border-sky-400/20 flex items-center justify-center text-sky-400">
-              <Database className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-xs font-semibold text-foreground">Offline Storage & Privacy</h2>
-              <p className="text-[10px] text-sky-400 font-mono">Client-side IndexedDB</p>
-            </div>
-          </div>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            All your nutrition logs, custom recipes, and scan histories reside locally in your browser storage.
-            No account required.
-          </p>
-        </section>
+        </div>
       </div>
     </AppShell>
   );

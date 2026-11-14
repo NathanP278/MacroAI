@@ -250,13 +250,19 @@
         "name": "The Tonal Slab Rule",
         "body": "Dashboard cards rest flat on `#141416` using `#1c1c1f` fill alone; reserve blurs and drop shadows exclusively for pinned bottom strips and modal sheets.",
         "section": "elevation"
+      },
+      {
+        "name": "The Multi-Page Bento Parity Rule",
+        "body": "Every top-level route (`/`, `/log`, `/recipes`, `/settings`) uses the unified `max-w-6xl` container (`px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8`) and responsive multi-column bento grids with `.macro-spring`, `.touch-target`, and `prefers-reduced-motion`-gated keyframes.",
+        "section": "layout"
       }
     ],
     "dos": [
       "Do enforce **The Adherence Neutrality Rule**: render over-target values with neutral `+N` / `Surplus` labels and slate accents (`#94a3b8`), keeping nutrient colors steady.",
       "Do enforce **The Tabular Lock Rule**: include `tabular-nums` on every numeric KPI, macro fraction, calorie total, and budget readout.",
       "Do set `min-w-0` on horizontal grid/flex children and `min-inline-size: 0` on native `<progress>` controls so multi-column macro strips never overflow 390px viewports.",
-      "Do pair monochrome active UI (`#f5f5f7` pills & FAB) exclusively with matte `#141416` / `#1c1c1f` / `#2a2a30` surfaces on primary tracking screens."
+      "Do pair monochrome active UI (`#f5f5f7` pills & FAB) exclusively with matte `#141416` / `#1c1c1f` / `#2a2a30` surfaces on primary tracking screens.",
+      "Do apply `.macro-spring` (`active:scale-95`), `.touch-target` on coarse-pointer compact buttons, and `prefers-reduced-motion: no-preference` keyframes (`macro-sheet-in`, `macro-modal-in`, `macro-card-enter`, `macro-check-pop`) across every interactive control."
     ],
     "donts": [
       "Don't turn calories, progress tracks, badges, or borders red (`#ef4444` / destructive alarms) when a user logs above daily targets.",

@@ -119,6 +119,7 @@
 
   --scrollbar-track: #141416;
   --scrollbar-thumb: #323238;
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   scrollbar-width: thin;
 }
@@ -199,11 +200,41 @@
   li {
     text-wrap: pretty;
   }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 }
 
 @layer utilities {
   .tabular-nums {
     font-variant-numeric: tabular-nums;
+  }
+  .touch-target {
+    position: relative;
+  }
+  .progress-calories {
+    --progress-bar-fill: var(--macro-calories);
+  }
+  .progress-protein {
+    --progress-bar-fill: var(--macro-protein);
+  }
+  .progress-carbs {
+    --progress-bar-fill: var(--macro-carbs);
+  }
+  .progress-fat {
+    --progress-bar-fill: var(--macro-fat);
+  }
+  .progress-fiber {
+    --progress-bar-fill: var(--macro-fiber);
+  }
+}
+
+@media (pointer: coarse) {
+  .touch-target::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
   }
 }
 
@@ -233,6 +264,85 @@ progress.macro-progress::-moz-progress-bar {
   background: var(--progress-bar-fill, var(--macro-calories));
   border-radius: 9999px;
   transition: inline-size 0.25s ease-out;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes macro-sheet-in {
+    from {
+      opacity: 0;
+      translate: 0 24px;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+
+  @keyframes macro-modal-in {
+    from {
+      opacity: 0;
+      scale: 0.96;
+    }
+    to {
+      opacity: 1;
+      scale: 1;
+    }
+  }
+
+  @keyframes macro-card-enter {
+    from {
+      opacity: 0;
+      translate: 0 8px;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+
+  @keyframes macro-check-pop {
+    0% {
+      opacity: 0.7;
+      scale: 0.78;
+    }
+    55% {
+      opacity: 1;
+      scale: 1.1;
+    }
+    100% {
+      opacity: 1;
+      scale: 1;
+    }
+  }
+
+  .animate-sheet-in {
+    animation: macro-sheet-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-timing-function: linear(0, 0.45 15%, 1.04 42%, 0.99 68%, 1 100%);
+  }
+
+  .animate-modal-in {
+    animation: macro-modal-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-timing-function: linear(0, 0.45 15%, 1.05 40%, 0.99 68%, 1 100%);
+  }
+
+  .animate-card-enter {
+    animation: macro-card-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-check-pop {
+    animation: macro-check-pop 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .macro-spring {
+    transition-property: transform, opacity, background-color, color, border-color;
+    transition-duration: 180ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    transition-timing-function: linear(0, 0.45 15%, 1.06 38%, 0.98 62%, 1 100%);
+  }
+
+  .macro-arc-transition {
+    transition: stroke-dashoffset 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { db } from './macroai-db';
+import { isCloudSyncEnabled, syncWithCentralDb } from './cloud-sync';
 import type {
   FoodLogEntry,
   FoodItem,
@@ -251,6 +252,10 @@ export async function importBackupJson(
       importedCounts.userGoals = goalsUpdated;
     }
   });
+
+  if (isCloudSyncEnabled()) {
+    await syncWithCentralDb(db, { forcePushMode: mode }).catch(() => {});
+  }
 
   return { importedCounts };
 }

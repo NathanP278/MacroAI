@@ -67,9 +67,9 @@ export function MicronutrientPanel({ micros = {}, className = '' }: Micronutrien
             type="button"
             onClick={() => setActiveTab('all')}
             aria-pressed={activeTab === 'all'}
-            className={`text-[11px] px-2.5 py-1 rounded-full font-medium transition-colors ${
+            className={`macro-spring active:scale-95 text-[11px] px-2.5 py-1 rounded-full font-medium ${
               activeTab === 'all'
-                ? 'bg-foreground text-background font-semibold'
+                ? 'bg-foreground text-background font-semibold shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -79,9 +79,9 @@ export function MicronutrientPanel({ micros = {}, className = '' }: Micronutrien
             type="button"
             onClick={() => setActiveTab('minerals')}
             aria-pressed={activeTab === 'minerals'}
-            className={`text-[11px] px-2.5 py-1 rounded-full font-medium transition-colors ${
+            className={`macro-spring active:scale-95 text-[11px] px-2.5 py-1 rounded-full font-medium ${
               activeTab === 'minerals'
-                ? 'bg-foreground text-background font-semibold'
+                ? 'bg-foreground text-background font-semibold shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -91,9 +91,9 @@ export function MicronutrientPanel({ micros = {}, className = '' }: Micronutrien
             type="button"
             onClick={() => setActiveTab('vitamins')}
             aria-pressed={activeTab === 'vitamins'}
-            className={`text-[11px] px-2.5 py-1 rounded-full font-medium transition-colors ${
+            className={`macro-spring active:scale-95 text-[11px] px-2.5 py-1 rounded-full font-medium ${
               activeTab === 'vitamins'
-                ? 'bg-foreground text-background font-semibold'
+                ? 'bg-foreground text-background font-semibold shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -157,7 +157,7 @@ export function MicronutrientPanel({ micros = {}, className = '' }: Micronutrien
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full py-1.5 text-xs text-muted-foreground hover:text-foreground font-medium flex items-center justify-center gap-1 rounded-xl hover:bg-surface-sub transition-colors"
+          className="macro-spring active:scale-[0.985] w-full py-2 text-xs text-muted-foreground hover:text-foreground font-medium flex items-center justify-center gap-1 rounded-xl hover:bg-surface-sub"
         >
           {isExpanded ? (
             <>

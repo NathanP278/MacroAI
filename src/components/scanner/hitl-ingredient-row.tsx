@@ -84,18 +84,18 @@ export function HitlIngredientRow({
           </span>
           {item.verifiedSource ? (
             <span
-              className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-medium shrink-0"
+              className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-[var(--macro-carbs)]/15 text-[var(--macro-carbs)] font-semibold shrink-0"
               title={`Verified against ${item.verifiedSource}`}
             >
-              <CheckCircle2 className="w-3 h-3" />
+              <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
               <span>Verified</span>
             </span>
           ) : (
             <span
-              className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-slate-500/15 text-slate-600 dark:text-slate-400 font-medium shrink-0"
+              className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-surface-elevated text-muted-foreground font-medium shrink-0"
               title="Estimated by AI vision"
             >
-              <HelpCircle className="w-3 h-3" />
+              <HelpCircle className="w-3 h-3" aria-hidden="true" />
               <span>AI Estimated</span>
             </span>
           )}
@@ -105,18 +105,18 @@ export function HitlIngredientRow({
           <button
             type="button"
             onClick={() => onOpenVerifySwap(item)}
-            className="px-2 py-1 text-[11px] font-medium rounded-lg bg-surface-elevated border border-border text-foreground hover:bg-muted active:scale-95 transition-all flex items-center gap-1 shadow-xs"
+            className="macro-spring active:scale-95 px-2.5 py-1 text-[11px] font-medium rounded-full bg-surface-elevated border border-border text-foreground hover:bg-card flex items-center gap-1 shadow-xs"
           >
-            <RefreshCw className="w-3 h-3 text-muted-foreground" />
+            <RefreshCw className="w-3 h-3 text-[var(--macro-calories)]" aria-hidden="true" />
             <span>Verify / Swap</span>
           </button>
           <button
             type="button"
             onClick={() => onDeleteItem(item.id)}
-            className="p-1.5 text-muted-foreground hover:text-red-500 rounded-lg hover:bg-red-500/10 active:scale-95 transition-all"
+            className="touch-target macro-spring active:scale-90 p-1.5 text-muted-foreground hover:text-foreground rounded-full hover:bg-surface-elevated"
             aria-label={`Delete ${item.name}`}
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -124,21 +124,21 @@ export function HitlIngredientRow({
       {/* Row Nutrition Summary */}
       <div className="flex items-baseline justify-between text-xs text-muted-foreground pt-0.5">
         <div className="flex items-baseline gap-1">
-          <span className="font-bold text-sm text-foreground tabular-nums">
+          <span className="font-bold text-sm text-[var(--macro-calories)] tabular-nums">
             {Math.round(macros.calories)}
           </span>
           <span className="text-[11px]">kcal</span>
         </div>
         <div className="flex items-center gap-2 text-[11px] tabular-nums">
-          <span><strong className="text-foreground">{macros.protein}</strong>P</span>
+          <span><strong className="text-[var(--macro-protein)]">{macros.protein}</strong>P</span>
           <span>&bull;</span>
-          <span><strong className="text-foreground">{macros.carbs}</strong>C</span>
+          <span><strong className="text-[var(--macro-carbs)]">{macros.carbs}</strong>C</span>
           <span>&bull;</span>
-          <span><strong className="text-foreground">{macros.fat}</strong>F</span>
+          <span><strong className="text-[var(--macro-fat)]">{macros.fat}</strong>F</span>
           {typeof macros.fiber === 'number' && macros.fiber > 0 && (
             <>
               <span>&bull;</span>
-              <span><strong className="text-foreground">{macros.fiber}</strong>Fib</span>
+              <span><strong className="text-[var(--macro-fiber)]">{macros.fiber}</strong>Fib</span>
             </>
           )}
         </div>
@@ -167,7 +167,7 @@ export function HitlIngredientRow({
             value={item.grams === 0 ? '' : item.grams}
             placeholder="0"
             onChange={handleNumberChange}
-            className="w-16 px-2 py-1 text-xs font-semibold text-right tabular-nums bg-surface-elevated border border-border rounded-lg focus:outline-none focus:border-border-focus text-foreground"
+            className="w-16 px-2 py-1 text-xs font-semibold text-right tabular-nums bg-surface-elevated border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
           />
           <span className="text-xs font-medium text-muted-foreground">g</span>
         </div>
@@ -184,10 +184,10 @@ export function HitlIngredientRow({
               key={m}
               type="button"
               onClick={() => handleMultiplierClick(m)}
-              className={`px-2 py-0.5 text-[11px] font-semibold rounded-md border transition-all active:scale-95 ${
+              className={`macro-spring active:scale-95 px-2.5 py-0.5 text-[11px] font-semibold rounded-full border ${
                 isSelected
                   ? 'bg-foreground text-background border-foreground shadow-xs'
-                  : 'bg-surface-elevated border-border text-foreground/80 hover:text-foreground hover:bg-muted'
+                  : 'bg-surface-elevated border-border text-foreground/80 hover:text-foreground'
               }`}
             >
               {m}x

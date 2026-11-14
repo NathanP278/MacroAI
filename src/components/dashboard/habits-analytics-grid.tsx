@@ -75,7 +75,7 @@ export function HabitsAnalyticsGrid({
           {/* Calories Today Card with Target Notch (Pic 2 & 3) */}
           <Link
             href="/log"
-            className="min-w-0 rounded-2xl bg-card p-3.5 flex flex-col justify-between gap-4 hover:bg-surface-sub/60 transition-colors group"
+            className="min-w-0 rounded-2xl bg-card p-3.5 flex flex-col justify-between gap-4 hover:bg-surface-sub/60 active:scale-[0.985] macro-spring group"
           >
             <div>
               <div className="text-sm font-semibold text-foreground">Calories</div>
@@ -104,7 +104,7 @@ export function HabitsAnalyticsGrid({
                 <span className="text-xs font-normal text-muted-foreground">kcal</span>
               </span>
               <ChevronRight
-                className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+                className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all"
                 aria-hidden="true"
               />
             </div>
@@ -206,7 +206,7 @@ export function HabitsAnalyticsGrid({
           {/* Food Logging 30-Day Heatmap Grid (Pic 1 right card) */}
           <Link
             href="/log"
-            className="min-w-0 rounded-2xl bg-card p-3.5 flex flex-col justify-between gap-3 hover:bg-surface-sub/60 transition-colors group"
+            className="min-w-0 rounded-2xl bg-card p-3.5 flex flex-col justify-between gap-3 hover:bg-surface-sub/60 active:scale-[0.985] macro-spring group"
           >
             <div>
               <div className="text-sm font-semibold text-foreground">Food Logging</div>
@@ -239,7 +239,7 @@ export function HabitsAnalyticsGrid({
                 this week
               </span>
               <ChevronRight
-                className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+                className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all"
                 aria-hidden="true"
               />
             </div>
@@ -248,7 +248,7 @@ export function HabitsAnalyticsGrid({
           {/* Remaining Meal Allocation Tile */}
           <Link
             href="/log"
-            className="min-w-0 rounded-2xl bg-card p-3.5 flex flex-col justify-between gap-3 hover:bg-surface-sub/60 transition-colors group"
+            className="min-w-0 rounded-2xl bg-card p-3.5 flex flex-col justify-between gap-3 hover:bg-surface-sub/60 active:scale-[0.985] macro-spring group"
           >
             <div>
               <div className="text-sm font-semibold text-foreground">
@@ -303,7 +303,7 @@ export function HabitsAnalyticsGrid({
                 {nextSlotName ? 'Auto-distributed' : 'All slots logged'}
               </span>
               <ChevronRight
-                className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+                className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all"
                 aria-hidden="true"
               />
             </div>

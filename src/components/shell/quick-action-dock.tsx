@@ -67,18 +67,19 @@ export function QuickActionDock({ onAction, onClose }: QuickActionDockProps) {
       aria-modal="true"
       aria-label="Quick Actions"
       data-testid="quick-action-dock"
-      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm transition-opacity"
+      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs transition-opacity"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg mx-auto bg-surface-elevated border-t border-x border-border rounded-t-3xl p-5 shadow-2xl animate-in slide-in-from-bottom duration-200"
+        className="w-full max-w-lg mx-auto bg-surface-elevated border-t border-x border-border rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl animate-sheet-in"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3" aria-hidden="true" />
         {/* Handle / Header */}
         <div className="flex items-center justify-between pb-4 border-b border-border">
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-4 bg-[var(--macro-calories)] rounded-full" />
-            <h2 className="text-sm font-semibold tracking-wide text-foreground">
+            <h2 className="text-sm font-semibold tracking-tight text-foreground">
               Log Food & Nutrients
             </h2>
           </div>
@@ -86,7 +87,7 @@ export function QuickActionDock({ onAction, onClose }: QuickActionDockProps) {
             type="button"
             onClick={onClose}
             aria-label="Close quick actions"
-            className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="touch-target macro-spring active:scale-95 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
           >
             <X className="w-5 h-5" />
           </button>
@@ -105,7 +106,7 @@ export function QuickActionDock({ onAction, onClose }: QuickActionDockProps) {
                   onClose?.();
                 }}
                 aria-label={item.label}
-                className="flex flex-col items-start p-3.5 rounded-2xl bg-surface-sub hover:bg-accent active:scale-[0.98] border border-border hover:border-border-focus transition-all text-left group"
+                className="macro-spring flex flex-col items-start p-3.5 rounded-2xl bg-surface-sub hover:bg-accent active:scale-[0.97] border border-border hover:border-border-focus text-left group"
               >
                 <div
                   className={`w-9 h-9 rounded-xl flex items-center justify-center border mb-2.5 transition-transform group-hover:scale-105 ${item.accentColor}`}

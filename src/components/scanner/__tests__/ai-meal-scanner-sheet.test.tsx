@@ -224,8 +224,8 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
     });
   });
 
-  // 5. Stage 1 Photo Capture & Context Prompt -> /api/ai/meal-scan -> Stage 2 Transition
-  test('Stage 1 accepts image upload, prep prompt, analyzes via /api/ai/meal-scan, and transitions to Stage 2', async () => {
+  // 5. Stage 1 Image Intake -> Stage 2 Pre-Scan HITL Context -> /api/ai/meal-scan -> Stage 3 Review
+  test('Stage 1 intakes photo first, transitions to pre-scan HITL context, analyzes via /api/ai/meal-scan, and transitions to review', async () => {
     // Mock createImageBitmap and canvas for compressImageToJpeg
     const mockClose = vi.fn();
     const mockBitmap = { width: 800, height: 600, close: mockClose };
@@ -274,30 +274,35 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
 
     render(<AiMealScannerSheet open date="2026-11-14" mealSlot="dinner" onClose={() => {}} />);
 
-    // Stage 1 elements should be visible
+    // Stage 1: Image Intake only (no context prompt or Analyze button yet)
     expect(screen.getByText(/ai meal scanner/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/cooking oil, sauces, prep style/i)).toBeInTheDocument();
-
-    // Type prep context
-    const promptTextarea = screen.getByPlaceholderText(/cooking oil, sauces, prep style/i);
-    fireEvent.change(promptTextarea, { target: { value: 'Cooked with 1 tbsp butter and garlic' } });
+    expect(screen.queryByPlaceholderText(/cooking oil, sauces, prep style/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /analyze meal/i })).not.toBeInTheDocument();
 
     // Upload an image file
     const file = new File(['fake-image'], 'meal.jpg', { type: 'image/jpeg' });
     const fileInput = screen.getByLabelText(/upload meal photo|take photo/i, { selector: 'input' });
     fireEvent.change(fileInput, { target: { files: [file] } });
 
-    // Wait for image compression and preview
+    // Wait for Stage 2 Pre-Scan HITL transition with image preview and context prompt
     await waitFor(() => {
       expect(screen.getByAltText(/meal preview/i)).toBeInTheDocument();
+      expect(screen.getByText(/what's in this meal\?/i)).toBeInTheDocument();
     });
+
+    // Type what's in the meal (HITL before vision scan)
+    const promptTextarea = screen.getByPlaceholderText(/cooking oil, sauces, prep style/i);
+    fireEvent.change(promptTextarea, { target: { value: 'Cooked with 1 tbsp butter and garlic' } });
+
+    // Vision scan has NOT fired automatically on upload
+    expect(fetchSpy).not.toHaveBeenCalled();
 
     // Click Analyze Meal
     const analyzeBtn = screen.getByRole('button', { name: /analyze meal/i });
     expect(analyzeBtn).not.toBeDisabled();
     fireEvent.click(analyzeBtn);
 
-    // Verify Stage 2 transition with returned items
+    // Verify Stage 3 review transition with returned items
     await waitFor(() => {
       expect(screen.getByText('Grilled Salmon')).toBeInTheDocument();
       expect(screen.getByText('Asparagus')).toBeInTheDocument();
@@ -318,8 +323,8 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
     );
   });
 
-  // 6. Stage 1 error handling retains image & context prompt
-  test('Stage 1 shows inline error banner on scan failure while retaining image & context prompt', async () => {
+  // 6. Pre-Scan HITL error handling retains image & context prompt
+  test('Pre-Scan HITL shows inline error banner on scan failure while retaining image & context prompt', async () => {
     const mockClose = vi.fn();
     const mockBitmap = { width: 500, height: 500, close: mockClose };
     vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(mockBitmap));
@@ -344,9 +349,7 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
 
     render(<AiMealScannerSheet open date="2026-11-14" mealSlot="dinner" onClose={() => {}} />);
 
-    const promptTextarea = screen.getByPlaceholderText(/cooking oil, sauces, prep style/i);
-    fireEvent.change(promptTextarea, { target: { value: 'Keep my prompt intact' } });
-
+    // Intake photo first
     const file = new File(['fake-image'], 'meal.jpg', { type: 'image/jpeg' });
     const fileInput = screen.getByLabelText(/upload meal photo|take photo/i, { selector: 'input' });
     fireEvent.change(fileInput, { target: { files: [file] } });
@@ -354,6 +357,9 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
     await waitFor(() => {
       expect(screen.getByAltText(/meal preview/i)).toBeInTheDocument();
     });
+
+    const promptTextarea = screen.getByPlaceholderText(/cooking oil, sauces, prep style/i);
+    fireEvent.change(promptTextarea, { target: { value: 'Keep my prompt intact' } });
 
     fireEvent.click(screen.getByRole('button', { name: /analyze meal/i }));
 
@@ -365,6 +371,11 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
     // Image and prompt are preserved
     expect(screen.getByAltText(/meal preview/i)).toBeInTheDocument();
     expect(promptTextarea).toHaveValue('Keep my prompt intact');
+
+    // Can return back to Stage 1 photo intake via back button
+    fireEvent.click(screen.getByRole('button', { name: /back to photo upload/i }));
+    expect(screen.queryByAltText(/meal preview/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/take photo or upload image/i)).toBeInTheDocument();
   });
 
   // 7. Conversational "Refine with AI" success and error handling
@@ -525,10 +536,10 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
     rerender(<AiMealScannerSheet open={false} date="2026-11-14" mealSlot="dinner" onClose={handleClose} />);
     rerender(<AiMealScannerSheet open={true} date="2026-11-14" mealSlot="dinner" onClose={handleClose} />);
 
-    // Should be back to Stage 1 with clean state (no leftover image preview, empty prompt)
+    // Should be back to Stage 1 with clean state (no leftover image preview, back on upload screen)
     expect(screen.queryByAltText(/meal preview/i)).not.toBeInTheDocument();
-    const promptInput = screen.getByPlaceholderText(/cooking oil, sauces, prep style/i) as HTMLTextAreaElement;
-    expect(promptInput.value).toBe('');
+    expect(screen.getByText(/take photo or upload image/i)).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/cooking oil, sauces, prep style/i)).not.toBeInTheDocument();
   });
 
   // 11. Regression: Refine with AI updates baselineGrams cleanly

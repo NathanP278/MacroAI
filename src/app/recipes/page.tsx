@@ -103,42 +103,52 @@ export default function RecipesPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-4 p-4">
-        {/* Header */}
-        <header className="flex items-center justify-between pt-2">
+      <div className="flex flex-col gap-5 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8">
+        {/* Header matching Dashboard Obsidian Aesthetic */}
+        <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-base font-bold tracking-tight text-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Recipes & Custom Foods
             </h1>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Offline recipe book and custom ingredients
             </p>
           </div>
           <button
             type="button"
             onClick={handleOpenCreate}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold shadow-xs transition-colors"
+            className="macro-spring active:scale-95 flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" aria-hidden="true" />
             <span>Create</span>
           </button>
         </header>
 
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search saved recipes..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-card border border-border rounded-xl pl-9 pr-4 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-amber-400"
-          />
+        {/* Search Bar & Count Summary */}
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search
+              className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2"
+              aria-hidden="true"
+            />
+            <input
+              type="text"
+              placeholder="Search saved recipes..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-11 bg-card rounded-2xl pl-10 pr-4 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring transition-shadow"
+            />
+          </div>
+          {recipes && recipes.length > 0 && (
+            <div className="hidden sm:flex items-center h-11 px-4 rounded-2xl bg-card text-xs font-medium text-muted-foreground tabular-nums shrink-0">
+              {filteredRecipes.length} {filteredRecipes.length === 1 ? 'recipe' : 'recipes'}
+            </div>
+          )}
         </div>
 
-        {/* Recipes Feed */}
+        {/* Recipes Bento Grid */}
         {filteredRecipes.length > 0 ? (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-card-enter">
             {filteredRecipes.map((recipe) => {
               const currentSlot = selectedSlots[recipe.id] || activeMealSlot || 'lunch';
               const feedback = loggedFeedback[recipe.id];
@@ -147,15 +157,15 @@ export default function RecipesPage() {
                 <div
                   key={recipe.id}
                   data-testid={`recipe-card-${recipe.id}`}
-                  className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-3 shadow-xs"
+                  className="bg-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-4"
                 >
                   {/* Card Title & Edit/Delete */}
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h2 className="text-sm font-bold text-foreground tracking-tight">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h2 className="text-base font-bold text-foreground tracking-tight truncate">
                         {recipe.name}
                       </h2>
-                      <div className="text-[11px] text-muted-foreground flex items-center gap-2 mt-0.5">
+                      <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5 tabular-nums">
                         <span>
                           {recipe.ingredients?.length || 0} ingredient
                           {recipe.ingredients?.length === 1 ? '' : 's'}
@@ -169,60 +179,60 @@ export default function RecipesPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 shrink-0">
                       <button
                         type="button"
                         onClick={() => handleOpenEdit(recipe)}
                         aria-label={`Edit recipe ${recipe.name}`}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                        className="touch-target macro-spring active:scale-90 p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
                       >
-                        <Edit className="w-3.5 h-3.5" />
+                        <Edit className="w-3.5 h-3.5" aria-hidden="true" />
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDeleteRecipe(recipe.id)}
                         aria-label={`Delete recipe ${recipe.name}`}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-rose-400 transition-colors"
+                        className="touch-target macro-spring active:scale-90 p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                       </button>
                     </div>
                   </div>
 
                   {/* Nutrition Summary Pill */}
-                  <div className="bg-surface-sub border border-border/70 rounded-xl px-3 py-2 flex items-center justify-between">
+                  <div className="bg-surface-sub rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2">
                     <div>
-                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">
+                      <span className="text-[11px] text-muted-foreground font-medium">
                         Per {recipe.basis === 'perServing' ? 'Serving' : '100g'}
                       </span>
-                      <div className="text-sm font-bold text-foreground tabular-nums">
+                      <div className="text-base font-bold text-[var(--macro-calories)] tabular-nums">
                         {recipe.nutrientsPerBasis.calories} kcal
                       </div>
                     </div>
-                    <div className="flex gap-2.5 font-mono text-xs">
-                      <div>
-                        <span className="text-sky-400 font-semibold tabular-nums">
+                    <div className="flex gap-3 text-xs tabular-nums">
+                      <div className="text-right">
+                        <span className="text-[var(--macro-protein)] font-semibold">
                           {recipe.nutrientsPerBasis.protein}g
-                        </span>{' '}
-                        <span className="text-[10px] text-muted-foreground">P</span>
+                        </span>
+                        <span className="block text-[10px] text-muted-foreground">Pro</span>
                       </div>
-                      <div>
-                        <span className="text-emerald-400 font-semibold tabular-nums">
+                      <div className="text-right">
+                        <span className="text-[var(--macro-carbs)] font-semibold">
                           {recipe.nutrientsPerBasis.carbs}g
-                        </span>{' '}
-                        <span className="text-[10px] text-muted-foreground">C</span>
+                        </span>
+                        <span className="block text-[10px] text-muted-foreground">Carb</span>
                       </div>
-                      <div>
-                        <span className="text-rose-400 font-semibold tabular-nums">
+                      <div className="text-right">
+                        <span className="text-[var(--macro-fat)] font-semibold">
                           {recipe.nutrientsPerBasis.fat}g
-                        </span>{' '}
-                        <span className="text-[10px] text-muted-foreground">F</span>
+                        </span>
+                        <span className="block text-[10px] text-muted-foreground">Fat</span>
                       </div>
                     </div>
                   </div>
 
                   {/* 1-Tap Log Action Bar */}
-                  <div className="flex items-center justify-between pt-1 border-t border-border/50 gap-2">
+                  <div className="flex items-center justify-between pt-2 border-t border-border/60 gap-2">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[11px] text-muted-foreground">Slot:</span>
                       <select
@@ -233,7 +243,7 @@ export default function RecipesPage() {
                             [recipe.id]: e.target.value,
                           }))
                         }
-                        className="bg-surface-sub border border-border rounded-lg px-2 py-1 text-xs text-foreground focus:outline-hidden"
+                        className="bg-surface-sub rounded-full px-2.5 py-1 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
                       >
                         {mealSlots.map((s) => (
                           <option key={s.id} value={s.id}>
@@ -245,8 +255,8 @@ export default function RecipesPage() {
 
                     <div className="flex items-center gap-2">
                       {feedback && (
-                        <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
-                          <Check className="w-3 h-3" />
+                        <span className="animate-check-pop text-[11px] text-[var(--macro-carbs)] flex items-center gap-1 font-semibold">
+                          <Check className="w-3.5 h-3.5" aria-hidden="true" />
                           {feedback}
                         </span>
                       )}
@@ -254,9 +264,9 @@ export default function RecipesPage() {
                         type="button"
                         onClick={() => handleLogRecipe(recipe)}
                         aria-label={`Log ${recipe.name}`}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold shadow-xs transition-colors"
+                        className="macro-spring active:scale-95 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
                       >
-                        <Utensils className="w-3.5 h-3.5" />
+                        <Utensils className="w-3.5 h-3.5" aria-hidden="true" />
                         <span>Log</span>
                       </button>
                     </div>
@@ -267,15 +277,15 @@ export default function RecipesPage() {
           </div>
         ) : (
           /* Empty State */
-          <div className="bg-card border border-border rounded-2xl p-6 text-center space-y-3 mt-2">
-            <div className="w-12 h-12 rounded-2xl bg-amber-400/10 border border-amber-400/20 mx-auto flex items-center justify-center text-amber-400">
-              <ChefHat className="w-6 h-6" />
+          <div className="bg-card rounded-2xl p-8 sm:p-10 text-center space-y-4 animate-card-enter">
+            <div className="w-12 h-12 rounded-2xl bg-[var(--macro-calories)]/15 mx-auto flex items-center justify-center text-[var(--macro-calories)]">
+              <ChefHat className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-foreground">
+              <h2 className="text-base font-bold text-foreground">
                 {searchQuery ? 'No matching recipes' : 'Recipe Book Empty'}
               </h2>
-              <p className="text-[11px] text-muted-foreground max-w-xs mx-auto mt-1">
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1 leading-relaxed">
                 {searchQuery
                   ? 'Try a different recipe name or create a new recipe with this title.'
                   : 'Build custom composite meals with calculated macro targets and serving portions. Stored 100% offline in IndexedDB.'}
@@ -285,9 +295,9 @@ export default function RecipesPage() {
               <button
                 type="button"
                 onClick={handleOpenCreate}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs font-semibold shadow-xs transition-colors"
+                className="macro-spring active:scale-95 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-4 h-4" aria-hidden="true" />
                 <span>Create Recipe</span>
               </button>
             </div>

@@ -158,11 +158,28 @@ MacroAI pairs a monochrome matte charcoal chrome hierarchy with four distinct, m
 
 ## Layout
 
-MacroAI expands fluidly across screen sizes instead of trapping desktop screens inside a narrow fake phone frame:
-- **Outer Workspace Container:** `w-full max-w-6xl mx-auto min-h-screen pb-36` with `px-4 sm:px-6 pt-5 sm:pt-7 space-y-6`.
-- **Mobile (`< 640px`):** Single-column flow for Hero (`Daily Nutrition`), compact 2-column sub-grids for `Nutrition` (`Calories` + `Macros`) and `Habits` (`Food Logging` + `Next Meal`), and stacked `Logged Entries` + `Micronutrient Targets`. Grid tracks inside narrow macro columns enforce `minmax(0, 1fr)` / `min-w-0` and `<progress>` `min-inline-size: 0` so 390px viewports never overflow horizontally.
-- **Desktop (`>= 1024px`, `lg`):** 12-column responsive bento workspace (`lg:grid-cols-12 gap-4 items-start`): top row pairs `MacroBentoGrid` (`lg:col-span-5`) beside `HabitsAnalyticsGrid` (`lg:col-span-7`); bottom row pairs `Logged Entries` (`lg:col-span-7`) beside `MicronutrientPanel` (`lg:col-span-5`).
-- **Fixed Bottom Chrome:** Centered within `max-w-2xl mx-auto`, leaving breathing room (`pb-36`) on main content and respecting `env(safe-area-inset-bottom)`.
+MacroAI expands fluidly across screen sizes on **every route** (`/`, `/log`, `/recipes`, `/settings`) instead of trapping desktop screens inside a single-column stack or fake phone frame:
+- **Outer Workspace Container:** Unified `w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8 space-y-6` across every route (`BottomNav` shell already provides generous bottom dock clearance).
+- **Mobile (`< 640px`):** Single-column flow for Hero (`Daily Nutrition`), compact 2-column sub-grids for `Nutrition` (`Calories` + `Macros`), `Habits` (`Food Logging` + `Next Meal`), and Settings `Target Daily Nutrition` (`grid-cols-2 sm:grid-cols-4`). Grid tracks inside narrow macro columns enforce `minmax(0, 1fr)` / `min-w-0` and `<progress>` `min-inline-size: 0` so 390px viewports never overflow horizontally.
+- **Desktop (`>= 1024px`, `lg`):** 12-column responsive bento workspace (`lg:grid-cols-12 gap-4 items-start`):
+  - **Dashboard (`/`):** Top row pairs `MacroBentoGrid` (`lg:col-span-5`) beside `HabitsAnalyticsGrid` (`lg:col-span-7`); bottom row pairs `Logged Entries` (`lg:col-span-7`) beside `MicronutrientPanel` (`lg:col-span-5`).
+  - **Food Log (`/log`):** Sticky `Daily Consumed` summary card (`lg:col-span-4 lg:sticky lg:top-6`) beside a 2-column Bento grid (`lg:col-span-8 grid-cols-1 md:grid-cols-2 gap-4`) of `Breakfast`, `Lunch`, `Dinner`, and `Snacks` slots with uniform 2-line recommendation chips.
+  - **Recipes (`/recipes`):** Full-width rounded search bar above a 1/2/3-column responsive recipe bento grid (`grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4`).
+  - **Settings (`/settings`):** Primary `GoalsCalculatorForm` (`lg:col-span-7`) beside a sticky right rail (`lg:col-span-5 space-y-4`) housing `Theme & Appearance`, `AiHealthStatusCard`, `BackupPanel`, `Adherence-Neutral Analytics`, and `Offline Storage & Privacy`.
+- **Drawers & Modals (`QuickActionDock`, `QuickAddDrawer`, `FoodSearchDrawer`, `BarcodeScannerDrawer`, `AiMealScannerSheet`):** `sm:max-w-lg` matte `bg-surface-elevated` bottom sheets with top drag-handle grabber pills (`w-9 h-1 rounded-full`) and `rounded-t-3xl sm:rounded-3xl` geometry.
+- **Fixed Bottom Chrome:** Centered within `max-w-2xl mx-auto` and respecting `env(safe-area-inset-bottom)`.
+
+## Motion, Physics & Tactile Ergonomics
+
+Apple-inspired spring motion cues paired with strict accessibility respect:
+- **Spring Curve (`.macro-spring`):** Fast-out-and-settle deceleration combining `cubic-bezier(0.22, 1, 0.36, 1)` fallback with a `linear(...)` spring easing curve across `transform`, `opacity`, and surface fills (`active:scale-95` on buttons/pills, `active:scale-[0.985]` on interactive cards).
+- **Arc Telemetry (`.macro-arc-transition`):** Smooth `stroke-dashoffset` sweep across the 240° Calorie horseshoe arc when switching dates or `Consumed`/`Remaining` modes.
+- **Keyframe Grammar (`@media (prefers-reduced-motion: no-preference)`):**
+  - `macro-sheet-in`: Bottom-up sheet settle for logging drawers and AI scanner sheets.
+  - `macro-modal-in`: Scale-and-settle entrance for dialog overlays (`RecipeBuilderModal`, `AddBarcodeProductModal`, `HitlVerificationSwapModal`).
+  - `macro-card-enter`: Subtle vertical settle with 45ms bento row stagger.
+  - `macro-check-pop`: Crisp overshoot pop on confirmation checks (`Goals Saved!`, `Copied!`, recipe logged).
+- **Coarse-Pointer Touch Targets (`.touch-target`):** Under `@media (pointer: coarse)`, expands the interactive hit area via `-6px` `::after` pseudo-element insets so compact circular icon buttons still meet Fitts's Law comfort guidelines without bloating desktop chrome.
 
 ## Elevation & Depth
 

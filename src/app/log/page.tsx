@@ -5,7 +5,15 @@ import { AppShell } from '@/components/shell/app-shell';
 import { MealSlotsView } from '@/components/log/meal-slots-view';
 import { useLoggerStore } from '@/stores/logger-store';
 import { offsetIsoDate } from '@/lib/recipes/recipe-builder';
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, RotateCcw } from 'lucide-react';
+
+function getTodayIsoDate(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 function formatDisplayDate(iso: string): { label: string; isToday: boolean } {
   const d = new Date();
@@ -35,40 +43,54 @@ export default function LogPage() {
   const activeDate = useLoggerStore((s) => s.activeDate);
   const setActiveDate = useLoggerStore((s) => s.setActiveDate);
 
-  const { label } = formatDisplayDate(activeDate);
+  const { label, isToday } = formatDisplayDate(activeDate);
 
   const handlePrevDay = () => setActiveDate(offsetIsoDate(activeDate, -1));
   const handleNextDay = () => setActiveDate(offsetIsoDate(activeDate, 1));
+  const handleToday = () => setActiveDate(getTodayIsoDate());
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-4 p-4">
-        {/* Header & Date Switcher */}
-        <header className="flex items-center justify-between pt-2">
+      <div className="flex flex-col gap-5 px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8">
+        {/* Header & Date Switcher matching Dashboard Obsidian Aesthetic */}
+        <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-base font-bold tracking-tight text-foreground">Food Log</h1>
-            <p className="text-[11px] text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Food Log
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
               Adherence-neutral chronological diary
             </p>
           </div>
-          <div className="flex items-center gap-1 bg-card border border-border px-2 py-1 rounded-xl shadow-xs">
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {!isToday && (
+              <button
+                type="button"
+                onClick={handleToday}
+                className="touch-target macro-spring active:scale-95 px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-surface-sub text-foreground hover:bg-surface-elevated flex items-center gap-1 mr-1"
+              >
+                <RotateCcw className="w-3 h-3" aria-hidden="true" />
+                Today
+              </button>
+            )}
             <button
               type="button"
               onClick={handlePrevDay}
               aria-label="Previous day"
-              className="p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+              className="touch-target macro-spring active:scale-95 w-9 h-9 rounded-full flex items-center justify-center bg-card hover:bg-surface-sub text-muted-foreground hover:text-foreground"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-xs font-semibold px-1 text-foreground flex items-center gap-1">
-              <Calendar className="w-3 h-3 text-amber-400" />
+            <span className="text-xs font-semibold px-3.5 py-2 rounded-full bg-card text-foreground flex items-center gap-1.5 tabular-nums">
+              <Calendar className="w-3.5 h-3.5 text-[var(--macro-calories)]" aria-hidden="true" />
               {label}
             </span>
             <button
               type="button"
               onClick={handleNextDay}
               aria-label="Next day"
-              className="p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+              className="touch-target macro-spring active:scale-95 w-9 h-9 rounded-full flex items-center justify-center bg-card hover:bg-surface-sub text-muted-foreground hover:text-foreground"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

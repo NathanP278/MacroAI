@@ -34,14 +34,18 @@ export async function POST(request: Request) {
     );
   }
 
+  const trimmedContext = typeof contextPrompt === 'string' ? contextPrompt.trim() : '';
+
   const promptText = [
     'Analyze this meal image carefully and decompose it into non-overlapping, individual whole food/ingredient components.',
+    trimmedContext
+      ? `USER-PROVIDED MEAL DESCRIPTION (Human-in-the-Loop): "${trimmedContext}". Treat the user's description as ground truth for what is in the dish, specific cuts/brands, hidden cooking oils/sauces, preparation methods, and any stated weights or quantities. Combine this information with the image to produce accurate ingredients and gram amounts instead of guessing conflicting items.`
+      : '',
     'For each component:',
     '1. Provide a clear descriptive name.',
     '2. Estimate total portion weight in grams (must be > 0).',
     '3. Provide nutritional density per 100g (calories, protein, carbs, fat, fiber).',
     'CRITICAL: Do NOT double-count composite dishes. Decompose composite items into distinct sub-ingredients (e.g., bun, patty, cheese, and sauce separately).',
-    contextPrompt ? `User prep / hidden cooking context: "${contextPrompt}". Account for these preparation details in the ingredients and gram amounts.` : '',
     'Return ONLY valid JSON matching this schema:',
     '{ "items": [ { "name": "Ingredient Name", "grams": 150, "per100g": { "calories": 165, "protein": 31, "carbs": 0, "fat": 3.6, "fiber": 0 } } ] }',
   ]

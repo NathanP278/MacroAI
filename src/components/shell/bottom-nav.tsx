@@ -70,7 +70,7 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                 type="button"
                 onClick={() => onDirectAction("barcode")}
                 aria-label="Open barcode camera"
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub transition-colors"
+                className="touch-target macro-spring active:scale-95 w-8 h-8 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub"
               >
                 <ScanBarcode className="w-4 h-4" aria-hidden="true" />
               </button>
@@ -78,7 +78,7 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                 type="button"
                 onClick={() => onDirectAction("ai-scan")}
                 aria-label="Open photo scanner"
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--macro-calories)] hover:bg-surface-sub transition-colors"
+                className="touch-target macro-spring active:scale-95 w-8 h-8 rounded-xl flex items-center justify-center text-[var(--macro-calories)] hover:bg-surface-sub"
               >
                 <Sparkles className="w-4 h-4" aria-hidden="true" />
               </button>
@@ -127,7 +127,7 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
               type="button"
               onClick={onOpenQuickActions}
               aria-label="Open quick actions"
-              className="w-11 h-11 rounded-full bg-foreground text-background hover:opacity-90 active:scale-95 flex items-center justify-center shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+              className="touch-target macro-spring w-11 h-11 rounded-full bg-foreground text-background hover:opacity-90 active:scale-90 flex items-center justify-center shadow-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
             >
               <Plus className="w-5 h-5 stroke-[2.5]" aria-hidden="true" />
             </button>

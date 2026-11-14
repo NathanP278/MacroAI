@@ -138,9 +138,9 @@ export function MacroBentoGrid({
             id="hero-daily-tab"
             aria-selected={heroView === 'daily'}
             onClick={() => setHeroView('daily')}
-            className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors ${
+            className={`macro-spring active:scale-95 px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
               heroView === 'daily'
-                ? 'bg-foreground text-background font-semibold'
+                ? 'bg-foreground text-background font-semibold shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -152,9 +152,9 @@ export function MacroBentoGrid({
             id="hero-weekly-tab"
             aria-selected={heroView === 'weekly'}
             onClick={() => setHeroView('weekly')}
-            className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors ${
+            className={`macro-spring active:scale-95 px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
               heroView === 'weekly'
-                ? 'bg-foreground text-background font-semibold'
+                ? 'bg-foreground text-background font-semibold shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -206,10 +206,11 @@ export function MacroBentoGrid({
                     fill="none"
                     stroke="var(--macro-calories)"
                     strokeWidth={strokeWidth}
-                    strokeDasharray={`${activeSpan} ${circumference}`}
+                    strokeDasharray={`${arcSpan} ${circumference}`}
+                    strokeDashoffset={arcSpan - activeSpan}
                     strokeLinecap="round"
                     transform={`rotate(150 ${cx} ${cy})`}
-                    className="transition-all duration-300 ease-out"
+                    className="macro-arc-transition"
                   />
                 )}
               </svg>
@@ -415,7 +416,7 @@ export function MacroBentoGrid({
             type="button"
             onClick={() => setMode('consumed')}
             aria-pressed={mode === 'consumed'}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            className={`macro-spring active:scale-95 px-4 py-1.5 rounded-full text-xs font-semibold ${
               mode === 'consumed'
                 ? 'bg-foreground text-background shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
@@ -427,7 +428,7 @@ export function MacroBentoGrid({
             type="button"
             onClick={() => setMode('remaining')}
             aria-pressed={mode === 'remaining'}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            className={`macro-spring active:scale-95 px-4 py-1.5 rounded-full text-xs font-semibold ${
               mode === 'remaining'
                 ? 'bg-foreground text-background shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'

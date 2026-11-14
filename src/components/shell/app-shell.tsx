@@ -9,6 +9,8 @@ import { BarcodeScannerDrawer } from "@/components/scanner/barcode-scanner-drawe
 import { AiMealScannerSheet } from "@/components/scanner/ai-meal-scanner-sheet";
 import { useLoggerStore } from "@/stores/logger-store";
 import { ensureDefaultUserGoals } from "@/lib/nutrition/goals";
+import { db } from "@/lib/db/macroai-db";
+import { isCloudSyncEnabled, syncWithCentralDb } from "@/lib/db/cloud-sync";
 
 export { QuickActionDock };
 export type { QuickActionType };
@@ -27,9 +29,42 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
   const activeMealSlot = useLoggerStore((s) => s.activeMealSlot);
 
   useEffect(() => {
-    ensureDefaultUserGoals().catch((err) => {
-      console.error("Failed to seed default user goals:", err);
-    });
+    let cancelled = false;
+
+    async function initData() {
+      if (isCloudSyncEnabled()) {
+        await syncWithCentralDb(db).catch((err) => {
+          console.error("Central DB sync warning:", err);
+        });
+      }
+      if (!cancelled) {
+        await ensureDefaultUserGoals().catch((err) => {
+          console.error("Failed to seed default user goals:", err);
+        });
+      }
+    }
+
+    initData();
+
+    if (!isCloudSyncEnabled()) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        syncWithCentralDb(db).catch(() => {});
+      }
+    };
+
+    window.addEventListener("focus", handleVisibility);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", handleVisibility);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   const handleAction = (action: QuickActionType) => {
