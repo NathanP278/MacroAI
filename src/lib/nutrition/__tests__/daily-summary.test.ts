@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, test, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import {
   aggregateDailySummary,
   getMicronutrientMeta,
@@ -10,7 +10,7 @@ import { MacroBentoGrid } from '@/components/dashboard/macro-bento-grid';
 import { MicronutrientPanel } from '@/components/dashboard/micronutrient-panel';
 import HomePage from '@/app/page';
 import { useLoggerStore } from '@/stores/logger-store';
-import { fireEvent } from '@testing-library/react';
+import { db } from '@/lib/db/macroai-db';
 import type { FoodLogEntry, UserGoals } from '@/types/nutrition';
 
 describe('aggregateDailySummary & Adherence-Neutral Analytics', () => {
@@ -515,6 +515,13 @@ describe('aggregateDailySummary & Adherence-Neutral Analytics', () => {
       expect(screen.getByText('Next: Breakfast')).toBeInTheDocument();
       expect(screen.getByText('Logged Entries')).toBeInTheDocument();
 
+      const loggedSection = screen.getByRole('region', { name: 'Logged Entries' });
+      expect(within(loggedSection).getByText('No entries logged yet')).toBeInTheDocument();
+      expect(within(loggedSection).queryByText('Breakfast')).not.toBeInTheDocument();
+      expect(within(loggedSection).queryByText('Lunch')).not.toBeInTheDocument();
+      expect(within(loggedSection).queryByText('Dinner')).not.toBeInTheDocument();
+      expect(within(loggedSection).queryByText('Snacks')).not.toBeInTheDocument();
+
       // Date navigation: click previous day
       const prevBtn = screen.getByRole('button', { name: /previous day/i });
       fireEvent.click(prevBtn);
@@ -525,11 +532,83 @@ describe('aggregateDailySummary & Adherence-Neutral Analytics', () => {
       fireEvent.click(nextBtn);
       expect(useLoggerStore.getState().activeDate).toBe('2026-11-14');
 
-      // Meal slot quick add button opens search drawer
-      const addBreakfastBtn = screen.getByRole('button', { name: /add food to breakfast/i });
-      fireEvent.click(addBreakfastBtn);
+      // Logged Entries quick add button opens search drawer
+      const addFoodBtn = within(loggedSection).getByRole('button', { name: /add food/i });
+      fireEvent.click(addFoodBtn);
       expect(useLoggerStore.getState().activeSheet).toBe('search');
-      expect(useLoggerStore.getState().activeMealSlot).toBe('breakfast');
+    });
+
+    it('renders logged entries as a flat list without meal-slot groupings and deletes entries', async () => {
+      await db.foodLogs.clear();
+      await db.foodLogs.bulkAdd([
+        {
+          id: 'dash-log-1',
+          date: '2026-11-14',
+          mealSlot: 'breakfast',
+          foodId: 'f1',
+          name: 'Oatmeal Bowl',
+          source: 'staple',
+          amount: 100,
+          unit: 'g',
+          nutritionSnapshot: {
+            calories: 320,
+            protein: 12,
+            carbs: 54,
+            fat: 6,
+            fiber: 8,
+            micros: {},
+          },
+          createdAt: 1000,
+        },
+        {
+          id: 'dash-log-2',
+          date: '2026-11-14',
+          mealSlot: 'dinner',
+          foodId: 'f2',
+          name: 'Grilled Salmon',
+          source: 'staple',
+          amount: 180,
+          unit: 'g',
+          nutritionSnapshot: {
+            calories: 375,
+            protein: 39,
+            carbs: 0,
+            fat: 23,
+            fiber: 0,
+            micros: {},
+          },
+          createdAt: 2000,
+        },
+      ]);
+
+      useLoggerStore.setState({
+        activeDate: '2026-11-14',
+        activeMealSlot: 'breakfast',
+        activeSheet: null,
+      });
+
+      render(React.createElement(HomePage));
+
+      const loggedSection = screen.getByRole('region', { name: 'Logged Entries' });
+      await waitFor(() => {
+        expect(within(loggedSection).getByText('Grilled Salmon')).toBeInTheDocument();
+        expect(within(loggedSection).getByText('Oatmeal Bowl')).toBeInTheDocument();
+      });
+
+      // Flat list with no meal-slot group distinctions
+      expect(within(loggedSection).getByText('2 items')).toBeInTheDocument();
+      expect(within(loggedSection).queryByText('Breakfast')).not.toBeInTheDocument();
+      expect(within(loggedSection).queryByText('Lunch')).not.toBeInTheDocument();
+      expect(within(loggedSection).queryByText('Dinner')).not.toBeInTheDocument();
+      expect(within(loggedSection).queryByText('Snacks')).not.toBeInTheDocument();
+
+      // Delete one item directly from the flat list
+      fireEvent.click(within(loggedSection).getByRole('button', { name: /delete oatmeal bowl/i }));
+      await waitFor(() => {
+        expect(within(loggedSection).queryByText('Oatmeal Bowl')).not.toBeInTheDocument();
+      });
+
+      await db.foodLogs.clear();
     });
   });
 });

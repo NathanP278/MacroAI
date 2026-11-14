@@ -16,7 +16,7 @@ import {
 import { MicronutrientPanel } from '@/components/dashboard/micronutrient-panel';
 import { AppShell } from '@/components/shell/app-shell';
 import type { FoodLogEntry, UserGoals } from '@/types/nutrition';
-import { ChevronLeft, ChevronRight, Plus, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, RotateCcw, Trash2, Utensils } from 'lucide-react';
 
 function getTodayIsoDate(): string {
   const d = new Date();
@@ -52,11 +52,14 @@ function formatUpperHeaderDate(iso: string): { kicker: string; isToday: boolean 
   return { kicker: formatted, isToday };
 }
 
-function formatSlotTime(timestamps: number[]): string | null {
-  if (timestamps.length === 0) return null;
-  const latest = Math.max(...timestamps);
-  if (!Number.isFinite(latest) || latest <= 0) return null;
-  return new Date(latest).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+function formatEntryTime(timestamp: number): string | null {
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return null;
+  return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatEntryAmount(amount: number): string {
+  if (!Number.isFinite(amount)) return '0';
+  return String(Number(amount.toFixed(1)));
 }
 
 export default function HomePage() {
@@ -201,6 +204,19 @@ export default function HomePage() {
     return dots;
   }, [activeDate, logsByDate]);
 
+  const sortedLogs = useMemo(
+    () => [...activeLogs].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)),
+    [activeLogs]
+  );
+
+  const handleDeleteEntry = async (entryId: string) => {
+    try {
+      await db.foodLogs.delete(entryId);
+    } catch (err) {
+      console.error('Failed to delete log entry:', err);
+    }
+  };
+
   const dateInfo = formatUpperHeaderDate(activeDate);
 
   const handlePrevDay = () => setActiveDate(offsetIsoDate(activeDate, -1));
@@ -285,105 +301,108 @@ export default function HomePage() {
           style={{ animationDelay: '45ms' }}
         >
           {/* Logged Entries Section */}
-          <section className="lg:col-span-7 space-y-3">
-            <div className="flex items-center justify-between px-0.5">
-              <h2 className="text-base font-bold tracking-tight text-foreground">
-                Logged Entries
-              </h2>
-              <Link
-                href="/log"
-                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                See All
-              </Link>
+          <section aria-labelledby="logged-entries-heading" className="lg:col-span-7 space-y-3">
+            <div className="flex items-center justify-between gap-2 px-0.5">
+              <div className="flex items-baseline gap-2">
+                <h2
+                  id="logged-entries-heading"
+                  className="text-base font-bold tracking-tight text-foreground"
+                >
+                  Logged Entries
+                </h2>
+                {sortedLogs.length > 0 && (
+                  <span className="text-xs font-medium text-muted-foreground tabular-nums">
+                    {sortedLogs.length} {sortedLogs.length === 1 ? 'item' : 'items'}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => openSheet('search')}
+                  aria-label="Add food"
+                  className="touch-target macro-spring active:scale-95 flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-sub hover:bg-foreground hover:text-background text-xs font-semibold text-foreground"
+                >
+                  <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Add</span>
+                </button>
+                <Link
+                  href="/log"
+                  className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  See All
+                </Link>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
-              {mealSlots.map((slot) => {
-                const slotLogs = activeLogs.filter((entry) => entry.mealSlot === slot.id);
-                const slotTotals = slotLogs.reduce(
-                  (acc, entry) => ({
-                    calories: acc.calories + (entry.nutritionSnapshot?.calories ?? 0),
-                    protein: acc.protein + (entry.nutritionSnapshot?.protein ?? 0),
-                    carbs: acc.carbs + (entry.nutritionSnapshot?.carbs ?? 0),
-                    fat: acc.fat + (entry.nutritionSnapshot?.fat ?? 0),
-                  }),
-                  { calories: 0, protein: 0, carbs: 0, fat: 0 }
-                );
-                const latestTime = formatSlotTime(slotLogs.map((l) => l.createdAt));
-                const slotBudget = distributedBudgets[slot.id];
+            {sortedLogs.length > 0 ? (
+              <ul className="rounded-2xl bg-card border border-border/50 overflow-hidden divide-y divide-border/60">
+                {sortedLogs.map((log) => {
+                  const entryTime = formatEntryTime(log.createdAt);
 
-                return (
-                  <div
-                    key={slot.id}
-                    className="p-4 sm:p-[18px] rounded-2xl bg-card border border-border/50 macro-card-interactive space-y-2.5"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
+                  return (
+                    <li
+                      key={log.id}
+                      className="flex items-center justify-between gap-3 px-4 py-3 sm:px-[18px] sm:py-3.5 hover:bg-surface-sub/40 transition-colors"
+                    >
+                      <div className="min-w-0 flex-1">
                         <div className="text-sm font-semibold text-foreground truncate">
-                          {slot.name}
+                          {log.name}
                         </div>
-                        <div className="text-xs text-muted-foreground tabular-nums mt-0.5">
-                          {slotLogs.length > 0
-                            ? `${latestTime ? `${latestTime} · ` : ''}${slotLogs.length} ${
-                                slotLogs.length === 1 ? 'item' : 'items'
-                              }`
-                            : `Unlogged${
-                                slotBudget ? ` · ${slotBudget.calories} kcal budget` : ''
-                              }`}
+                        <div className="text-xs text-muted-foreground tabular-nums mt-0.5 truncate">
+                          {formatEntryAmount(log.amount)} {log.unit}
+                          {entryTime ? ` · ${entryTime}` : ''}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3.5 shrink-0">
+                      <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
                         <div className="text-right tabular-nums">
                           <div
                             className="text-sm font-bold"
                             style={{ color: 'var(--macro-calories)' }}
                           >
-                            {Math.round(slotTotals.calories)} kcal
+                            {Math.round(log.nutritionSnapshot?.calories ?? 0)} kcal
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            P {Math.round(slotTotals.protein)}g · C {Math.round(slotTotals.carbs)}g · F{' '}
-                            {Math.round(slotTotals.fat)}g
+                          <div className="text-[11px] text-muted-foreground">
+                            {Math.round(log.nutritionSnapshot?.protein ?? 0)}P ·{' '}
+                            {Math.round(log.nutritionSnapshot?.carbs ?? 0)}C ·{' '}
+                            {Math.round(log.nutritionSnapshot?.fat ?? 0)}F
                           </div>
                         </div>
 
                         <button
                           type="button"
-                          onClick={() => openSheet('search', slot.id)}
-                          aria-label={`Add food to ${slot.name}`}
-                          className="touch-target macro-spring active:scale-95 w-9 h-9 rounded-full flex items-center justify-center bg-surface-sub hover:bg-foreground hover:text-background text-foreground"
+                          onClick={() => handleDeleteEntry(log.id)}
+                          aria-label={`Delete ${log.name}`}
+                          className="touch-target macro-spring active:scale-90 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub"
                         >
-                          <Plus className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                         </button>
                       </div>
-                    </div>
-
-                    {slotLogs.length > 0 && (
-                      <div className="space-y-1 pt-1 border-t border-border/60">
-                        {slotLogs.map((log) => (
-                          <div
-                            key={log.id}
-                            className="flex items-center justify-between text-xs py-1 text-foreground"
-                          >
-                            <span className="truncate pr-2">
-                              {log.name}{' '}
-                              <span className="text-muted-foreground text-[11px]">
-                                ({Math.round(log.amount)}
-                                {log.unit})
-                              </span>
-                            </span>
-                            <span className="text-muted-foreground tabular-nums shrink-0">
-                              {Math.round(log.nutritionSnapshot.calories)} kcal
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <div className="rounded-2xl bg-card border border-border/50 p-6 sm:p-8 text-center">
+                <div className="w-10 h-10 rounded-full bg-surface-sub mx-auto mb-3 flex items-center justify-center text-muted-foreground">
+                  <Utensils className="w-4 h-4" aria-hidden="true" />
+                </div>
+                <p className="text-sm font-semibold text-foreground">No entries logged yet</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-[34ch] mx-auto">
+                  Search foods, scan a barcode, or snap a meal photo to log your day.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => openSheet('search')}
+                  className="mt-4 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90 macro-spring active:scale-95"
+                >
+                  <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Log Food</span>
+                </button>
+              </div>
+            )}
           </section>
 
           {/* Micronutrient Targets Panel */}
