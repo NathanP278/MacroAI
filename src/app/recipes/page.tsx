@@ -103,11 +103,11 @@ export default function RecipesPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-5 sm:gap-6 px-4 sm:px-6 lg:px-8 pt-5 sm:pt-7 pb-8">
+      <div className="flex flex-col gap-5 sm:gap-6 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
         {/* Header matching Dashboard Obsidian Aesthetic */}
-        <header className="flex items-start sm:items-end justify-between gap-3">
+        <header className="flex items-center sm:items-end justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight">
               Recipes & Custom Foods
             </h1>
             <p className="text-xs sm:text-[13px] text-muted-foreground mt-0.5">
@@ -117,7 +117,7 @@ export default function RecipesPage() {
           <button
             type="button"
             onClick={handleOpenCreate}
-            className="macro-spring active:scale-95 shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
+            className="touch-target macro-spring active:scale-95 shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
           >
             <Plus className="w-4 h-4" aria-hidden="true" />
             <span>Create</span>
@@ -148,7 +148,7 @@ export default function RecipesPage() {
 
         {/* Recipes Bento Grid */}
         {filteredRecipes.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-card-enter">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 animate-card-enter">
             {filteredRecipes.map((recipe) => {
               const currentSlot = selectedSlots[recipe.id] || activeMealSlot || 'lunch';
               const feedback = loggedFeedback[recipe.id];
@@ -157,7 +157,7 @@ export default function RecipesPage() {
                 <div
                   key={recipe.id}
                   data-testid={`recipe-card-${recipe.id}`}
-                  className="bg-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-4"
+                  className="bg-card border border-border/50 macro-card-interactive rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-4"
                 >
                   {/* Card Title & Edit/Delete */}
                   <div className="flex items-start justify-between gap-2">
@@ -277,7 +277,7 @@ export default function RecipesPage() {
           </div>
         ) : (
           /* Empty State */
-          <div className="bg-card rounded-2xl p-8 sm:p-12 text-center space-y-4 animate-card-enter">
+          <div className="bg-card border border-border/50 rounded-2xl px-6 py-10 sm:p-14 text-center space-y-4 animate-card-enter">
             <div className="w-12 h-12 rounded-2xl bg-[var(--macro-calories)]/15 mx-auto flex items-center justify-center text-[var(--macro-calories)]">
               <ChefHat className="w-6 h-6" aria-hidden="true" />
             </div>

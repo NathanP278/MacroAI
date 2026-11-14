@@ -56,7 +56,7 @@ export function HabitsAnalyticsGrid({
   );
 
   return (
-    <div className={`space-y-4 sm:space-y-5 ${className}`}>
+    <div className={`h-full flex flex-col justify-between gap-4 sm:gap-5 ${className}`}>
       {/* Insights & Nutrition Bento Section (Pic 3) */}
       <section aria-label="Nutrition analytics" className="space-y-2.5 sm:space-y-3">
         <div className="flex items-center justify-between px-0.5">
@@ -71,11 +71,11 @@ export function HabitsAnalyticsGrid({
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           {/* Calories Today Card with Target Notch (Pic 2 & 3) */}
           <Link
             href="/log"
-            className="min-w-0 rounded-2xl bg-card p-3.5 sm:p-4 flex flex-col justify-between gap-4 hover:bg-surface-sub/60 active:scale-[0.985] macro-spring group"
+            className="min-w-0 rounded-2xl bg-card border border-border/50 p-3.5 sm:p-4 flex flex-col justify-between gap-4 hover:bg-surface-sub/60 active:scale-[0.985] macro-spring macro-card-interactive group"
           >
             <div>
               <div className="text-sm font-semibold text-foreground">Calories</div>
@@ -111,7 +111,7 @@ export function HabitsAnalyticsGrid({
           </Link>
 
           {/* Macros Last 7 Days Stacked Bar Chart (Pic 3) */}
-          <div className="min-w-0 rounded-2xl bg-card p-3.5 sm:p-4 flex flex-col justify-between gap-3">
+          <div className="min-w-0 rounded-2xl bg-card border border-border/50 p-3.5 sm:p-4 flex flex-col justify-between gap-3 macro-card-interactive">
             <div>
               <div className="text-sm font-semibold text-foreground">Macros</div>
               <div className="text-xs text-muted-foreground">Last 7 Days</div>
@@ -141,8 +141,8 @@ export function HabitsAnalyticsGrid({
                     className="h-full flex items-end justify-center group"
                   >
                     <div
-                      className={`w-full rounded-[3px] overflow-hidden flex flex-col-reverse transition-opacity ${
-                        macroSum === 0 ? 'bg-surface-sub opacity-60' : 'group-hover:opacity-85'
+                      className={`w-full rounded-[3px] overflow-hidden flex flex-col-reverse transition-all duration-300 ease-out origin-bottom group-hover:scale-y-105 ${
+                        macroSum === 0 ? 'bg-surface-sub opacity-60' : 'group-hover:opacity-90'
                       } ${day.isSelected ? 'ring-1 ring-foreground/50' : ''}`}
                       style={{ height: `${totalHeightPct}%` }}
                     >
@@ -202,11 +202,11 @@ export function HabitsAnalyticsGrid({
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           {/* Food Logging 30-Day Heatmap Grid (Pic 1 right card) */}
           <Link
             href="/log"
-            className="min-w-0 rounded-2xl bg-card p-3.5 sm:p-4 flex flex-col justify-between gap-3 hover:bg-surface-sub/60 active:scale-[0.985] macro-spring group"
+            className="min-w-0 rounded-2xl bg-card border border-border/50 p-3.5 sm:p-4 flex flex-col justify-between gap-3 hover:bg-surface-sub/60 active:scale-[0.985] macro-spring macro-card-interactive group"
           >
             <div>
               <div className="text-sm font-semibold text-foreground">Food Logging</div>
@@ -221,7 +221,7 @@ export function HabitsAnalyticsGrid({
                 <span
                   key={dot.date}
                   title={`${dot.date}: ${Math.round(dot.calories)} kcal`}
-                  className="aspect-square rounded-[3px] transition-colors"
+                  className="aspect-square rounded-[3px] transition-all duration-150 group-hover:scale-[1.04]"
                   style={{
                     backgroundColor: dot.hasLogs
                       ? 'var(--macro-calories)'
@@ -248,7 +248,7 @@ export function HabitsAnalyticsGrid({
           {/* Remaining Meal Allocation Tile */}
           <Link
             href="/log"
-            className="min-w-0 rounded-2xl bg-card p-3.5 sm:p-4 flex flex-col justify-between gap-3 hover:bg-surface-sub/60 active:scale-[0.985] macro-spring group"
+            className="min-w-0 rounded-2xl bg-card border border-border/50 p-3.5 sm:p-4 flex flex-col justify-between gap-3 hover:bg-surface-sub/60 active:scale-[0.985] macro-spring macro-card-interactive group"
           >
             <div>
               <div className="text-sm font-semibold text-foreground truncate">

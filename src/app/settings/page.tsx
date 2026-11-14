@@ -12,7 +12,7 @@ import { Moon, ShieldCheck, Database } from "lucide-react";
 export default function SettingsPage() {
   return (
     <AppShell>
-      <div className="flex flex-col gap-5 sm:gap-6 px-4 sm:px-6 lg:px-8 pt-5 sm:pt-7 pb-8">
+      <div className="flex flex-col gap-5 sm:gap-6 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
         {/* Header matching Dashboard Obsidian Aesthetic */}
         <header>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
@@ -24,14 +24,14 @@ export default function SettingsPage() {
         </header>
 
         {/* Responsive 12-Column Obsidian Bento Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start animate-card-enter">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 items-start animate-card-enter">
           {/* Primary Calculator + Info Column */}
-          <div className="lg:col-span-7 space-y-4">
+          <div className="lg:col-span-7 space-y-4 sm:space-y-5">
             <GoalsCalculatorForm />
 
             {/* Adherence Neutrality & Offline Privacy */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <section className="bg-card rounded-2xl p-4 sm:p-5 space-y-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+              <section className="bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-2.5">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-2xl bg-[var(--macro-carbs)]/15 flex items-center justify-center text-[var(--macro-carbs)] shrink-0">
                     <ShieldCheck className="w-4 h-4" aria-hidden="true" />
@@ -51,7 +51,7 @@ export default function SettingsPage() {
                 </p>
               </section>
 
-              <section className="bg-card rounded-2xl p-4 sm:p-5 space-y-2.5">
+              <section className="bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-2.5">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-2xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)] shrink-0">
                     <Database className="w-4 h-4" aria-hidden="true" />
@@ -73,9 +73,9 @@ export default function SettingsPage() {
           </div>
 
           {/* Right Column: Appearance, Sync, AI Vision & Backup */}
-          <div className="lg:col-span-5 space-y-4">
+          <div className="lg:col-span-5 lg:sticky lg:top-[max(1.5rem,env(safe-area-inset-top))] space-y-4 sm:space-y-5">
             {/* Theme Section */}
-            <section className="bg-card rounded-2xl p-4 sm:p-5 space-y-3">
+            <section className="bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-2xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)] shrink-0">

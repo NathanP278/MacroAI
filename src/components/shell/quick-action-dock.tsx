@@ -67,7 +67,7 @@ export function QuickActionDock({ onAction, onClose }: QuickActionDockProps) {
       aria-modal="true"
       aria-label="Quick Actions"
       data-testid="quick-action-dock"
-      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs transition-opacity"
+      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs animate-backdrop-in"
       onClick={onClose}
     >
       <div
@@ -95,7 +95,7 @@ export function QuickActionDock({ onAction, onClose }: QuickActionDockProps) {
 
         {/* Action Grid */}
         <div className="grid grid-cols-2 gap-3 pt-4 pb-2">
-          {ACTION_ITEMS.map((item) => {
+          {ACTION_ITEMS.map((item, idx) => {
             const Icon = item.icon;
             return (
               <button
@@ -106,7 +106,8 @@ export function QuickActionDock({ onAction, onClose }: QuickActionDockProps) {
                   onClose?.();
                 }}
                 aria-label={item.label}
-                className="macro-spring flex flex-col items-start p-3.5 rounded-2xl bg-surface-sub hover:bg-accent active:scale-[0.97] border border-border hover:border-border-focus text-left group"
+                style={{ animationDelay: `${idx * 35}ms` }}
+                className="animate-card-enter macro-spring flex flex-col items-start p-3.5 rounded-2xl bg-surface-sub hover:bg-accent active:scale-[0.97] border border-border hover:border-border-focus text-left group"
               >
                 <div
                   className={`w-9 h-9 rounded-xl flex items-center justify-center border mb-2.5 transition-transform group-hover:scale-105 ${item.accentColor}`}

@@ -209,7 +209,7 @@ export default function HomePage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-5 sm:gap-6 px-4 sm:px-6 lg:px-8 pt-5 sm:pt-7 pb-8">
+      <div className="flex flex-col gap-5 sm:gap-7 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
         {/* Clean MacroFactor Header (Pics 1 & 4) */}
         <header className="flex items-end justify-between gap-3">
           <div>
@@ -231,7 +231,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={handleToday}
-                className="touch-target macro-spring active:scale-95 px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-surface-sub text-foreground hover:bg-surface-elevated flex items-center gap-1 mr-1"
+                className="touch-target macro-spring active:scale-95 px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-surface-sub border border-border/50 text-foreground hover:bg-surface-elevated flex items-center gap-1 mr-1"
               >
                 <RotateCcw className="w-3 h-3" aria-hidden="true" />
                 Today
@@ -241,7 +241,7 @@ export default function HomePage() {
               type="button"
               onClick={handlePrevDay}
               aria-label="Previous day"
-              className="touch-target macro-spring active:scale-95 w-9 h-9 rounded-full flex items-center justify-center bg-card hover:bg-surface-sub text-muted-foreground hover:text-foreground"
+              className="touch-target macro-spring active:scale-95 w-9 h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -249,7 +249,7 @@ export default function HomePage() {
               type="button"
               onClick={handleNextDay}
               aria-label="Next day"
-              className="touch-target macro-spring active:scale-95 w-9 h-9 rounded-full flex items-center justify-center bg-card hover:bg-surface-sub text-muted-foreground hover:text-foreground"
+              className="touch-target macro-spring active:scale-95 w-9 h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -257,7 +257,7 @@ export default function HomePage() {
         </header>
 
         {/* Top Responsive Bento Workspace: Hero (left) + Insights & Habits (right on tablet/laptop) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 lg:items-stretch animate-card-enter">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 lg:items-stretch animate-card-enter">
           <div className="lg:col-span-5 flex">
             <MacroBentoGrid
               summary={summary}
@@ -281,7 +281,7 @@ export default function HomePage() {
 
         {/* Bottom Workspace: Logged Entries + Micronutrient Targets */}
         <div
-          className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start animate-card-enter"
+          className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 items-start animate-card-enter"
           style={{ animationDelay: '45ms' }}
         >
           {/* Logged Entries Section */}
@@ -316,7 +316,7 @@ export default function HomePage() {
                 return (
                   <div
                     key={slot.id}
-                    className="p-4 sm:p-[18px] rounded-2xl bg-card space-y-2.5"
+                    className="p-4 sm:p-[18px] rounded-2xl bg-card border border-border/50 macro-card-interactive space-y-2.5"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
@@ -387,7 +387,7 @@ export default function HomePage() {
           </section>
 
           {/* Micronutrient Targets Panel */}
-          <div className="lg:col-span-5">
+          <div className="lg:col-span-5 lg:sticky lg:top-[max(1.5rem,env(safe-area-inset-top))]">
             <MicronutrientPanel micros={summary.micros} />
           </div>
         </div>

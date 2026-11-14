@@ -74,13 +74,19 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-dvh bg-background text-foreground">
+      {/* Translucent top safe-area scrim so scrolled content never clashes with iOS/Android status bar */}
+      <div
+        aria-hidden="true"
+        className="fixed top-0 left-0 right-0 z-40 h-[env(safe-area-inset-top)] bg-background/85 backdrop-blur-md pointer-events-none"
+      />
+
       {/* Dynamic responsive workspace: mobile-first full bleed, expands gracefully on tablets & laptops */}
       <div
         data-testid="app-shell-container"
-        className="w-full max-w-6xl mx-auto min-h-screen flex flex-col relative pb-40"
+        className="w-full max-w-6xl mx-auto min-h-dvh flex flex-col relative pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pb-[calc(9rem+env(safe-area-inset-bottom))] sm:pb-[calc(9.5rem+env(safe-area-inset-bottom))]"
       >
-        <main className="flex-1 flex flex-col w-full">{children}</main>
+        <main className="flex-1 flex flex-col w-full animate-page-enter">{children}</main>
 
         {/* Persistent quick search strip + fixed bottom navigation */}
         <BottomNav

@@ -44,7 +44,7 @@ export function MicronutrientPanel({ micros = {}, className = '' }: Micronutrien
   return (
     <section
       aria-label="Micronutrient Targets"
-      className={`bg-card rounded-2xl p-4 sm:p-5 space-y-3.5 ${className}`}
+      className={`bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-3.5 ${className}`}
     >
       {/* Header bar */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -103,7 +103,7 @@ export function MicronutrientPanel({ micros = {}, className = '' }: Micronutrien
       </div>
 
       {/* Clean Divider Rows (zero box-inside-box nesting) */}
-      <div className="divide-y divide-border/60">
+      <div key={activeTab} className="divide-y divide-border/60 animate-panel-switch">
         {displayedList.length === 0 ? (
           <div className="text-center py-4 text-xs text-muted-foreground">
             No micronutrients tracked for this category.

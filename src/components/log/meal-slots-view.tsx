@@ -112,11 +112,11 @@ export function MealSlotsView() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-5 animate-card-enter">
+    <div className="space-y-5 sm:space-y-6 animate-card-enter">
       {/* Top Daily Consumed Bento Summary */}
       <aside
         aria-label="Daily nutrition totals"
-        className="bg-card rounded-2xl p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 lg:items-center"
+        className="bg-card border border-border/50 rounded-2xl p-4 sm:p-5 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 lg:items-center"
       >
         <div className="lg:col-span-5 space-y-3">
           <div className="flex items-start justify-between gap-2">
@@ -218,7 +218,7 @@ export function MealSlotsView() {
       </aside>
 
       {/* Meal Slots Responsive 2-Column Bento Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
         {mealSlots.map((slot) => {
           const slotLogs = logs.filter((l) => l.mealSlot === slot.id);
           const yesterdaySlotLogs = yesterdayEntries.filter((l) => l.mealSlot === slot.id);
@@ -243,7 +243,7 @@ export function MealSlotsView() {
             <div
               key={slot.id}
               data-testid={`meal-slot-card-${slot.id}`}
-              className="bg-card rounded-2xl p-4 sm:p-5 flex flex-col gap-3.5"
+              className="bg-card border border-border/50 macro-card-interactive rounded-2xl p-4 sm:p-5 flex flex-col gap-3.5"
             >
               {/* Slot Header */}
               <div className="flex items-start justify-between gap-2">

@@ -119,7 +119,7 @@ export function MacroBentoGrid({
   return (
     <section
       aria-label="Daily Nutrition Summary"
-      className={`rounded-2xl bg-card p-5 sm:p-6 flex flex-col justify-between gap-4 min-w-0 ${className}`}
+      className={`rounded-2xl bg-card border border-border/50 p-5 sm:p-6 flex flex-col justify-between gap-4 min-w-0 ${className}`}
     >
       {/* Top Card Header + Slide Switcher Dots (Pics 1 & 4) */}
       <div className="flex items-center justify-between gap-2 min-w-0">
@@ -165,7 +165,12 @@ export function MacroBentoGrid({
 
       {/* View 0: Daily Nutrition Arc & 3 Macro Bars (Pic 1) */}
       {heroView === 'daily' ? (
-        <div role="tabpanel" aria-labelledby="hero-daily-tab" className="space-y-5">
+        <div
+          key="hero-daily"
+          role="tabpanel"
+          aria-labelledby="hero-daily-tab"
+          className="space-y-5 animate-panel-switch"
+        >
           {/* Horseshoe Arc + Flanking Numbers */}
           <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 sm:gap-3 pt-1">
             {/* Left Flanking Metric */}
@@ -211,11 +216,18 @@ export function MacroBentoGrid({
                     strokeLinecap="round"
                     transform={`rotate(150 ${cx} ${cy})`}
                     className="macro-arc-transition"
+                    style={{
+                      filter:
+                        'drop-shadow(0 0 8px color-mix(in srgb, var(--macro-calories) 32%, transparent))',
+                    }}
                   />
                 )}
               </svg>
 
-              <div className="absolute inset-0 flex flex-col items-center justify-center pt-2 text-center pointer-events-none">
+              <div
+                key={mode}
+                className="absolute inset-0 flex flex-col items-center justify-center pt-2 text-center pointer-events-none animate-panel-switch"
+              >
                 <span className="text-3xl sm:text-4xl font-bold tracking-tight tabular-nums text-foreground">
                   {typeof centerPrimaryValue === 'number'
                     ? centerPrimaryValue.toLocaleString()
@@ -277,7 +289,12 @@ export function MacroBentoGrid({
         </div>
       ) : (
         /* View 1: 7-Day Nutrition & Targets Columns (Pic 4 left phone) */
-        <div role="tabpanel" aria-labelledby="hero-weekly-tab" className="space-y-4 pt-1">
+        <div
+          key="hero-weekly"
+          role="tabpanel"
+          aria-labelledby="hero-weekly-tab"
+          className="space-y-4 pt-1 animate-panel-switch"
+        >
           <div className="grid grid-cols-[1fr_auto] gap-3 items-center">
             <div className="grid grid-cols-7 gap-1.5">
               {(weeklyDays.length > 0
