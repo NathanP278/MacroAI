@@ -1,11 +1,24 @@
 import { db } from '@/lib/db/macroai-db';
-import type { MealSlotConfig, UserGoals } from '@/types/nutrition';
+import type { DailyMacroTargets, UserGoals, WeekdayKey } from '@/types/nutrition';
 
-export const DEFAULT_MEAL_SLOTS: MealSlotConfig[] = [
-  { id: 'breakfast', name: 'Breakfast', weightPct: 25 },
-  { id: 'lunch', name: 'Lunch', weightPct: 30 },
-  { id: 'dinner', name: 'Dinner', weightPct: 35 },
-  { id: 'snacks', name: 'Snacks', weightPct: 10 },
+export const WEEKDAY_KEYS: WeekdayKey[] = [
+  'mon',
+  'tue',
+  'wed',
+  'thu',
+  'fri',
+  'sat',
+  'sun',
+];
+
+const WEEKDAY_FROM_GET_DAY: WeekdayKey[] = [
+  'sun',
+  'mon',
+  'tue',
+  'wed',
+  'thu',
+  'fri',
+  'sat',
 ];
 
 export const DEFAULT_RDA_MICROS: Record<string, number> = {
@@ -133,10 +146,183 @@ export async function ensureDefaultUserGoals(): Promise<UserGoals> {
     fatG: 65,
     fiberG: 30,
     micronutrientTargets: { ...DEFAULT_RDA_MICROS },
-    mealSlots: [...DEFAULT_MEAL_SLOTS],
+    mealSlots: [],
+    targetMode: 'calculator',
+    goalDeltaKcal: 0,
+    weightUnit: 'kg',
     updatedAt: 0,
   };
 
   await db.userGoals.put(defaultGoals);
   return defaultGoals;
+}
+
+/**
+ * Resolves a local calendar ISO date (YYYY-MM-DD) to its WeekdayKey without UTC drift.
+ */
+export function getWeekdayKey(isoDate: string): WeekdayKey {
+  const match =
+    typeof isoDate === 'string'
+      ? isoDate.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/)
+      : null;
+  if (match) {
+    const y = Number(match[1]);
+    const m = Number(match[2]);
+    const d = Number(match[3]);
+    const dt = new Date(y, m - 1, d);
+    if (
+      dt.getFullYear() === y &&
+      dt.getMonth() === m - 1 &&
+      dt.getDate() === d
+    ) {
+      return WEEKDAY_FROM_GET_DAY[dt.getDay()];
+    }
+  }
+  return WEEKDAY_FROM_GET_DAY[new Date().getDay()];
+}
+
+/**
+ * Returns date-specific UserGoals applying weekday calorie cycling when enabled.
+ */
+export function resolveGoalsForDate(goals: UserGoals, isoDate: string): UserGoals {
+  if (!goals.weeklyCyclingEnabled || !goals.weeklySchedule) {
+    return goals;
+  }
+
+  const dayKey = getWeekdayKey(isoDate);
+  const dayTargets = goals.weeklySchedule[dayKey];
+  if (!dayTargets) {
+    return goals;
+  }
+
+  return {
+    ...goals,
+    dailyCalories: Number.isFinite(dayTargets.calories)
+      ? dayTargets.calories
+      : goals.dailyCalories,
+    proteinG: Number.isFinite(dayTargets.proteinG)
+      ? dayTargets.proteinG
+      : goals.proteinG,
+    carbsG: Number.isFinite(dayTargets.carbsG)
+      ? dayTargets.carbsG
+      : goals.carbsG,
+    fatG: Number.isFinite(dayTargets.fatG) ? dayTargets.fatG : goals.fatG,
+    fiberG: Number.isFinite(dayTargets.fiberG)
+      ? dayTargets.fiberG
+      : goals.fiberG,
+  };
+}
+
+/**
+ * Computes the 7-day average targets across a weekly calorie-cycling schedule.
+ */
+export function computeWeeklyScheduleAverage(
+  schedule: Record<WeekdayKey, DailyMacroTargets>
+): DailyMacroTargets {
+  let calories = 0;
+  let proteinG = 0;
+  let carbsG = 0;
+  let fatG = 0;
+  let fiberG = 0;
+
+  for (const key of WEEKDAY_KEYS) {
+    const day = schedule[key];
+    if (!day) continue;
+    calories += Number.isFinite(day.calories) ? day.calories : 0;
+    proteinG += Number.isFinite(day.proteinG) ? day.proteinG : 0;
+    carbsG += Number.isFinite(day.carbsG) ? day.carbsG : 0;
+    fatG += Number.isFinite(day.fatG) ? day.fatG : 0;
+    fiberG += Number.isFinite(day.fiberG) ? day.fiberG : 0;
+  }
+
+  return {
+    calories: Math.round(calories / 7),
+    proteinG: Math.round(proteinG / 7),
+    carbsG: Math.round(carbsG / 7),
+    fatG: Math.round(fatG / 7),
+    fiberG: Math.round(fiberG / 7),
+  };
+}
+
+function scaleMacrosForDayCalories(
+  base: DailyMacroTargets,
+  targetCalories: number
+): DailyMacroTargets {
+  const safeCalories = Math.max(0, Math.round(targetCalories));
+  const safeBaseCal = Math.max(0, Math.round(base.calories || 0));
+  const proteinG = Math.max(0, Math.round(base.proteinG || 0));
+
+  if (safeCalories === safeBaseCal) {
+    return {
+      calories: safeBaseCal,
+      proteinG,
+      carbsG: Math.max(0, Math.round(base.carbsG || 0)),
+      fatG: Math.max(0, Math.round(base.fatG || 0)),
+      fiberG: Math.max(0, Math.round(base.fiberG || 0)),
+    };
+  }
+
+  const remainingKcal = Math.max(0, safeCalories - proteinG * 4);
+  const baseCarbsKcal = Math.max(0, (base.carbsG || 0) * 4);
+  const baseFatKcal = Math.max(0, (base.fatG || 0) * 9);
+  const baseNonProtein = baseCarbsKcal + baseFatKcal;
+  const carbsShare = baseNonProtein > 0 ? baseCarbsKcal / baseNonProtein : 0.7;
+
+  const carbsG = Math.max(0, Math.round((remainingKcal * carbsShare) / 4));
+  const fatG = Math.max(0, Math.round((remainingKcal - carbsG * 4) / 9));
+  const fiberG =
+    safeBaseCal > 0
+      ? Math.max(0, Math.round((safeCalories / safeBaseCal) * (base.fiberG || 0)))
+      : Math.max(0, Math.round((safeCalories / 1000) * 14));
+
+  return {
+    calories: safeCalories,
+    proteinG,
+    carbsG,
+    fatG,
+    fiberG,
+  };
+}
+
+const CYCLING_PRESET_DELTAS: Record<
+  'even' | 'weekend_plus_250' | 'training_split',
+  Record<WeekdayKey, number>
+> = {
+  even: { mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 },
+  weekend_plus_250: {
+    mon: -100,
+    tue: -100,
+    wed: -100,
+    thu: -100,
+    fri: 250,
+    sat: 250,
+    sun: -100,
+  },
+  training_split: {
+    mon: 150,
+    tue: 150,
+    wed: -200,
+    thu: 150,
+    fri: 150,
+    sat: -200,
+    sun: -200,
+  },
+};
+
+/**
+ * Builds an isocaloric 7-day calorie-cycling schedule from base daily targets.
+ */
+export function buildCyclingPreset(
+  base: DailyMacroTargets,
+  preset: 'even' | 'weekend_plus_250' | 'training_split'
+): Record<WeekdayKey, DailyMacroTargets> {
+  const deltas = CYCLING_PRESET_DELTAS[preset];
+  const schedule = {} as Record<WeekdayKey, DailyMacroTargets>;
+
+  for (const key of WEEKDAY_KEYS) {
+    const targetCalories = Math.max(0, Math.round((base.calories || 0) + deltas[key]));
+    schedule[key] = scaleMacrosForDayCalories(base, targetCalories);
+  }
+
+  return schedule;
 }

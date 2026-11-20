@@ -1,7 +1,14 @@
 import 'fake-indexeddb/auto';
+import Dexie from 'dexie';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from '../macroai-db';
 import { scaleNutrition, computeMacroCalories } from '../../nutrition/scaling';
+import {
+  buildCyclingPreset,
+  computeWeeklyScheduleAverage,
+  getWeekdayKey,
+  resolveGoalsForDate,
+} from '../../nutrition/goals';
 import type { FoodLogEntry, CustomRecipe, UserGoals } from '@/types/nutrition';
 
 describe('MacroAIDB & Nutrition Scaling Helpers', () => {
@@ -202,6 +209,151 @@ describe('MacroAIDB & Nutrition Scaling Helpers', () => {
       expect(active?.dailyCalories).toBe(2400);
       expect(active?.profile?.weightKg).toBe(82);
       expect(active?.mealSlots).toHaveLength(3);
+    });
+
+    it('persists weightLogs, pinnedFoods, and tombstones in Dexie v2', async () => {
+      await db.weightLogs.put({
+        id: 'w-1',
+        date: '2026-11-20',
+        weightKg: 76.5,
+        source: 'manual',
+        recordedAt: '2026-11-20T08:00:00.000Z',
+        createdAt: 100,
+        updatedAt: 100,
+      });
+      await db.pinnedFoods.put({
+        id: 'food:staple:1',
+        kind: 'food',
+        refId: 'staple:1',
+        pinnedAt: 100,
+      });
+      await db.tombstones.put({
+        id: 'foodLogs:log-1',
+        tableName: 'foodLogs',
+        recordId: 'log-1',
+        deletedAt: 200,
+      });
+
+      expect((await db.weightLogs.get('w-1'))?.weightKg).toBe(76.5);
+      expect((await db.pinnedFoods.get('food:staple:1'))?.refId).toBe('staple:1');
+      expect((await db.tombstones.get('foodLogs:log-1'))?.deletedAt).toBe(200);
+    });
+
+    it('upgrades an existing v1 MacroAIDB database to v2 without losing v1 records', async () => {
+      db.close();
+      await Dexie.delete('MacroAIDB');
+
+      const v1Db = new Dexie('MacroAIDB');
+      v1Db.version(1).stores({
+        foodLogs: 'id, date, mealSlot, foodId, createdAt',
+        foodsCache: 'id, barcode, source, name, updatedAt',
+        customRecipes: 'id, name, createdAt',
+        userGoals: 'id, updatedAt',
+      });
+      await v1Db.open();
+      await v1Db.table('foodLogs').put({
+        id: 'v1-log-1',
+        date: '2026-11-19',
+        mealSlot: 'lunch',
+        foodId: 'staple:1',
+        name: 'Steamed Rice',
+        source: 'staple',
+        amount: 200,
+        unit: 'g',
+        nutritionSnapshot: {
+          calories: 260,
+          protein: 5.4,
+          carbs: 56,
+          fat: 0.6,
+          fiber: 0.8,
+          micros: {},
+        },
+        createdAt: 1000,
+      });
+      v1Db.close();
+
+      await db.open();
+      expect(db.verno).toBe(2);
+      const preserved = await db.foodLogs.get('v1-log-1');
+      expect(preserved?.name).toBe('Steamed Rice');
+
+      await db.weightLogs.put({
+        id: 'w-upgrade',
+        date: '2026-11-20',
+        weightKg: 75.8,
+        source: 'manual',
+        recordedAt: '2026-11-20T07:00:00.000Z',
+        createdAt: 2000,
+        updatedAt: 2000,
+      });
+      expect((await db.weightLogs.get('w-upgrade'))?.weightKg).toBe(75.8);
+    });
+  });
+
+  describe('Date-Resolved Goals & Weekly Calorie Cycling', () => {
+    it('maps ISO calendar dates to weekday keys without timezone drift', () => {
+      expect(getWeekdayKey('2026-11-16')).toBe('mon');
+      expect(getWeekdayKey('2026-11-17')).toBe('tue');
+      expect(getWeekdayKey('2026-11-18')).toBe('wed');
+      expect(getWeekdayKey('2026-11-19')).toBe('thu');
+      expect(getWeekdayKey('2026-11-20')).toBe('fri');
+      expect(getWeekdayKey('2026-11-21')).toBe('sat');
+      expect(getWeekdayKey('2026-11-22')).toBe('sun');
+    });
+
+    it('resolves weekday-specific targets via resolveGoalsForDate when weeklyCyclingEnabled is true', () => {
+      const schedule = buildCyclingPreset(
+        { calories: 2000, proteinG: 160, carbsG: 200, fatG: 62, fiberG: 28 },
+        'weekend_plus_250'
+      );
+      const goals: UserGoals = {
+        id: 'active',
+        dailyCalories: 2000,
+        proteinG: 160,
+        carbsG: 200,
+        fatG: 62,
+        fiberG: 28,
+        micronutrientTargets: {},
+        updatedAt: 1,
+        weeklyCyclingEnabled: true,
+        weeklySchedule: schedule,
+      };
+      // 2026-11-21 is Saturday
+      const sat = resolveGoalsForDate(goals, '2026-11-21');
+      expect(sat.dailyCalories).toBe(schedule.sat.calories);
+      expect(sat.dailyCalories).toBeGreaterThan(2000);
+      const mon = resolveGoalsForDate(goals, '2026-11-16');
+      expect(mon.dailyCalories).toBe(schedule.mon.calories);
+      expect(computeWeeklyScheduleAverage(schedule).calories).toBeCloseTo(2000, -1);
+    });
+
+    it('returns base goals unchanged when weeklyCyclingEnabled is false or schedule is absent', () => {
+      const schedule = buildCyclingPreset(
+        { calories: 2100, proteinG: 165, carbsG: 210, fatG: 66, fiberG: 29 },
+        'training_split'
+      );
+      const disabledGoals: UserGoals = {
+        id: 'active',
+        dailyCalories: 2100,
+        proteinG: 165,
+        carbsG: 210,
+        fatG: 66,
+        fiberG: 29,
+        micronutrientTargets: {},
+        updatedAt: 1,
+        weeklyCyclingEnabled: false,
+        weeklySchedule: schedule,
+      };
+      expect(resolveGoalsForDate(disabledGoals, '2026-11-16')).toEqual(disabledGoals);
+      expect(computeWeeklyScheduleAverage(schedule).calories).toBeCloseTo(2100, -1);
+
+      const even = buildCyclingPreset(
+        { calories: 2200, proteinG: 170, carbsG: 220, fatG: 70, fiberG: 31 },
+        'even'
+      );
+      expect(even.mon.calories).toBe(2200);
+      expect(even.sat.calories).toBe(2200);
+      expect(computeWeeklyScheduleAverage(even).calories).toBe(2200);
     });
   });
 });

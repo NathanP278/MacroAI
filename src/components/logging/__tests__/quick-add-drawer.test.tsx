@@ -4,7 +4,6 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { db } from '@/lib/db/macroai-db';
 import {
   calculateMifflinStJeorTargets,
-  DEFAULT_MEAL_SLOTS,
   DEFAULT_RDA_MICROS,
   ensureDefaultUserGoals,
 } from '@/lib/nutrition/goals';
@@ -17,7 +16,7 @@ describe('QuickAddDrawer and Goals Calculator', () => {
     await db.open();
     useLoggerStore.setState({
       activeDate: '2026-11-14',
-      activeMealSlot: 'breakfast',
+      activeMealSlot: 'log',
       activeSheet: null,
       aiDraft: null,
     });
@@ -100,7 +99,10 @@ describe('QuickAddDrawer and Goals Calculator', () => {
   test('ensureDefaultUserGoals seeds default goals idempotently', async () => {
     const goals1 = await ensureDefaultUserGoals();
     expect(goals1.id).toBe('active');
-    expect(goals1.mealSlots).toEqual(DEFAULT_MEAL_SLOTS);
+    expect(goals1.mealSlots).toEqual([]);
+    expect(goals1.targetMode).toBe('calculator');
+    expect(goals1.goalDeltaKcal).toBe(0);
+    expect(goals1.weightUnit).toBe('kg');
     expect(goals1.micronutrientTargets).toEqual(DEFAULT_RDA_MICROS);
     expect(await db.userGoals.count()).toBe(1);
 
@@ -114,7 +116,12 @@ describe('QuickAddDrawer and Goals Calculator', () => {
   test('useLoggerStore manages sheets, dates, meal slots, and AI draft state', () => {
     const store = useLoggerStore.getState();
     expect(store.activeSheet).toBeNull();
+    expect(store.activeMealSlot).toBe('log');
     expect(store.aiDraft).toBeNull();
+
+    store.openSheet('search');
+    expect(useLoggerStore.getState().activeSheet).toBe('search');
+    expect(useLoggerStore.getState().activeMealSlot).toBe('log');
 
     store.openSheet('quick-add', 'dinner');
     expect(useLoggerStore.getState().activeSheet).toBe('quick-add');

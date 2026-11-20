@@ -244,19 +244,28 @@ export async function logCustomRecipe(
 }
 
 /**
- * Clones all entries from yesterday into targetDate with fresh UUIDs.
- * Returns the count of entries copied (0 if none found).
+ * Clones all or selected food log entries from sourceDate into targetDate with fresh UUIDs.
+ * Returns the count and IDs of inserted entries.
  */
-export async function copyYesterdayLogs(targetDate: string): Promise<number> {
-  const yesterday = offsetIsoDate(targetDate, -1);
-  const entries = await db.foodLogs.where('date').equals(yesterday).toArray();
+export async function copyLogsFromDate(
+  sourceDate: string,
+  targetDate: string,
+  entryIds?: string[]
+): Promise<{ count: number; insertedIds: string[] }> {
+  let entries = await db.foodLogs.where('date').equals(sourceDate).toArray();
 
-  if (entries.length === 0) {
-    return 0;
+  if (Array.isArray(entryIds)) {
+    const allowedIds = new Set(entryIds);
+    entries = entries.filter((entry) => allowedIds.has(entry.id));
   }
 
+  if (entries.length === 0) {
+    return { count: 0, insertedIds: [] };
+  }
+
+  const ordered = [...entries].sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
   const now = Date.now();
-  const clones: FoodLogEntry[] = entries.map((entry, index) => ({
+  const clones: FoodLogEntry[] = ordered.map((entry, index) => ({
     id: generateId(),
     date: targetDate,
     mealSlot: entry.mealSlot || 'log',
@@ -274,43 +283,18 @@ export async function copyYesterdayLogs(targetDate: string): Promise<number> {
     await db.foodLogs.bulkAdd(clones);
   });
 
-  return clones.length;
+  return {
+    count: clones.length,
+    insertedIds: clones.map((c) => c.id),
+  };
 }
 
 /**
- * Clones all entries from yesterday's specified mealSlot into targetDate with fresh UUIDs.
+ * Clones all entries from yesterday into targetDate with fresh UUIDs.
  * Returns the count of entries copied (0 if none found).
  */
-export async function copyYesterdayMeal(targetDate: string, mealSlot: string): Promise<number> {
+export async function copyYesterdayLogs(targetDate: string): Promise<number> {
   const yesterday = offsetIsoDate(targetDate, -1);
-  const entries = await db.foodLogs
-    .where('date')
-    .equals(yesterday)
-    .filter((e) => e.mealSlot === mealSlot)
-    .toArray();
-
-  if (entries.length === 0) {
-    return 0;
-  }
-
-  const now = Date.now();
-  const clones: FoodLogEntry[] = entries.map((entry, index) => ({
-    id: generateId(),
-    date: targetDate,
-    mealSlot: entry.mealSlot,
-    foodId: entry.foodId,
-    name: entry.name,
-    source: entry.source,
-    amount: entry.amount,
-    unit: entry.unit,
-    nutritionSnapshot: JSON.parse(JSON.stringify(entry.nutritionSnapshot)),
-    note: entry.note,
-    createdAt: now + index,
-  }));
-
-  await db.transaction('rw', db.foodLogs, async () => {
-    await db.foodLogs.bulkAdd(clones);
-  });
-
-  return clones.length;
+  const { count } = await copyLogsFromDate(yesterday, targetDate);
+  return count;
 }

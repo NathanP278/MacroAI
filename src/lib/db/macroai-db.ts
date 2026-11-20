@@ -1,5 +1,13 @@
 import Dexie, { type Table } from 'dexie';
-import type { FoodItem, FoodLogEntry, CustomRecipe, UserGoals } from '@/types/nutrition';
+import type {
+  FoodItem,
+  FoodLogEntry,
+  CustomRecipe,
+  UserGoals,
+  WeightLogEntry,
+  PinnedFood,
+  SyncTombstone,
+} from '@/types/nutrition';
 import { createCentralSyncMiddleware } from './cloud-sync';
 
 export class MacroAIDB extends Dexie {
@@ -7,6 +15,9 @@ export class MacroAIDB extends Dexie {
   foodsCache!: Table<FoodItem, string>;
   customRecipes!: Table<CustomRecipe, string>;
   userGoals!: Table<UserGoals, string>;
+  weightLogs!: Table<WeightLogEntry, string>;
+  pinnedFoods!: Table<PinnedFood, string>;
+  tombstones!: Table<SyncTombstone, string>;
 
   constructor() {
     super('MacroAIDB');
@@ -15,6 +26,11 @@ export class MacroAIDB extends Dexie {
       foodsCache: 'id, barcode, source, name, updatedAt',
       customRecipes: 'id, name, createdAt',
       userGoals: 'id, updatedAt',
+    });
+    this.version(2).stores({
+      weightLogs: 'id, date, createdAt, updatedAt',
+      pinnedFoods: 'id, kind, pinnedAt',
+      tombstones: 'id, tableName, deletedAt',
     });
     this.use(createCentralSyncMiddleware(() => this));
   }

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { MacroNutrients, Micronutrients } from '@/types/nutrition';
-import { getSmartMealSlot, type TransitionDirection } from '@/lib/motion';
+import type { TransitionDirection } from '@/lib/motion';
 
 export type LogSheetType = 'ai-scan' | 'barcode' | 'search' | 'quick-add';
 
@@ -58,7 +58,7 @@ function getTodayIsoDate(): string {
 export const useLoggerStore = create<LoggerState>((set) => ({
   activeDate: getTodayIsoDate(),
   dateDirection: null,
-  activeMealSlot: getSmartMealSlot(),
+  activeMealSlot: 'log',
   activeSheet: null,
   searchInitialQuery: '',
   aiDraft: null,
@@ -67,11 +67,7 @@ export const useLoggerStore = create<LoggerState>((set) => ({
   openSheet: (sheet, mealSlot) =>
     set((state) => ({
       activeSheet: sheet,
-      activeMealSlot:
-        mealSlot ??
-        (state.activeMealSlot && state.activeMealSlot !== 'log'
-          ? state.activeMealSlot
-          : getSmartMealSlot()),
+      activeMealSlot: mealSlot ?? (state.activeMealSlot || 'log'),
     })),
   closeSheet: () => set({ activeSheet: null, searchInitialQuery: '' }),
   setSearchInitialQuery: (query) => set({ searchInitialQuery: query }),

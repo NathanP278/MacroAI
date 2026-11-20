@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { db } from '@/lib/db/macroai-db';
 import { GoalsCalculatorForm } from '../goals-calculator-form';
-import { DEFAULT_MEAL_SLOTS, DEFAULT_RDA_MICROS } from '@/lib/nutrition/goals';
+import { DEFAULT_RDA_MICROS } from '@/lib/nutrition/goals';
 
 describe('GoalsCalculatorForm', () => {
   beforeEach(async () => {
@@ -49,7 +49,7 @@ describe('GoalsCalculatorForm', () => {
       fatG: 70,
       fiberG: 32,
       micronutrientTargets: { ...DEFAULT_RDA_MICROS },
-      mealSlots: [...DEFAULT_MEAL_SLOTS],
+      mealSlots: [],
       profile: {
         sex: 'male',
         age: 35,

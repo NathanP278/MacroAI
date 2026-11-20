@@ -5,7 +5,6 @@ import { Calculator, Check, Flame, Dumbbell, Wheat, Droplets, Leaf } from 'lucid
 import { db } from '@/lib/db/macroai-db';
 import {
   calculateMifflinStJeorTargets,
-  DEFAULT_MEAL_SLOTS,
   DEFAULT_RDA_MICROS,
   ACTIVITY_LEVELS,
   GOAL_DELTAS,
@@ -84,6 +83,7 @@ export function GoalsCalculatorForm() {
       };
 
       const updatedGoals: UserGoals = {
+        ...(existing ?? {}),
         id: 'active',
         dailyCalories: targets.dailyCalories,
         proteinG: targets.proteinG,
@@ -91,7 +91,9 @@ export function GoalsCalculatorForm() {
         fatG: targets.fatG,
         fiberG: targets.fiberG,
         micronutrientTargets: existing?.micronutrientTargets ?? { ...DEFAULT_RDA_MICROS },
-        mealSlots: existing?.mealSlots ?? [...DEFAULT_MEAL_SLOTS],
+        mealSlots: existing?.mealSlots ?? [],
+        targetMode: existing?.targetMode ?? 'calculator',
+        goalDeltaKcal,
         profile,
         updatedAt: Date.now(),
       };

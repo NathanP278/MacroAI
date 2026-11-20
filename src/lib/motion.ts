@@ -60,17 +60,3 @@ export function runViewTransition(
     updateCb();
   }
 }
-
-/**
- * Smart default meal slot based on the local time of day when no explicit
- * meal slot is targeted by the user.
- */
-export function getSmartMealSlot(
-  now: Date = new Date()
-): "breakfast" | "lunch" | "dinner" | "snacks" {
-  const hour = now.getHours();
-  if (hour < 11) return "breakfast";
-  if (hour < 15) return "lunch";
-  if (hour < 21) return "dinner";
-  return "snacks";
-}

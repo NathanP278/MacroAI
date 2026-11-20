@@ -21,6 +21,12 @@ export interface Micronutrients {
   vitaminB6Mg?: number;
   vitaminB12Mcg?: number;
   folateMcg?: number;
+  sugarG?: number;
+  addedSugarG?: number;
+  saturatedFatG?: number;
+  cholesterolMg?: number;
+  caffeineMg?: number;
+  alcoholG?: number;
   [key: string]: number | undefined;
 }
 
@@ -29,6 +35,7 @@ export type FoodSource =
   | 'usda'
   | 'off'
   | 'custom_barcode'
+  | 'custom_food'
   | 'ai_scan'
   | 'quick_add'
   | 'recipe';
@@ -36,7 +43,7 @@ export type FoodSource =
 export interface FoodLogEntry {
   id: string;
   date: string;
-  mealSlot: string;
+  mealSlot?: string;
   foodId: string;
   name: string;
   source: FoodSource;
@@ -58,7 +65,7 @@ export interface FoodServingOption {
 export interface FoodItem {
   id: string;
   barcode?: string | null;
-  source: 'staple' | 'usda' | 'off' | 'custom_barcode';
+  source: 'staple' | 'usda' | 'off' | 'custom_barcode' | 'custom_food';
   name: string;
   brand?: string;
   region?: 'PH' | 'GLOBAL';
@@ -92,10 +99,54 @@ export interface CustomRecipe {
   ingredients: CustomRecipeIngredient[];
   basis: 'per100g' | 'perServing';
   totalGrams: number;
+  cookedWeightGrams?: number | null;
   nutrientsPerBasis: MacroNutrients;
   micronutrientsPerBasis: Micronutrients;
   defaultServings: number;
   createdAt: number;
+}
+
+export interface WeightLogEntry {
+  id: string;
+  date: string;
+  weightKg: number;
+  note?: string;
+  source: 'manual' | 'apple_health';
+  recordedAt: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface PinnedFood {
+  id: string;
+  kind: 'food' | 'recipe';
+  refId: string;
+  pinnedAt: number;
+}
+
+export type SyncTableName =
+  | 'foodLogs'
+  | 'foodsCache'
+  | 'customRecipes'
+  | 'userGoals'
+  | 'weightLogs'
+  | 'pinnedFoods';
+
+export interface SyncTombstone {
+  id: string;
+  tableName: SyncTableName;
+  recordId: string;
+  deletedAt: number;
+}
+
+export type WeekdayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+
+export interface DailyMacroTargets {
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  fiberG: number;
 }
 
 export interface MealSlotConfig {
@@ -122,7 +173,14 @@ export interface UserGoals {
   fatG: number;
   fiberG: number;
   micronutrientTargets: Record<string, number>;
-  mealSlots: MealSlotConfig[];
+  mealSlots?: MealSlotConfig[];
+  targetMode?: 'calculator' | 'custom';
+  goalDeltaKcal?: number;
+  weeklyCyclingEnabled?: boolean;
+  weeklySchedule?: Record<WeekdayKey, DailyMacroTargets>;
+  weightUnit?: 'kg' | 'lb';
+  lastCheckInAt?: number;
+  lastCheckInDismissedAt?: number;
   profile?: UserProfile;
   updatedAt: number;
 }

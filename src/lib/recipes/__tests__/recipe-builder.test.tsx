@@ -3,10 +3,9 @@ import React, { act } from 'react';
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { db } from '@/lib/db/macroai-db';
-import { distributeRemainingMacros } from '../meal-distribution';
 import {
+  copyLogsFromDate,
   copyYesterdayLogs,
-  copyYesterdayMeal,
   saveCustomRecipe,
   logCustomRecipe,
   offsetIsoDate,
@@ -17,219 +16,17 @@ import { RecipeBuilderModal } from '@/components/recipes/recipe-builder-modal';
 import RecipesPage from '@/app/recipes/page';
 import LogPage from '@/app/log/page';
 import { useLoggerStore } from '@/stores/logger-store';
-import type { UserGoals, FoodLogEntry, CustomRecipeIngredient } from '@/types/nutrition';
+import type { CustomRecipeIngredient } from '@/types/nutrition';
 
-describe('Task 12: Fitia-Style Smart Meal Distribution & Copy Yesterday', () => {
+describe('Recipe Builder, Date Copy & Unified Log Views', () => {
   beforeEach(async () => {
     await db.delete();
     await db.open();
     useLoggerStore.setState({
       activeDate: '2026-11-14',
-      activeMealSlot: 'breakfast',
+      activeMealSlot: 'log',
       activeSheet: null,
       aiDraft: null,
-    });
-  });
-
-  // Exact test 1 from brief
-  test('redistributes remaining macros proportionally across unlogged slots and clamps overages to 0', () => {
-    const goals: UserGoals = {
-      id: 'active',
-      dailyCalories: 2000,
-      proteinG: 160,
-      carbsG: 200,
-      fatG: 60,
-      fiberG: 30,
-      micronutrientTargets: {},
-      updatedAt: 1,
-      mealSlots: [
-        { id: 'breakfast', name: 'Breakfast', weightPct: 25 },
-        { id: 'lunch', name: 'Lunch', weightPct: 50 },
-        { id: 'dinner', name: 'Dinner', weightPct: 25 },
-      ],
-    };
-    const dist = distributeRemainingMacros(goals, [
-      {
-        id: '1',
-        date: '2026-11-14',
-        mealSlot: 'breakfast',
-        foodId: 'x',
-        name: 'Oats',
-        source: 'staple',
-        amount: 100,
-        unit: 'g',
-        nutritionSnapshot: {
-          calories: 800,
-          protein: 40,
-          carbs: 110,
-          fat: 20,
-          fiber: 10,
-          micros: {},
-        },
-        createdAt: 1,
-      },
-    ]);
-    expect(dist.lunch.calories).toBe(800); // 1200 remaining * (50 / 75)
-    expect(dist.dinner.calories).toBe(400); // 1200 remaining * (25 / 75)
-    expect(dist.breakfast.calories).toBe(0); // already logged slot
-
-    // Check protein, carbs, fat distribution
-    expect(dist.lunch.protein).toBe(80); // (160 - 40) * (50 / 75) = 120 * 2/3 = 80
-    expect(dist.dinner.protein).toBe(40); // 120 * 1/3 = 40
-    expect(dist.lunch.carbs).toBe(60); // (200 - 110) * (50 / 75) = 90 * 2/3 = 60
-    expect(dist.dinner.carbs).toBe(30); // 90 * 1/3 = 30
-    expect(dist.lunch.fat).toBe(27); // (60 - 20) * (50 / 75) = 40 * 2/3 = 26.67 -> 27
-    expect(dist.dinner.fat).toBe(13); // 40 * 1/3 = 13.33 -> 13
-
-    // Over-target clamping test
-    const over = distributeRemainingMacros(goals, [
-      {
-        id: '2',
-        date: '2026-11-14',
-        mealSlot: 'breakfast',
-        foodId: 'x',
-        name: 'Feast',
-        source: 'staple',
-        amount: 100,
-        unit: 'g',
-        nutritionSnapshot: {
-          calories: 2300,
-          protein: 180,
-          carbs: 220,
-          fat: 80,
-          fiber: 10,
-          micros: {},
-        },
-        createdAt: 1,
-      },
-    ]);
-    expect(over.lunch.calories).toBe(0);
-    expect(over.lunch.protein).toBe(0);
-    expect(over.lunch.carbs).toBe(0);
-    expect(over.lunch.fat).toBe(0);
-    expect(over.dinner.calories).toBe(0);
-  });
-
-  // Exact test 2 from brief
-  test('copies yesterday meal slot entries with new UUIDs', async () => {
-    await db.delete();
-    await db.open();
-    await db.foodLogs.put({
-      id: 'old-1',
-      date: '2026-11-13',
-      mealSlot: 'breakfast',
-      foodId: 's:1',
-      name: 'Eggs',
-      source: 'staple',
-      amount: 100,
-      unit: 'g',
-      nutritionSnapshot: {
-        calories: 143,
-        protein: 12.6,
-        carbs: 0.7,
-        fat: 9.5,
-        fiber: 0,
-        micros: {},
-      },
-      createdAt: 1,
-    });
-    const count = await copyYesterdayMeal('2026-11-14', 'breakfast');
-    expect(count).toBe(1);
-    const copied = await db.foodLogs.where('date').equals('2026-11-14').toArray();
-    expect(copied).toHaveLength(1);
-    expect(copied[0].id).not.toBe('old-1');
-    expect(copied[0].name).toBe('Eggs');
-    expect(copied[0].date).toBe('2026-11-14');
-    expect(copied[0].mealSlot).toBe('breakfast');
-  });
-
-  describe('Edge cases in distributeRemainingMacros', () => {
-    test('returns empty object when goals or mealSlots are empty', () => {
-      expect(distributeRemainingMacros(null as unknown as UserGoals, [])).toEqual({});
-      expect(
-        distributeRemainingMacros(
-          {
-            id: 'active',
-            dailyCalories: 2000,
-            proteinG: 150,
-            carbsG: 200,
-            fatG: 65,
-            fiberG: 30,
-            micronutrientTargets: {},
-            mealSlots: [],
-            updatedAt: 1,
-          },
-          []
-        )
-      ).toEqual({});
-    });
-
-    test('distributes evenly when all unlogged slots have 0 weightPct', () => {
-      const goals: UserGoals = {
-        id: 'active',
-        dailyCalories: 1000,
-        proteinG: 100,
-        carbsG: 100,
-        fatG: 50,
-        fiberG: 20,
-        micronutrientTargets: {},
-        updatedAt: 1,
-        mealSlots: [
-          { id: 's1', name: 'Slot 1', weightPct: 0 },
-          { id: 's2', name: 'Slot 2', weightPct: 0 },
-        ],
-      };
-      const dist = distributeRemainingMacros(goals, []);
-      expect(dist.s1.calories).toBe(500);
-      expect(dist.s2.calories).toBe(500);
-      expect(dist.s1.protein).toBe(50);
-      expect(dist.s2.protein).toBe(50);
-    });
-
-    test('gives 0 remaining budget to all slots when all slots are logged', () => {
-      const goals: UserGoals = {
-        id: 'active',
-        dailyCalories: 2000,
-        proteinG: 150,
-        carbsG: 200,
-        fatG: 60,
-        fiberG: 25,
-        micronutrientTargets: {},
-        updatedAt: 1,
-        mealSlots: [
-          { id: 'b', name: 'Breakfast', weightPct: 50 },
-          { id: 'l', name: 'Lunch', weightPct: 50 },
-        ],
-      };
-      const logs: FoodLogEntry[] = [
-        {
-          id: '1',
-          date: '2026-11-14',
-          mealSlot: 'b',
-          foodId: 'x',
-          name: 'Food 1',
-          source: 'staple',
-          amount: 100,
-          unit: 'g',
-          nutritionSnapshot: { calories: 300, protein: 20, carbs: 40, fat: 10, fiber: 5, micros: {} },
-          createdAt: 1,
-        },
-        {
-          id: '2',
-          date: '2026-11-14',
-          mealSlot: 'l',
-          foodId: 'y',
-          name: 'Food 2',
-          source: 'staple',
-          amount: 100,
-          unit: 'g',
-          nutritionSnapshot: { calories: 400, protein: 30, carbs: 50, fat: 10, fiber: 5, micros: {} },
-          createdAt: 2,
-        },
-      ];
-      const dist = distributeRemainingMacros(goals, logs);
-      expect(dist.b).toEqual({ calories: 0, protein: 0, carbs: 0, fat: 0 });
-      expect(dist.l).toEqual({ calories: 0, protein: 0, carbs: 0, fat: 0 });
     });
   });
 
@@ -368,7 +165,6 @@ describe('Task 12: Fitia-Style Smart Meal Distribution & Copy Yesterday', () => 
 
       const entry = await logCustomRecipe(recipe, {
         date: '2026-11-14',
-        mealSlot: 'breakfast',
         servings: 2,
       });
 
@@ -383,11 +179,6 @@ describe('Task 12: Fitia-Style Smart Meal Distribution & Copy Yesterday', () => 
 
       const inDb = await db.foodLogs.get(entry.id);
       expect(inDb?.name).toBe('Omelette');
-    });
-
-    test('copyYesterdayMeal returns 0 when yesterday has no entries for slot', async () => {
-      const count = await copyYesterdayMeal('2026-11-14', 'dinner');
-      expect(count).toBe(0);
     });
 
     test('copyYesterdayLogs clones all yesterday entries regardless of mealSlot', async () => {
@@ -423,6 +214,51 @@ describe('Task 12: Fitia-Style Smart Meal Distribution & Copy Yesterday', () => 
       const copied = await db.foodLogs.where('date').equals('2026-11-14').toArray();
       expect(copied.map((c) => c.name).sort()).toEqual(['Eggs', 'Salmon']);
     });
+
+    test('copyLogsFromDate clones all or selected entries from sourceDate to targetDate and returns insertedIds', async () => {
+      await db.foodLogs.bulkAdd([
+        {
+          id: 'src-1',
+          date: '2026-11-10',
+          mealSlot: 'log',
+          foodId: 's:1',
+          name: 'Oats',
+          source: 'staple',
+          amount: 80,
+          unit: 'g',
+          nutritionSnapshot: { calories: 300, protein: 10, carbs: 54, fat: 5, fiber: 8, micros: {} },
+          createdAt: 10,
+        },
+        {
+          id: 'src-2',
+          date: '2026-11-10',
+          mealSlot: 'log',
+          foodId: 's:2',
+          name: 'Chicken Breast',
+          source: 'staple',
+          amount: 150,
+          unit: 'g',
+          nutritionSnapshot: { calories: 248, protein: 46.5, carbs: 0, fat: 5.4, fiber: 0, micros: {} },
+          createdAt: 20,
+        },
+      ]);
+
+      const selective = await copyLogsFromDate('2026-11-10', '2026-11-14', ['src-2']);
+      expect(selective.count).toBe(1);
+      expect(selective.insertedIds).toHaveLength(1);
+      expect(selective.insertedIds[0]).not.toBe('src-2');
+
+      const copiedRow = await db.foodLogs.get(selective.insertedIds[0]);
+      expect(copiedRow?.name).toBe('Chicken Breast');
+      expect(copiedRow?.date).toBe('2026-11-14');
+
+      const empty = await copyLogsFromDate('2026-11-10', '2026-11-15', []);
+      expect(empty).toEqual({ count: 0, insertedIds: [] });
+
+      const all = await copyLogsFromDate('2026-11-10', '2026-11-16');
+      expect(all.count).toBe(2);
+      expect(all.insertedIds).toHaveLength(2);
+    });
   });
 
   describe('UI Component: MealSlotsView & LogPage', () => {
@@ -437,11 +273,7 @@ describe('Task 12: Fitia-Style Smart Meal Distribution & Copy Yesterday', () => 
         fiberG: 30,
         micronutrientTargets: {},
         updatedAt: 1,
-        mealSlots: [
-          { id: 'breakfast', name: 'Breakfast', weightPct: 30 },
-          { id: 'lunch', name: 'Lunch', weightPct: 40 },
-          { id: 'dinner', name: 'Dinner', weightPct: 30 },
-        ],
+        mealSlots: [],
       });
 
       // Seed yesterday entries across different legacy mealSlots
