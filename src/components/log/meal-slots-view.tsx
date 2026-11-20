@@ -9,7 +9,16 @@ import { DEFAULT_RDA_MICROS } from '@/lib/nutrition/goals';
 import { FoodRowSkeleton } from '@/components/ui/skeleton';
 import { triggerHaptic } from '@/lib/motion';
 import type { FoodLogEntry, UserGoals } from '@/types/nutrition';
-import { Plus, RotateCcw, Trash2, Check, ChevronDown, CopyPlus } from 'lucide-react';
+import {
+  Plus,
+  RotateCcw,
+  Trash2,
+  Check,
+  ChevronDown,
+  CopyPlus,
+  Pencil,
+  StickyNote,
+} from 'lucide-react';
 
 function formatEntryTime(timestamp: number): string | null {
   if (!Number.isFinite(timestamp) || timestamp <= 0) return null;
@@ -24,6 +33,7 @@ function formatEntryAmount(amount: number): string {
 export function MealSlotsView() {
   const activeDate = useLoggerStore((s) => s.activeDate);
   const openSheet = useLoggerStore((s) => s.openSheet);
+  const setEditingEntry = useLoggerStore((s) => s.setEditingEntry);
   const showUndoToast = useLoggerStore((s) => s.showUndoToast);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
@@ -312,6 +322,7 @@ export function MealSlotsView() {
               const entryTime = formatEntryTime(entry.createdAt);
               const isExpanded = expandedEntryId === entry.id;
               const micros = entry.nutritionSnapshot?.micros;
+              const trimmedNote = entry.note?.trim();
 
               return (
                 <li
@@ -346,6 +357,12 @@ export function MealSlotsView() {
                         <span className="text-sm font-semibold text-foreground truncate">
                           {entry.name}
                         </span>
+                        {trimmedNote && (
+                          <StickyNote
+                            className="w-3 h-3 text-muted-foreground/75 shrink-0"
+                            aria-hidden="true"
+                          />
+                        )}
                         <ChevronDown
                           className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-150 ${
                             isExpanded
@@ -401,44 +418,72 @@ export function MealSlotsView() {
                     aria-hidden={!isExpanded}
                   >
                     <div className="accordion-inner">
-                      <div className="px-4 pb-3 pt-1.5 sm:px-5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground border-t border-border/40 bg-surface-sub/35">
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
-                          <span>
-                            Fiber:{' '}
-                            <strong className="text-foreground">
-                              {Math.round((entry.nutritionSnapshot?.fiber ?? 0) * 10) / 10}g
-                            </strong>
-                          </span>
-                          {micros?.sodiumMg !== undefined && (
+                      <div className="px-4 pb-3 pt-1.5 sm:px-5 space-y-2 text-[11px] text-muted-foreground border-t border-border/40 bg-surface-sub/35">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
                             <span>
-                              Sodium:{' '}
+                              Fiber:{' '}
                               <strong className="text-foreground">
-                                {Math.round(micros.sodiumMg)}mg
+                                {Math.round((entry.nutritionSnapshot?.fiber ?? 0) * 10) / 10}g
                               </strong>
                             </span>
-                          )}
-                          {micros?.potassiumMg !== undefined && (
-                            <span>
-                              Potassium:{' '}
-                              <strong className="text-foreground">
-                                {Math.round(micros.potassiumMg)}mg
-                              </strong>
+                            {micros?.sodiumMg !== undefined && (
+                              <span>
+                                Sodium:{' '}
+                                <strong className="text-foreground">
+                                  {Math.round(micros.sodiumMg)}mg
+                                </strong>
+                              </span>
+                            )}
+                            {micros?.potassiumMg !== undefined && (
+                              <span>
+                                Potassium:{' '}
+                                <strong className="text-foreground">
+                                  {Math.round(micros.potassiumMg)}mg
+                                </strong>
+                              </span>
+                            )}
+                            <span className="uppercase tracking-wider text-[10px]">
+                              {entry.source.replace('_', ' ')}
                             </span>
-                          )}
-                          <span className="uppercase tracking-wider text-[10px]">
-                            {entry.source.replace('_', ' ')}
-                          </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              tabIndex={isExpanded ? 0 : -1}
+                              onClick={() => {
+                                triggerHaptic(8);
+                                setEditingEntry(entry);
+                              }}
+                              className="touch-target tactile-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-card border border-border text-foreground font-medium hover:bg-surface-elevated"
+                            >
+                              <Pencil className="w-3 h-3" aria-hidden="true" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              tabIndex={isExpanded ? 0 : -1}
+                              onClick={() => void handleDuplicateEntry(entry)}
+                              className="touch-target tactile-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-card border border-border text-foreground font-medium hover:bg-surface-elevated"
+                            >
+                              <CopyPlus className="w-3 h-3" aria-hidden="true" />
+                              <span>Log Again</span>
+                            </button>
+                          </div>
                         </div>
 
-                        <button
-                          type="button"
-                          tabIndex={isExpanded ? 0 : -1}
-                          onClick={() => void handleDuplicateEntry(entry)}
-                          className="touch-target tactile-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-card border border-border text-foreground font-medium hover:bg-surface-elevated"
-                        >
-                          <CopyPlus className="w-3 h-3" aria-hidden="true" />
-                          <span>Log Again</span>
-                        </button>
+                        {trimmedNote && (
+                          <div className="flex items-start gap-1.5 pt-1.5 border-t border-border/40 text-[11px] text-foreground/85">
+                            <StickyNote
+                              className="w-3 h-3 text-muted-foreground shrink-0 mt-0.5"
+                              aria-hidden="true"
+                            />
+                            <p className="leading-relaxed break-words whitespace-pre-wrap">
+                              {trimmedNote}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -10,6 +10,7 @@ import { CommandPalette } from "./command-palette";
 import { SyncUnlockCard } from "@/components/auth/sync-unlock-modal";
 import { QuickAddDrawer } from "@/components/logging/quick-add-drawer";
 import { FoodSearchDrawer } from "@/components/logging/food-search-drawer";
+import { EditLogEntryDrawer } from "@/components/logging/edit-log-entry-drawer";
 import { BarcodeScannerDrawer } from "@/components/scanner/barcode-scanner-drawer";
 import { AiMealScannerSheet } from "@/components/scanner/ai-meal-scanner-sheet";
 import { useLoggerStore } from "@/stores/logger-store";
@@ -108,6 +109,8 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
   const closeSheet = useLoggerStore((s) => s.closeSheet);
   const activeDate = useLoggerStore((s) => s.activeDate);
   const activeMealSlot = useLoggerStore((s) => s.activeMealSlot);
+  const editingEntry = useLoggerStore((s) => s.editingEntry);
+  const setEditingEntry = useLoggerStore((s) => s.setEditingEntry);
   const syncAuthLocked = useLoggerStore((s) => s.syncAuthLocked);
 
   // Restore & persist per-route scroll position
@@ -264,6 +267,12 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
           date={activeDate}
           mealSlot={activeMealSlot}
           onClose={closeSheet}
+        />
+
+        {/* Tap-to-Edit Logged Entry Drawer */}
+        <EditLogEntryDrawer
+          entry={editingEntry}
+          onClose={() => setEditingEntry(null)}
         />
       </div>
     </div>
