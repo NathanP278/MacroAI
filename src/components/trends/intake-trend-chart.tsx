@@ -146,10 +146,35 @@ export function IntakeTrendChart({ days, mode, className = '' }: IntakeTrendChar
           return <g key={d.date + i}>{elements}</g>;
         })}
       </svg>
-      <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
+      <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
         <span className="inline-flex items-center gap-1">
           <span className="inline-block h-0.5 w-3" style={{ background: 'currentColor' }} /> Daily target
         </span>
+        {mode === 'macros' && (
+          <>
+            <span className="inline-flex items-center gap-1">
+              <span
+                className="inline-block h-2 w-2 rounded-xs"
+                style={{ background: 'var(--macro-protein)' }}
+              />{' '}
+              Protein
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span
+                className="inline-block h-2 w-2 rounded-xs"
+                style={{ background: 'var(--macro-carbs)' }}
+              />{' '}
+              Carbs
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span
+                className="inline-block h-2 w-2 rounded-xs"
+                style={{ background: 'var(--macro-fat)' }}
+              />{' '}
+              Fat
+            </span>
+          </>
+        )}
       </div>
       {a && (
         <div data-testid="scrub-readout" className="mt-1 text-xs tabular-nums text-foreground" aria-live="polite">

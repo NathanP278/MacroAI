@@ -92,6 +92,7 @@ export function useScrub(xs: number[]) {
     [xs],
   );
   const onBlur = useCallback(() => setActive(null), []);
+  const boundedActive = active !== null && active < xs.length ? active : null;
 
-  return { active, onPointerMove, onPointerLeave, onKeyDown, onBlur };
+  return { active: boundedActive, onPointerMove, onPointerLeave, onKeyDown, onBlur };
 }

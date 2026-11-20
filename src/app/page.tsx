@@ -5,8 +5,11 @@ import Link from 'next/link';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, generateId } from '@/lib/db/macroai-db';
 import { useLoggerStore } from '@/stores/logger-store';
-import { DEFAULT_RDA_MICROS } from '@/lib/nutrition/goals';
+import { DEFAULT_RDA_MICROS, resolveGoalsForDate } from '@/lib/nutrition/goals';
 import { aggregateDailySummary } from '@/lib/nutrition/daily-summary';
+import { computeAdaptiveTdee } from '@/lib/nutrition/adaptive-tdee';
+import { computeRangeAnalytics } from '@/lib/nutrition/analytics';
+import { formatWeight } from '@/components/trends/chart-utils';
 import { MacroBentoGrid, type DayNutritionPoint } from '@/components/dashboard/macro-bento-grid';
 import {
   HabitsAnalyticsGrid,
@@ -28,6 +31,8 @@ import {
   Pencil,
   Plus,
   RotateCcw,
+  Scale,
+  Sparkles,
   StickyNote,
   Trash2,
 } from 'lucide-react';
@@ -76,6 +81,37 @@ function formatEntryAmount(amount: number): string {
   return String(Number(amount.toFixed(1)));
 }
 
+function computeRollingWeeklySummary(logs: FoodLogEntry[], goals: UserGoals) {
+  const loggedDays = new Set(logs.map((l) => l.date)).size;
+  if (loggedDays <= 1) {
+    return aggregateDailySummary(logs, goals);
+  }
+  const factor = 1 / loggedDays;
+  const scaled: FoodLogEntry[] = logs.map((l) => {
+    const snap = l.nutritionSnapshot;
+    const scaledMicros: Record<string, number> = {};
+    if (snap?.micros) {
+      for (const [k, v] of Object.entries(snap.micros)) {
+        if (typeof v === 'number' && Number.isFinite(v)) {
+          scaledMicros[k] = v * factor;
+        }
+      }
+    }
+    return {
+      ...l,
+      nutritionSnapshot: {
+        calories: (snap?.calories ?? 0) * factor,
+        protein: (snap?.protein ?? 0) * factor,
+        carbs: (snap?.carbs ?? 0) * factor,
+        fat: (snap?.fat ?? 0) * factor,
+        fiber: (snap?.fiber ?? 0) * factor,
+        micros: scaledMicros,
+      },
+    };
+  });
+  return aggregateDailySummary(scaled, goals);
+}
+
 export default function HomePage() {
   const activeDate = useLoggerStore((s) => s.activeDate);
   const dateDirection = useLoggerStore((s) => s.dateDirection);
@@ -103,6 +139,7 @@ export default function HomePage() {
   );
 
   const userGoals = useLiveQuery(() => db.userGoals.get('active'), []);
+  const weightLogs = useLiveQuery(() => db.weightLogs.toArray(), []);
 
   const fallbackGoals: UserGoals = useMemo(
     () => ({
@@ -114,16 +151,38 @@ export default function HomePage() {
       fiberG: 30,
       micronutrientTargets: { ...DEFAULT_RDA_MICROS },
       mealSlots: [],
+      weightUnit: 'kg',
       updatedAt: 0,
     }),
     []
   );
 
   const activeGoals = userGoals ?? fallbackGoals;
+  const weightUnit: 'kg' | 'lb' = activeGoals.weightUnit === 'lb' ? 'lb' : 'kg';
+  const resolvedActiveGoals = useMemo(
+    () => resolveGoalsForDate(activeGoals, activeDate),
+    [activeGoals, activeDate]
+  );
+
+  const safeRangeLogs = useMemo(() => rangeLogs ?? [], [rangeLogs]);
+  const safeWeightLogs = useMemo(() => weightLogs ?? [], [weightLogs]);
+
+  const adaptive = useMemo(
+    () =>
+      computeAdaptiveTdee({
+        weights: safeWeightLogs,
+        foodLogs: safeRangeLogs,
+        goals: activeGoals,
+        today: activeDate,
+      }),
+    [safeWeightLogs, safeRangeLogs, activeGoals, activeDate]
+  );
+
+  const weekStartDate = useMemo(() => offsetIsoDate(activeDate, -6), [activeDate]);
 
   const logsByDate = useMemo(() => {
     const grouped = new Map<string, FoodLogEntry[]>();
-    for (const entry of rangeLogs ?? []) {
+    for (const entry of safeRangeLogs) {
       const bucket = grouped.get(entry.date);
       if (bucket) {
         bucket.push(entry);
@@ -132,16 +191,38 @@ export default function HomePage() {
       }
     }
     return grouped;
-  }, [rangeLogs]);
+  }, [safeRangeLogs]);
 
   const activeLogs = useMemo(
     () => logsByDate.get(activeDate) ?? [],
     [logsByDate, activeDate]
   );
 
+  const weeklyLogs = useMemo(
+    () => safeRangeLogs.filter((l) => l.date >= weekStartDate && l.date <= activeDate),
+    [safeRangeLogs, weekStartDate, activeDate]
+  );
+
   const summary = useMemo(
-    () => aggregateDailySummary(activeLogs, activeGoals),
-    [activeLogs, activeGoals]
+    () => aggregateDailySummary(activeLogs, resolvedActiveGoals),
+    [activeLogs, resolvedActiveGoals]
+  );
+
+  const rolling7d = useMemo(
+    () =>
+      computeRangeAnalytics(
+        safeRangeLogs,
+        activeGoals,
+        activeDate,
+        7,
+        adaptive.latestTrendKg
+      ),
+    [safeRangeLogs, activeGoals, activeDate, adaptive.latestTrendKg]
+  );
+
+  const weeklyMicroSummary = useMemo(
+    () => computeRollingWeeklySummary(weeklyLogs, activeGoals),
+    [weeklyLogs, activeGoals]
   );
 
   // Build 7-day sequence ending on activeDate (Pics 3 & 4)
@@ -150,6 +231,7 @@ export default function HomePage() {
     for (let i = -6; i <= 0; i++) {
       const iso = offsetIsoDate(activeDate, i);
       const dayEntries = logsByDate.get(iso) ?? [];
+      const dayGoals = resolveGoalsForDate(activeGoals, iso);
       const [y, m, d] = iso.split('-').map(Number);
       const dayLetter = new Date(y, m - 1, d)
         .toLocaleDateString('en-US', { weekday: 'narrow' })
@@ -173,10 +255,10 @@ export default function HomePage() {
         protein: Math.round(pro),
         fat: Math.round(fat),
         carbs: Math.round(carbs),
-        caloriesTarget: activeGoals.dailyCalories,
-        proteinTarget: activeGoals.proteinG,
-        fatTarget: activeGoals.fatG,
-        carbsTarget: activeGoals.carbsG,
+        caloriesTarget: dayGoals.dailyCalories,
+        proteinTarget: dayGoals.proteinG,
+        fatTarget: dayGoals.fatG,
+        carbsTarget: dayGoals.carbsG,
         isSelected: iso === activeDate,
       });
     }
@@ -189,18 +271,27 @@ export default function HomePage() {
     for (let i = -29; i <= 0; i++) {
       const iso = offsetIsoDate(activeDate, i);
       const entries = logsByDate.get(iso) ?? [];
+      const dayTarget = resolveGoalsForDate(activeGoals, iso).dailyCalories;
       const cal = entries.reduce(
         (sum, e) => sum + (Number(e.nutritionSnapshot?.calories) || 0),
         0
       );
+      const intensity: 'none' | 'partial' | 'logged' =
+        entries.length === 0
+          ? 'none'
+          : dayTarget > 0 && cal < dayTarget * 0.5
+            ? 'partial'
+            : 'logged';
       dots.push({
         date: iso,
         hasLogs: entries.length > 0,
+        intensity,
         calories: Math.round(cal),
+        targetCalories: dayTarget,
       });
     }
     return dots;
-  }, [activeDate, logsByDate]);
+  }, [activeDate, logsByDate, activeGoals]);
 
   const sortedLogs = useMemo(
     () => [...activeLogs].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)),
@@ -305,7 +396,7 @@ export default function HomePage() {
         <header
           onTouchStart={handleHeaderTouchStart}
           onTouchEnd={handleHeaderTouchEnd}
-          className="flex items-end justify-between gap-3"
+          className="flex flex-wrap items-end justify-between gap-3"
         >
           <div className="min-w-0">
             <DatePickerPopover
@@ -336,7 +427,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-1.5 shrink-0">
             {!dateInfo.isToday && (
               <button
                 type="button"
@@ -367,6 +458,59 @@ export default function HomePage() {
           </div>
         </header>
 
+        {/* Sleek Adherence-Neutral Quick Triggers: AI Meal Ideas & Latest Weight Trend */}
+        <div className="flex flex-wrap items-center gap-2 -mt-2 sm:-mt-3">
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic(8);
+              openSheet('meal-ideas');
+            }}
+            className="touch-target tactile-press inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border/50 hover:bg-surface-sub text-xs font-semibold text-foreground transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[var(--macro-calories)] shrink-0" aria-hidden="true" />
+            <span>AI Meal Ideas</span>
+          </button>
+
+          <div className="inline-flex items-center rounded-full bg-card border border-border/50 overflow-hidden divide-x divide-border/50">
+            <Link
+              href="/trends"
+              title={
+                rolling7d.rolling7dSummary.loggedDays > 0
+                  ? `7D avg ${Math.round(rolling7d.avgCalories).toLocaleString('en-US')} kcal — Open Trends`
+                  : 'Open Trends'
+              }
+              className="touch-target tactile-press inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-surface-sub transition-colors tabular-nums"
+            >
+              <Scale className="w-3.5 h-3.5 text-[var(--macro-fiber)] shrink-0" aria-hidden="true" />
+              <span>
+                {adaptive.latestTrendKg !== null
+                  ? formatWeight(adaptive.latestTrendKg, weightUnit)
+                  : adaptive.latestScaleKg !== null
+                    ? formatWeight(adaptive.latestScaleKg, weightUnit)
+                    : 'Weight Trend'}
+              </span>
+              {adaptive.latestTrendKg !== null && (
+                <span className="text-[11px] font-normal text-muted-foreground hidden sm:inline">
+                  trend
+                </span>
+              )}
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic(8);
+                openSheet('weight');
+              }}
+              aria-label="Log weigh-in"
+              title="Log weigh-in"
+              className="touch-target tactile-press px-2.5 py-1.5 text-muted-foreground hover:text-foreground hover:bg-surface-sub transition-colors inline-flex items-center justify-center"
+            >
+              <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+
         <div style={{ viewTransitionName: 'date-stage' }} className="space-y-5 sm:space-y-6">
           {/* Top Responsive Bento Workspace: Hero (left) + Insights & Habits (right on tablet/laptop) */}
           <div
@@ -377,7 +521,7 @@ export default function HomePage() {
               <MacroBentoGrid
                 summary={summary}
                 weeklyDays={weeklyDays}
-                onSelectDate={setActiveDate}
+                onSelectDate={handleSelectDate}
                 className="w-full"
               />
             </div>
@@ -387,7 +531,7 @@ export default function HomePage() {
                 summary={summary}
                 weeklyDays={weeklyDays}
                 thirtyDayDots={thirtyDayDots}
-                onSelectDate={setActiveDate}
+                onSelectDate={handleSelectDate}
               />
             </div>
           </div>
@@ -643,7 +787,16 @@ export default function HomePage() {
 
             {/* Micronutrient Targets Panel */}
             <div className="md:col-span-5 md:sticky md:top-[max(1.5rem,env(safe-area-inset-top))]">
-              <MicronutrientPanel micros={summary.micros} />
+              <MicronutrientPanel
+                micros={summary.micros}
+                weeklyMicros={weeklyMicroSummary.micros}
+                netCarbsG={summary.netCarbsG}
+                weeklyNetCarbsG={weeklyMicroSummary.netCarbsG}
+                potassiumSodiumRatio={summary.potassiumSodiumRatio}
+                weeklyPotassiumSodiumRatio={weeklyMicroSummary.potassiumSodiumRatio}
+                todayLogs={activeLogs}
+                weeklyLogs={weeklyLogs}
+              />
             </div>
           </div>
         </div>
