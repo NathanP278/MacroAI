@@ -442,7 +442,7 @@ describe('Recipe Builder, Date Copy & Unified Log Views', () => {
       expect(handleClose).toHaveBeenCalledTimes(2);
     });
 
-    test('RecipesPage lists recipes, enables 1-tap logging and deletion', async () => {
+    test('RecipesPage lists recipes, opens RecipePortionPickerModal on Log, and supports deletion with Undo', async () => {
       // Seed a recipe
       await db.customRecipes.put({
         id: 'rec-1',
@@ -470,18 +470,34 @@ describe('Recipe Builder, Date Copy & Unified Log Views', () => {
         expect(screen.getByText(/250 kcal/)).toBeInTheDocument();
       });
 
-      // 1-tap Log button
+      // Clicking Log on card opens RecipePortionPickerModal instead of immediately logging 1 serving
       const logBtn = screen.getByRole('button', { name: /log protein shake/i });
       await act(async () => {
         fireEvent.click(logBtn);
       });
 
-      // Verify logged to db.foodLogs
+      // Portion picker modal should be open; choose 1.5x serving and add a note
+      const pickerDialog = await screen.findByRole('dialog');
+      expect(pickerDialog).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /^1\.5x$/i }));
+      const noteInput = screen.getByPlaceholderText(/note/i);
+      fireEvent.change(noteInput, { target: { value: 'Post-workout shake' } });
+
+      const confirmLogBtn = screen.getByRole('button', { name: /^log recipe$/i });
+      await act(async () => {
+        fireEvent.click(confirmLogBtn);
+      });
+
+      // Verify logged to db.foodLogs with 1.5x scaled macros and note
       await waitFor(async () => {
         const logs = await db.foodLogs.where('date').equals('2026-11-14').toArray();
         expect(logs).toHaveLength(1);
         expect(logs[0].name).toBe('Protein Shake');
-        expect(logs[0].nutritionSnapshot.calories).toBe(250);
+        expect(logs[0].amount).toBe(1.5);
+        expect(logs[0].unit).toBe('servings');
+        expect(logs[0].nutritionSnapshot.calories).toBe(375);
+        expect(logs[0].nutritionSnapshot.protein).toBe(45);
+        expect(logs[0].note).toBe('Post-workout shake');
       });
 
       // Delete recipe
@@ -494,6 +510,319 @@ describe('Recipe Builder, Date Copy & Unified Log Views', () => {
         const remaining = await db.customRecipes.toArray();
         expect(remaining).toHaveLength(0);
       });
+    });
+
+    test('scales per100g nutrition using cookedWeightGrams when cooked-weight override is enabled while preserving raw totalGrams', async () => {
+      const saved = await saveCustomRecipe({
+        name: 'Grilled Chicken Batch',
+        basis: 'per100g',
+        defaultServings: 4,
+        cookedWeightGrams: 750, // 25% moisture loss from 1000g raw
+        ingredients: [
+          {
+            foodId: 's:chicken',
+            name: 'Raw Chicken Breast',
+            amount: 1000,
+            unit: 'g',
+            gramWeight: 1000,
+            nutritionSnapshot: {
+              calories: 1200,
+              protein: 225,
+              carbs: 0,
+              fat: 26,
+              fiber: 0,
+              micros: { sodiumMg: 600 },
+            },
+          },
+        ],
+      });
+      expect(saved.totalGrams).toBe(1000);
+      expect(saved.cookedWeightGrams).toBe(750);
+      expect(saved.nutrientsPerBasis.calories).toBe(160); // 1200 / 750 * 100
+      expect(saved.nutrientsPerBasis.protein).toBe(30); // 225 / 750 * 100
+      expect(saved.micronutrientsPerBasis.sodiumMg).toBe(80); // 600 / 750 * 100
+
+      // When cookedWeightGrams is omitted or <= 0, cookedWeightGrams is undefined and totalGrams is used
+      const rawBatch = await saveCustomRecipe({
+        name: 'Raw Chicken Batch',
+        basis: 'per100g',
+        defaultServings: 4,
+        cookedWeightGrams: null,
+        ingredients: [
+          {
+            foodId: 's:chicken',
+            name: 'Raw Chicken Breast',
+            amount: 1000,
+            unit: 'g',
+            gramWeight: 1000,
+            nutritionSnapshot: {
+              calories: 1200,
+              protein: 225,
+              carbs: 0,
+              fat: 26,
+              fiber: 0,
+              micros: {},
+            },
+          },
+        ],
+      });
+      expect(rawBatch.cookedWeightGrams).toBeUndefined();
+      expect(rawBatch.nutrientsPerBasis.calories).toBe(120);
+
+      // logCustomRecipe respects cookedWeightGrams when logging by grams or by servings
+      const loggedGrams = await logCustomRecipe(saved, {
+        date: '2026-11-14',
+        grams: 150,
+        unit: 'g',
+      });
+      expect(loggedGrams.amount).toBe(150);
+      expect(loggedGrams.unit).toBe('g');
+      expect(loggedGrams.nutritionSnapshot.calories).toBe(240); // 160 * 1.5
+      expect(loggedGrams.nutritionSnapshot.protein).toBe(45); // 30 * 1.5
+
+      const loggedServings = await logCustomRecipe(saved, {
+        date: '2026-11-14',
+        servings: 1,
+        unit: 'serving',
+      });
+      // 1 serving of 4-serving 750g cooked batch = 187.5g -> 1.875 * 160 = 300 kcal
+      expect(loggedServings.amount).toBe(1);
+      expect(loggedServings.unit).toBe('serving');
+      expect(loggedServings.nutritionSnapshot.calories).toBe(300);
+    });
+
+    test('RecipeBuilderModal supports manual Fiber (g), Override Cooked Weight toggle with yield %, and full DB ingredient search', async () => {
+      await db.foodsCache.put({
+        id: 'custom_food:sauce',
+        source: 'custom_food',
+        name: 'Secret Adobo Sauce',
+        brand: 'Home Kitchen',
+        basis: 'per100g',
+        servingSize: 100,
+        servingUnit: 'g',
+        nutrientsPerBasis: {
+          calories: 150,
+          protein: 4,
+          carbs: 12,
+          fat: 10,
+          fiber: 2,
+        },
+        micronutrientsPerBasis: { sodiumMg: 900 },
+        updatedAt: 100,
+      });
+
+      const handleSaved = vi.fn();
+      render(
+        React.createElement(RecipeBuilderModal, {
+          isOpen: true,
+          onClose: () => {},
+          onSaved: handleSaved,
+        })
+      );
+
+      // Enter recipe name and 2 servings, switch to per100g
+      fireEvent.change(screen.getByPlaceholderText(/recipe title/i), {
+        target: { value: 'High Fiber Chicken Adobo' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /per 100g/i }));
+
+      // Search foodsCache custom food via ingredient search
+      const searchInput = screen.getByPlaceholderText(/search foods to add as ingredient/i);
+      fireEvent.change(searchInput, { target: { value: 'Secret Adobo' } });
+
+      const cachedResult = await screen.findByText('Secret Adobo Sauce');
+      fireEvent.click(cachedResult);
+
+      // Add manual ingredient with Fiber (g)
+      fireEvent.change(screen.getByPlaceholderText(/ingredient name/i), {
+        target: { value: 'Chia Seeds' },
+      });
+      fireEvent.change(screen.getByPlaceholderText(/weight \(g\)/i), {
+        target: { value: '100' },
+      });
+      fireEvent.change(screen.getByPlaceholderText(/calories/i), {
+        target: { value: '450' },
+      });
+      fireEvent.change(screen.getByPlaceholderText(/protein/i), {
+        target: { value: '16' },
+      });
+      fireEvent.change(screen.getByPlaceholderText(/carbs/i), {
+        target: { value: '42' },
+      });
+      fireEvent.change(screen.getByPlaceholderText(/fat/i), {
+        target: { value: '30' },
+      });
+      const fiberInput = screen.getByLabelText(/fiber/i);
+      fireEvent.change(fiberInput, { target: { value: '34' } });
+      fireEvent.click(screen.getByRole('button', { name: /add ingredient/i }));
+
+      // Total raw weight is 200g (100g sauce + 100g chia), total calories = 600, total fiber = 36g
+      expect(screen.getByText(/200g total weight/i)).toBeInTheDocument();
+
+      // Enable Override Cooked Weight (meal prep yield)
+      const cookedToggle = screen.getByRole('switch', {
+        name: /override cooked weight/i,
+      });
+      fireEvent.click(cookedToggle);
+
+      const cookedInput = screen.getByLabelText(/^cooked weight \(g\)$/i);
+      fireEvent.change(cookedInput, { target: { value: '150' } });
+
+      // Yield readout: 150g cooked / 200g raw · 75% yield
+      expect(screen.getByText(/150g cooked \/ 200g raw/i)).toBeInTheDocument();
+      expect(screen.getByText(/75% yield/i)).toBeInTheDocument();
+
+      // Save recipe and verify cookedWeightGrams and fiber persisted
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /save recipe/i }));
+      });
+
+      await waitFor(() => {
+        expect(handleSaved).toHaveBeenCalledTimes(1);
+      });
+      const savedRecipe = handleSaved.mock.calls[0][0];
+      expect(savedRecipe.totalGrams).toBe(200);
+      expect(savedRecipe.cookedWeightGrams).toBe(150);
+      expect(savedRecipe.nutrientsPerBasis.calories).toBe(400); // 600 / 150 * 100
+      expect(savedRecipe.nutrientsPerBasis.fiber).toBe(24); // 36 / 150 * 100
+    });
+
+    test('RecipesPage Custom Foods & Barcodes tab lists custom foods/barcodes, supports search, Pin, 1-tap Log, Edit, Delete+Undo, and recipeSeedIngredients auto-open', async () => {
+      await db.foodsCache.bulkPut([
+        {
+          id: 'custom_food:granola',
+          source: 'custom_food',
+          name: 'Homemade Protein Granola',
+          brand: 'Nathan Kitchen',
+          basis: 'perServing',
+          servingSize: 1,
+          servingUnit: 'bowl',
+          servingWeightGrams: 65,
+          nutrientsPerBasis: {
+            calories: 280,
+            protein: 18,
+            carbs: 32,
+            fat: 9,
+            fiber: 5,
+          },
+          micronutrientsPerBasis: {},
+          updatedAt: 100,
+        },
+        {
+          id: 'custom_barcode:48000123',
+          barcode: '48000123',
+          source: 'custom_barcode',
+          name: 'Choco Whey Pack',
+          brand: 'PH Fit',
+          basis: 'perServing',
+          servingSize: 1,
+          servingUnit: 'pack',
+          servingWeightGrams: 35,
+          nutrientsPerBasis: {
+            calories: 140,
+            protein: 25,
+            carbs: 4,
+            fat: 2,
+            fiber: 1,
+          },
+          micronutrientsPerBasis: {},
+          updatedAt: 200,
+        },
+      ]);
+
+      const { container } = render(React.createElement(RecipesPage));
+
+      // Switch to Custom Foods & Barcodes tab
+      const customFoodsTab = screen.getByRole('tab', {
+        name: /custom foods & barcodes/i,
+      });
+      fireEvent.click(customFoodsTab);
+      expect(customFoodsTab).toHaveAttribute('aria-selected', 'true');
+
+      // Both items appear
+      await waitFor(() => {
+        expect(screen.getByText('Homemade Protein Granola')).toBeInTheDocument();
+        expect(screen.getByText('Choco Whey Pack')).toBeInTheDocument();
+        expect(screen.getByText(/Barcode:\s*48000123/i)).toBeInTheDocument();
+      });
+
+      // Pin Homemade Protein Granola
+      const pinBtn = screen.getByRole('button', {
+        name: /pin homemade protein granola/i,
+      });
+      await act(async () => {
+        fireEvent.click(pinBtn);
+      });
+      await waitFor(async () => {
+        const pinned = await db.pinnedFoods.get('food:custom_food:granola');
+        expect(pinned).toBeDefined();
+      });
+
+      // 1-tap Log Homemade Protein Granola
+      const logBtn = screen.getByRole('button', {
+        name: /^log homemade protein granola$/i,
+      });
+      await act(async () => {
+        fireEvent.click(logBtn);
+      });
+      await waitFor(async () => {
+        const logs = await db.foodLogs.where('date').equals('2026-11-14').toArray();
+        expect(logs).toHaveLength(1);
+        expect(logs[0].name).toBe('Homemade Protein Granola');
+        expect(logs[0].nutritionSnapshot.calories).toBe(280);
+      });
+
+      // Delete Choco Whey Pack and test Undo
+      const deleteBtn = screen.getByRole('button', {
+        name: /delete choco whey pack/i,
+      });
+      await act(async () => {
+        fireEvent.click(deleteBtn);
+      });
+      await waitFor(async () => {
+        expect(await db.foodsCache.get('custom_barcode:48000123')).toBeUndefined();
+      });
+
+      // Undo restores Choco Whey Pack
+      await act(async () => {
+        await useLoggerStore.getState().undoToast?.onUndo();
+      });
+      await waitFor(async () => {
+        expect(await db.foodsCache.get('custom_barcode:48000123')).toBeDefined();
+      });
+
+      // Adherence neutrality check
+      expect(container.innerHTML).not.toMatch(/#ef4444|text-red|bg-red|border-red/i);
+    });
+
+    test('RecipesPage auto-opens RecipeBuilderModal when recipeSeedIngredients is populated in useLoggerStore and clears it on close', async () => {
+      useLoggerStore.getState().setRecipeSeedIngredients([
+        {
+          foodId: 'staple:chicken',
+          name: 'Seeded Chicken Breast',
+          amount: 200,
+          unit: 'g',
+          gramWeight: 200,
+          nutritionSnapshot: {
+            calories: 330,
+            protein: 62,
+            carbs: 0,
+            fat: 7,
+            fiber: 0,
+            micros: {},
+          },
+        },
+      ]);
+
+      render(React.createElement(RecipesPage));
+
+      const dialog = await screen.findByRole('dialog');
+      expect(dialog).toBeInTheDocument();
+      expect(screen.getByText('Seeded Chicken Breast')).toBeInTheDocument();
+
+      // Closing modal clears recipeSeedIngredients
+      fireEvent.click(screen.getByRole('button', { name: /close dialog/i }));
+      expect(useLoggerStore.getState().recipeSeedIngredients).toBeNull();
     });
 
     test('regression: editing ingredient amount in RecipeBuilderModal through 100 -> 1 -> "" -> 200 yields exact 2x calories without rounding drift', async () => {

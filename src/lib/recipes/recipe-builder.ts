@@ -119,23 +119,47 @@ export function calculateRecipeTotals(
   };
 }
 
-export interface SaveCustomRecipeInput {
-  id?: string;
-  name: string;
+export interface ComputeRecipeNutritionInput {
   ingredients: CustomRecipeIngredient[];
   basis?: 'per100g' | 'perServing';
   defaultServings?: number;
   gramWeights?: number[];
+  cookedWeightGrams?: number | null;
+}
+
+export interface ComputedRecipeNutrition {
+  totalGrams: number;
+  cookedWeightGrams?: number;
+  effectiveTotalGrams: number;
+  nutrientsPerBasis: MacroNutrients;
+  micronutrientsPerBasis: Micronutrients;
+  totals: RecipeTotals;
+}
+
+export interface SaveCustomRecipeInput extends ComputeRecipeNutritionInput {
+  id?: string;
+  name: string;
 }
 
 /**
- * Normalizes and saves a custom recipe to Dexie db.customRecipes.
+ * Pure helper computing raw totalGrams, optional cookedWeightGrams override,
+ * and per-basis macronutrients & micronutrients.
  */
-export async function saveCustomRecipe(input: SaveCustomRecipeInput): Promise<CustomRecipe> {
+export function computeRecipeNutrition(
+  input: ComputeRecipeNutritionInput
+): ComputedRecipeNutrition {
   const basis = input.basis || 'perServing';
   const defaultServings = Math.max(1, Number(input.defaultServings) || 1);
   const totals = calculateRecipeTotals(input.ingredients || [], input.gramWeights);
   const totalGrams = totals.totalGrams;
+
+  const validCookedWeight =
+    typeof input.cookedWeightGrams === 'number' &&
+    Number.isFinite(input.cookedWeightGrams) &&
+    input.cookedWeightGrams > 0
+      ? round2(input.cookedWeightGrams)
+      : undefined;
+  const effectiveTotalGrams = validCookedWeight ?? totalGrams;
 
   let nutrientsPerBasis: MacroNutrients;
   const micronutrientsPerBasis: Micronutrients = {};
@@ -158,7 +182,7 @@ export async function saveCustomRecipe(input: SaveCustomRecipeInput): Promise<Cu
     }
   } else {
     // basis === 'per100g'
-    const scale = totalGrams > 0 ? 100 / totalGrams : 1;
+    const scale = effectiveTotalGrams > 0 ? 100 / effectiveTotalGrams : 1;
     nutrientsPerBasis = {
       calories: roundMacro(totals.macros.calories * scale),
       protein: roundMacro(totals.macros.protein * scale),
@@ -173,14 +197,35 @@ export async function saveCustomRecipe(input: SaveCustomRecipeInput): Promise<Cu
     }
   }
 
+  return {
+    totalGrams,
+    ...(validCookedWeight !== undefined ? { cookedWeightGrams: validCookedWeight } : {}),
+    effectiveTotalGrams,
+    nutrientsPerBasis,
+    micronutrientsPerBasis,
+    totals,
+  };
+}
+
+/**
+ * Normalizes and saves a custom recipe to Dexie db.customRecipes.
+ */
+export async function saveCustomRecipe(input: SaveCustomRecipeInput): Promise<CustomRecipe> {
+  const basis = input.basis || 'perServing';
+  const defaultServings = Math.max(1, Number(input.defaultServings) || 1);
+  const computed = computeRecipeNutrition(input);
+
   const recipe: CustomRecipe = {
     id: input.id || generateId(),
     name: input.name.trim(),
     ingredients: input.ingredients,
     basis,
-    totalGrams,
-    nutrientsPerBasis,
-    micronutrientsPerBasis,
+    totalGrams: computed.totalGrams,
+    ...(computed.cookedWeightGrams !== undefined
+      ? { cookedWeightGrams: computed.cookedWeightGrams }
+      : {}),
+    nutrientsPerBasis: computed.nutrientsPerBasis,
+    micronutrientsPerBasis: computed.micronutrientsPerBasis,
     defaultServings,
     createdAt: Date.now(),
   };
@@ -194,40 +239,102 @@ export interface LogCustomRecipeParams {
   mealSlot?: string;
   servings?: number;
   grams?: number;
+  amount?: number;
+  unit?: 'serving' | 'servings' | 'g';
   note?: string;
 }
 
 /**
  * Logs a custom recipe into db.foodLogs with scaled macronutrients and micronutrients.
+ * Supports logging by servings or by grams regardless of recipe.basis, respecting cookedWeightGrams.
  */
 export async function logCustomRecipe(
   recipe: CustomRecipe,
   params: LogCustomRecipeParams
 ): Promise<FoodLogEntry> {
+  const effectiveTotalGrams =
+    typeof recipe.cookedWeightGrams === 'number' &&
+    Number.isFinite(recipe.cookedWeightGrams) &&
+    recipe.cookedWeightGrams > 0
+      ? recipe.cookedWeightGrams
+      : Number(recipe.totalGrams) || 0;
+  const defaultServings = Math.max(1, Number(recipe.defaultServings) || 1);
+  const perServingGrams =
+    effectiveTotalGrams > 0 ? round2(effectiveTotalGrams / defaultServings) : 100;
+
+  const isGramsMode =
+    params.unit === 'g' ||
+    (typeof params.grams === 'number' && params.grams > 0) ||
+    (recipe.basis === 'per100g' &&
+      params.unit !== 'serving' &&
+      params.unit !== 'servings' &&
+      !(typeof params.servings === 'number' && params.servings > 0));
+
   let amount: number;
   let unit: string;
+  let macros: MacroNutrients;
+  let micros: Micronutrients;
 
-  if (recipe.basis === 'perServing') {
-    amount = typeof params.servings === 'number' && params.servings > 0 ? params.servings : 1;
-    unit = amount === 1 ? 'serving' : 'servings';
-  } else {
-    // per100g
-    if (typeof params.grams === 'number' && params.grams > 0) {
-      amount = params.grams;
-    } else if (recipe.totalGrams > 0) {
-      amount = Math.round(recipe.totalGrams / Math.max(1, recipe.defaultServings));
-    } else {
-      amount = 100;
-    }
+  if (isGramsMode) {
+    const rawGrams =
+      typeof params.grams === 'number' && params.grams > 0
+        ? params.grams
+        : typeof params.amount === 'number' && params.amount > 0
+          ? params.amount
+          : effectiveTotalGrams > 0
+            ? Math.round(effectiveTotalGrams / defaultServings)
+            : 100;
+    amount = round2(rawGrams);
     unit = 'g';
+
+    if (recipe.basis === 'per100g') {
+      ({ macros, micros } = scaleNutrition(
+        recipe.nutrientsPerBasis,
+        recipe.micronutrientsPerBasis,
+        'per100g',
+        amount
+      ));
+    } else {
+      const servingsEquivalent = perServingGrams > 0 ? amount / perServingGrams : amount / 100;
+      ({ macros, micros } = scaleNutrition(
+        recipe.nutrientsPerBasis,
+        recipe.micronutrientsPerBasis,
+        'perServing',
+        servingsEquivalent
+      ));
+    }
+  } else {
+    const rawServings =
+      typeof params.servings === 'number' && params.servings > 0
+        ? params.servings
+        : typeof params.amount === 'number' && params.amount > 0
+          ? params.amount
+          : 1;
+    amount = round2(rawServings);
+    unit = amount === 1 ? 'serving' : 'servings';
+
+    if (recipe.basis === 'perServing') {
+      ({ macros, micros } = scaleNutrition(
+        recipe.nutrientsPerBasis,
+        recipe.micronutrientsPerBasis,
+        'perServing',
+        amount
+      ));
+    } else {
+      const gramsEquivalent = amount * perServingGrams;
+      ({ macros, micros } = scaleNutrition(
+        recipe.nutrientsPerBasis,
+        recipe.micronutrientsPerBasis,
+        'per100g',
+        gramsEquivalent
+      ));
+    }
   }
 
-  const { macros, micros } = scaleNutrition(
-    recipe.nutrientsPerBasis,
-    recipe.micronutrientsPerBasis,
-    recipe.basis,
-    amount
-  );
+  const cleanNote =
+    typeof params.note === 'string' && params.note.trim().length > 0
+      ? params.note.trim()
+      : undefined;
 
   const entry: FoodLogEntry = {
     id: generateId(),
@@ -242,7 +349,7 @@ export async function logCustomRecipe(
       ...macros,
       micros,
     },
-    note: params.note,
+    note: cleanNote,
     createdAt: Date.now(),
   };
 

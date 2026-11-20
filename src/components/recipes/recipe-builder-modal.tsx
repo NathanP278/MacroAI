@@ -4,14 +4,17 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   saveCustomRecipe,
-  calculateRecipeTotals,
+  computeRecipeNutrition,
   foodLogEntryToRecipeIngredient,
   foodLogEntriesToRecipeIngredients,
 } from '@/lib/recipes/recipe-builder';
 
 export { foodLogEntryToRecipeIngredient, foodLogEntriesToRecipeIngredients };
+import { db } from '@/lib/db/macroai-db';
 import { scaleNutrition } from '@/lib/nutrition/scaling';
-import { searchStaples } from '@/lib/foods/staples-search';
+import { searchStaples, filterStaples } from '@/lib/foods/staples-search';
+import { searchUsdaFoods } from '@/lib/foods/usda-adapter';
+import { searchOffFoods } from '@/lib/foods/off-adapter';
 import { triggerHaptic } from '@/lib/motion';
 import type {
   CustomRecipe,
@@ -39,6 +42,8 @@ interface RecipeDraftPayload {
   basis?: 'perServing' | 'per100g';
   servings: number;
   ingredients: ModalIngredientRow[];
+  overrideCookedWeight?: boolean;
+  cookedWeightInput?: string;
 }
 
 function readRecipeDraft(): Partial<RecipeDraftPayload> | null {
@@ -151,6 +156,8 @@ export function RecipeBuilderModal({
   const [basis, setBasis] = useState<'perServing' | 'per100g'>('perServing');
   const [servingsInput, setServingsInput] = useState('1');
   const [ingredients, setIngredients] = useState<ModalIngredientRow[]>([]);
+  const [overrideCookedWeight, setOverrideCookedWeight] = useState(false);
+  const [cookedWeightInput, setCookedWeightInput] = useState('');
   const [touchedName, setTouchedName] = useState(false);
   const [touchedServings, setTouchedServings] = useState(false);
   const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
@@ -165,6 +172,7 @@ export function RecipeBuilderModal({
   const [manualProtein, setManualProtein] = useState('');
   const [manualCarbs, setManualCarbs] = useState('');
   const [manualFat, setManualFat] = useState('');
+  const [manualFiber, setManualFiber] = useState('');
 
   // Food search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -204,16 +212,24 @@ export function RecipeBuilderModal({
       setTouchedName(false);
       setTouchedServings(false);
       if (initialRecipe) {
+        const hasCookedOverride =
+          typeof initialRecipe.cookedWeightGrams === 'number' &&
+          Number.isFinite(initialRecipe.cookedWeightGrams) &&
+          initialRecipe.cookedWeightGrams > 0;
         setName(initialRecipe.name || '');
         setBasis(initialRecipe.basis || 'perServing');
         setServingsInput(String(initialRecipe.defaultServings || 1));
         setIngredients(mapIngredientRows(initialRecipe.ingredients || []));
+        setOverrideCookedWeight(hasCookedOverride);
+        setCookedWeightInput(hasCookedOverride ? String(initialRecipe.cookedWeightGrams) : '');
         setHasRestoredDraft(false);
       } else if (initialIngredients && initialIngredients.length > 0) {
         setName('');
         setBasis('perServing');
         setServingsInput('1');
         setIngredients(mapIngredientRows(initialIngredients));
+        setOverrideCookedWeight(false);
+        setCookedWeightInput('');
         setHasRestoredDraft(false);
       } else {
         const draft = readRecipeDraft();
@@ -226,6 +242,8 @@ export function RecipeBuilderModal({
           draft?.servings && draft.servings >= 1 ? String(draft.servings) : '1'
         );
         setIngredients(Array.isArray(draft?.ingredients) ? draft.ingredients : []);
+        setOverrideCookedWeight(Boolean(draft?.overrideCookedWeight));
+        setCookedWeightInput(draft?.cookedWeightInput ?? '');
         setHasRestoredDraft(hasDraftContent);
       }
       setManualName('');
@@ -234,6 +252,7 @@ export function RecipeBuilderModal({
       setManualProtein('');
       setManualCarbs('');
       setManualFat('');
+      setManualFiber('');
       setSearchQuery('');
       setSearchResults([]);
     }
@@ -246,13 +265,16 @@ export function RecipeBuilderModal({
         name.trim().length > 0 ||
         ingredients.length > 0 ||
         basis !== 'perServing' ||
-        defaultServings !== 1;
+        defaultServings !== 1 ||
+        overrideCookedWeight;
       if (hasContent) {
         const payload: RecipeDraftPayload = {
           name,
           basis,
           servings: defaultServings,
           ingredients,
+          overrideCookedWeight,
+          cookedWeightInput,
         };
         window.localStorage.setItem(RECIPE_DRAFT_KEY, JSON.stringify(payload));
       } else {
@@ -261,13 +283,25 @@ export function RecipeBuilderModal({
     } catch {
       // Ignore storage errors
     }
-  }, [isOpen, initialRecipe, hasSeedIngredients, name, basis, defaultServings, ingredients]);
+  }, [
+    isOpen,
+    initialRecipe,
+    hasSeedIngredients,
+    name,
+    basis,
+    defaultServings,
+    ingredients,
+    overrideCookedWeight,
+    cookedWeightInput,
+  ]);
 
   const handleClearDraft = () => {
     setName('');
     setBasis('perServing');
     setServingsInput('1');
     setIngredients([]);
+    setOverrideCookedWeight(false);
+    setCookedWeightInput('');
     setTouchedName(false);
     setTouchedServings(false);
     setHasRestoredDraft(false);
@@ -300,53 +334,103 @@ export function RecipeBuilderModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Live staple search
+  // Live full DB ingredient search: foodsCache + offline staples/PH + debounced USDA/OFF
   useEffect(() => {
     const q = searchQuery.trim();
     if (!q) return;
     let cancelled = false;
-    searchStaples(q, 10)
-      .then((items) => {
-        if (!cancelled) {
-          setSearchResults(items);
-          setIsSearching(false);
+    const abortController = new AbortController();
+
+    const mergeUniqueFoods = (lists: FoodItem[][], limit = 20): FoodItem[] => {
+      const seenIds = new Set<string>();
+      const seenNameBrand = new Set<string>();
+      const out: FoodItem[] = [];
+      for (const list of lists) {
+        for (const item of list) {
+          if (!item || seenIds.has(item.id)) continue;
+          const nbKey = `${(item.name || '').trim().toLowerCase()}|${(item.brand || '').trim().toLowerCase()}`;
+          if (nbKey !== '|' && seenNameBrand.has(nbKey) && item.source !== 'custom_food' && item.source !== 'custom_barcode') {
+            continue;
+          }
+          seenIds.add(item.id);
+          if (nbKey !== '|') seenNameBrand.add(nbKey);
+          out.push(item);
+          if (out.length >= limit) return out;
         }
+      }
+      return out;
+    };
+
+    let localBase: FoodItem[] = [];
+
+    Promise.all([
+      db.foodsCache.toArray().catch(() => [] as FoodItem[]),
+      searchStaples(q, 12).catch(() => [] as FoodItem[]),
+    ])
+      .then(([cachedItems, stapleMatches]) => {
+        if (cancelled) return;
+        const cachedMatches = filterStaples(cachedItems, q, 12);
+        localBase = mergeUniqueFoods([cachedMatches, stapleMatches], 20);
+        setSearchResults(localBase);
+        setIsSearching(false);
       })
       .catch((err) => {
         if (!cancelled) {
-          console.warn('Search staples failed:', err);
+          console.warn('Local ingredient search failed:', err);
           setIsSearching(false);
         }
       });
+
+    const onlineTimer = setTimeout(() => {
+      if (cancelled) return;
+      const onlineMatches: FoodItem[] = [];
+      const providers = [
+        searchOffFoods(q, { country: 'ph', signal: abortController.signal }).catch(() => [] as FoodItem[]),
+        searchUsdaFoods(q, { signal: abortController.signal, includeBranded: true }).catch(() => [] as FoodItem[]),
+        searchOffFoods(q, { country: 'world', signal: abortController.signal }).catch(() => [] as FoodItem[]),
+      ];
+
+      Promise.all(providers)
+        .then((results) => {
+          if (cancelled || abortController.signal.aborted) return;
+          for (const batch of results) {
+            onlineMatches.push(...batch);
+          }
+          if (onlineMatches.length > 0) {
+            setSearchResults(mergeUniqueFoods([localBase, onlineMatches], 25));
+          }
+        })
+        .catch(() => {
+          // Ignore online errors when offline
+        });
+    }, 100);
+
     return () => {
       cancelled = true;
+      clearTimeout(onlineTimer);
+      abortController.abort();
     };
   }, [searchQuery]);
 
-  // Live totals calculated with explicit gram weights
-  const totals = useMemo(() => calculateRecipeTotals(ingredients), [ingredients]);
+  const parsedCookedWeight = parseFloat(cookedWeightInput);
+  const effectiveCookedWeightGrams =
+    overrideCookedWeight && Number.isFinite(parsedCookedWeight) && parsedCookedWeight > 0
+      ? parsedCookedWeight
+      : undefined;
 
-  const previewNutrients = useMemo(() => {
-    const servings = Math.max(1, defaultServings);
-    if (basis === 'perServing') {
-      return {
-        calories: Math.round(totals.macros.calories / servings),
-        protein: Math.round(totals.macros.protein / servings),
-        carbs: Math.round(totals.macros.carbs / servings),
-        fat: Math.round(totals.macros.fat / servings),
-        fiber: Math.round(totals.macros.fiber / servings),
-      };
-    } else {
-      const scale = totals.totalGrams > 0 ? 100 / totals.totalGrams : 1;
-      return {
-        calories: Math.round(totals.macros.calories * scale),
-        protein: Math.round(totals.macros.protein * scale),
-        carbs: Math.round(totals.macros.carbs * scale),
-        fat: Math.round(totals.macros.fat * scale),
-        fiber: Math.round(totals.macros.fiber * scale),
-      };
-    }
-  }, [totals, basis, defaultServings]);
+  const computedNutrition = useMemo(
+    () =>
+      computeRecipeNutrition({
+        ingredients,
+        basis,
+        defaultServings,
+        cookedWeightGrams: effectiveCookedWeightGrams,
+      }),
+    [ingredients, basis, defaultServings, effectiveCookedWeightGrams]
+  );
+
+  const totals = computedNutrition.totals;
+  const previewNutrients = computedNutrition.nutrientsPerBasis;
 
   if (!isOpen) return null;
 
@@ -360,6 +444,7 @@ export function RecipeBuilderModal({
     const pro = Number(manualProtein) || 0;
     const carbs = Number(manualCarbs) || 0;
     const fat = Number(manualFat) || 0;
+    const fiber = Number(manualFiber) || 0;
 
     // Normalizing base nutrients per 100g
     const factor = grams > 0 ? 100 / grams : 1;
@@ -368,7 +453,7 @@ export function RecipeBuilderModal({
       protein: pro * factor,
       carbs: carbs * factor,
       fat: fat * factor,
-      fiber: 0,
+      fiber: fiber * factor,
     };
     const baseMicros: Micronutrients = {};
 
@@ -403,6 +488,7 @@ export function RecipeBuilderModal({
     setManualProtein('');
     setManualCarbs('');
     setManualFat('');
+    setManualFiber('');
   };
 
   const handleAddFoodItem = (food: FoodItem) => {
@@ -417,9 +503,11 @@ export function RecipeBuilderModal({
     const initialAmount = isPerServing ? 1 : food.servingSize || 100;
     // Calculate realistic gram weight per unit for perServing foods
     const gramsPerUnit = isPerServing
-      ? typeof food.servingSize === 'number' && food.servingSize > 0
-        ? food.servingSize
-        : 1
+      ? typeof food.servingWeightGrams === 'number' && food.servingWeightGrams > 0
+        ? food.servingWeightGrams / (food.servingSize > 0 ? food.servingSize : 1)
+        : typeof food.servingSize === 'number' && food.servingSize > 0
+          ? food.servingSize
+          : 1
       : 1;
 
     // Direct use of scaleNutrition from @/lib/nutrition/scaling
@@ -506,6 +594,7 @@ export function RecipeBuilderModal({
         basis,
         defaultServings: Math.max(1, defaultServings),
         gramWeights,
+        cookedWeightGrams: effectiveCookedWeightGrams ?? null,
       });
       if (!initialRecipe && !hasSeedIngredients) {
         try {
@@ -645,9 +734,83 @@ export function RecipeBuilderModal({
                     : 'text-muted-foreground hover:text-foreground font-medium'
                 }`}
               >
-                Per 100g ({totals.totalGrams}g total)
+                Per 100g (
+                {effectiveCookedWeightGrams
+                  ? `${effectiveCookedWeightGrams}g cooked`
+                  : `${totals.totalGrams}g total`}
+                )
               </button>
             </div>
+          </div>
+
+          {/* Separate Optional Toggle: Override Cooked Weight (meal prep yield) */}
+          <div className="bg-surface-sub rounded-2xl p-3.5 space-y-2.5 border border-border/50">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <span
+                  onClick={() => setOverrideCookedWeight((prev) => !prev)}
+                  className="font-semibold text-foreground block cursor-pointer"
+                >
+                  Override Cooked Weight (meal prep yield)
+                </span>
+                <span className="text-[11px] text-muted-foreground block">
+                  Scale per-100g macros by final cooked batch weight
+                </span>
+              </div>
+              <button
+                id="override-cooked-weight-switch"
+                type="button"
+                role="switch"
+                aria-checked={overrideCookedWeight}
+                aria-label="Override Cooked Weight (meal prep yield)"
+                onClick={() => setOverrideCookedWeight((prev) => !prev)}
+                className={`tactile-press relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                  overrideCookedWeight ? 'bg-foreground' : 'bg-card border border-border'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full transition-transform ${
+                    overrideCookedWeight
+                      ? 'translate-x-6 bg-background'
+                      : 'translate-x-1 bg-muted-foreground'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {overrideCookedWeight && (
+              <div className="pt-2 border-t border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2">
+                  <label
+                    htmlFor="recipe-cooked-weight"
+                    className="font-semibold text-foreground shrink-0"
+                  >
+                    Cooked Weight (g)
+                  </label>
+                  <input
+                    id="recipe-cooked-weight"
+                    aria-label="Cooked Weight (g)"
+                    type="number"
+                    min="1"
+                    step="any"
+                    placeholder="e.g. 750"
+                    value={cookedWeightInput}
+                    onChange={(e) => setCookedWeightInput(e.target.value)}
+                    className="w-28 bg-card rounded-xl px-2.5 py-1.5 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
+                  />
+                </div>
+                <div className="text-[11px] text-muted-foreground tabular-nums font-medium">
+                  {effectiveCookedWeightGrams && totals.totalGrams > 0 ? (
+                    <span>
+                      {effectiveCookedWeightGrams}g cooked / {totals.totalGrams}g raw ·{' '}
+                      {Math.round((effectiveCookedWeightGrams / totals.totalGrams) * 100)}% yield
+                    </span>
+                  ) : (
+                    <span>Raw batch weight: {totals.totalGrams}g</span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Live Nutrition Preview Pill */}
@@ -679,6 +842,12 @@ export function RecipeBuilderModal({
                   {previewNutrients.fat}g
                 </div>
                 <div className="text-[10px] text-muted-foreground">Fat</div>
+              </div>
+              <div>
+                <div className="text-[var(--macro-fiber)] font-semibold">
+                  {previewNutrients.fiber}g
+                </div>
+                <div className="text-[10px] text-muted-foreground">Fib</div>
               </div>
             </div>
           </div>
@@ -741,9 +910,11 @@ export function RecipeBuilderModal({
             )}
           </div>
 
-          {/* Search Staples to Add */}
+          {/* Search Full Food Database to Add */}
           <div className="space-y-2 pt-2 border-t border-border/60">
-            <span className="font-semibold text-foreground">Add from Food Staples</span>
+            <span className="font-semibold text-foreground">
+              Add from Food Database (Custom, Staples, USDA & OFF)
+            </span>
             <div className="relative">
               <Search
                 className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2"
@@ -773,9 +944,16 @@ export function RecipeBuilderModal({
                     onClick={() => handleAddFoodItem(food)}
                     className="macro-spring active:scale-[0.98] w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-card flex items-center justify-between text-xs"
                   >
-                    <span className="truncate text-foreground font-medium pr-2">
-                      {food.name}
-                    </span>
+                    <div className="min-w-0 pr-2 flex items-center gap-1.5">
+                      <span className="truncate text-foreground font-medium">
+                        {food.name}
+                      </span>
+                      {food.brand && (
+                        <span className="truncate text-[10px] text-muted-foreground">
+                          · {food.brand}
+                        </span>
+                      )}
+                    </div>
                     <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
                       {food.nutrientsPerBasis.calories} kcal /{' '}
                       {food.basis === 'perServing' ? 'srv' : '100g'}
@@ -808,7 +986,7 @@ export function RecipeBuilderModal({
                 className="bg-surface-sub rounded-xl px-2.5 py-2 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
               />
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <input
                 type="number"
                 placeholder="Calories"
@@ -836,6 +1014,14 @@ export function RecipeBuilderModal({
                 value={manualFat}
                 onChange={(e) => setManualFat(e.target.value)}
                 className="bg-surface-sub rounded-xl px-2.5 py-2 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
+              />
+              <input
+                type="number"
+                aria-label="Fiber (g)"
+                placeholder="Fiber (g)"
+                value={manualFiber}
+                onChange={(e) => setManualFiber(e.target.value)}
+                className="col-span-2 sm:col-span-1 bg-surface-sub rounded-xl px-2.5 py-2 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring tabular-nums"
               />
             </div>
             <button
