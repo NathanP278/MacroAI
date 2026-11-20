@@ -9,7 +9,7 @@ import {
   foodLogEntriesToRecipeIngredients,
   offsetIsoDate,
 } from '@/lib/recipes/recipe-builder';
-import { DEFAULT_RDA_MICROS } from '@/lib/nutrition/goals';
+import { DEFAULT_RDA_MICROS, resolveGoalsForDate } from '@/lib/nutrition/goals';
 import { FoodRowSkeleton } from '@/components/ui/skeleton';
 import { CopyFromDateDrawer } from './copy-from-date-drawer';
 import { RecipeBuilderModal } from '@/components/recipes/recipe-builder-modal';
@@ -64,6 +64,18 @@ function cloneEntrySnapshot(entry: FoodLogEntry): FoodLogEntry {
   };
 }
 
+const FALLBACK_GOALS: UserGoals = {
+  id: 'active',
+  dailyCalories: 2000,
+  proteinG: 150,
+  carbsG: 200,
+  fatG: 65,
+  fiberG: 30,
+  micronutrientTargets: { ...DEFAULT_RDA_MICROS },
+  mealSlots: [],
+  updatedAt: 0,
+};
+
 export function MealSlotsView() {
   const activeDate = useLoggerStore((s) => s.activeDate);
   const openSheet = useLoggerStore((s) => s.openSheet);
@@ -113,22 +125,13 @@ export function MealSlotsView() {
     [yesterdayDate]
   );
 
-  // Query active goals
+  // Query active goals and apply weekday calorie cycling for activeDate
   const userGoals = useLiveQuery(() => db.userGoals.get('active'), []);
 
-  const fallbackGoals: UserGoals = {
-    id: 'active',
-    dailyCalories: 2000,
-    proteinG: 150,
-    carbsG: 200,
-    fatG: 65,
-    fiberG: 30,
-    micronutrientTargets: { ...DEFAULT_RDA_MICROS },
-    mealSlots: [],
-    updatedAt: 0,
-  };
-
-  const activeGoals = userGoals ?? fallbackGoals;
+  const activeGoals = useMemo(
+    () => resolveGoalsForDate(userGoals ?? FALLBACK_GOALS, activeDate),
+    [userGoals, activeDate]
+  );
   const logs = useMemo(() => todayLogs ?? [], [todayLogs]);
   const sortedLogs = useMemo(
     () => [...logs].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)),
