@@ -5,7 +5,11 @@ import { createPortal } from 'react-dom';
 import {
   saveCustomRecipe,
   calculateRecipeTotals,
+  foodLogEntryToRecipeIngredient,
+  foodLogEntriesToRecipeIngredients,
 } from '@/lib/recipes/recipe-builder';
+
+export { foodLogEntryToRecipeIngredient, foodLogEntriesToRecipeIngredients };
 import { scaleNutrition } from '@/lib/nutrition/scaling';
 import { searchStaples } from '@/lib/foods/staples-search';
 import { triggerHaptic } from '@/lib/motion';
@@ -73,16 +77,24 @@ export interface RecipeBuilderModalProps {
   onClose: () => void;
   onSaved?: (recipe: CustomRecipe) => void;
   initialRecipe?: CustomRecipe | null;
+  initialIngredients?: CustomRecipeIngredient[] | null;
 }
 
-function mapInitialIngredients(recipe: CustomRecipe): ModalIngredientRow[] {
-  return (recipe.ingredients || []).map((ing) => {
-    const isGram = ing.unit === 'g' || ing.unit === 'ml';
+function mapIngredientRows(items: CustomRecipeIngredient[]): ModalIngredientRow[] {
+  return (items || []).map((ing) => {
+    const unitLower = (ing.unit || '').trim().toLowerCase();
+    const isGram = unitLower === 'g' || unitLower === 'ml';
     const gramsPerUnit =
-      ing.gramsPerUnit || (isGram ? 1 : ing.servingSize || 1);
+      ing.gramsPerUnit ||
+      (isGram
+        ? 1
+        : ing.servingSize ||
+          (typeof ing.gramWeight === 'number' && ing.amount > 0
+            ? ing.gramWeight / ing.amount
+            : 1));
     const gramWeight = ing.gramWeight ?? gramsPerUnit * ing.amount;
     const baseBasis: NutritionBasis =
-      ing.baseBasis || (isGram ? 'per100g' : 'perServing');
+      ing.baseBasis || (isGram ? (unitLower === 'ml' ? 'per100ml' : 'per100g') : 'perServing');
     const baseFactor =
       baseBasis === 'per100g' || baseBasis === 'per100ml'
         ? ing.amount > 0
@@ -92,15 +104,17 @@ function mapInitialIngredients(recipe: CustomRecipe): ModalIngredientRow[] {
           ? 1 / ing.amount
           : 1;
 
-    const baseNutrients: MacroNutrients = ing.baseNutrients || {
-      calories: (ing.nutritionSnapshot.calories || 0) * baseFactor,
-      protein: (ing.nutritionSnapshot.protein || 0) * baseFactor,
-      carbs: (ing.nutritionSnapshot.carbs || 0) * baseFactor,
-      fat: (ing.nutritionSnapshot.fat || 0) * baseFactor,
-      fiber: (ing.nutritionSnapshot.fiber || 0) * baseFactor,
-    };
+    const baseNutrients: MacroNutrients = ing.baseNutrients
+      ? { ...ing.baseNutrients }
+      : {
+          calories: (ing.nutritionSnapshot.calories || 0) * baseFactor,
+          protein: (ing.nutritionSnapshot.protein || 0) * baseFactor,
+          carbs: (ing.nutritionSnapshot.carbs || 0) * baseFactor,
+          fat: (ing.nutritionSnapshot.fat || 0) * baseFactor,
+          fiber: (ing.nutritionSnapshot.fiber || 0) * baseFactor,
+        };
 
-    const baseMicros: Micronutrients = ing.baseMicros || {};
+    const baseMicros: Micronutrients = ing.baseMicros ? { ...ing.baseMicros } : {};
     if (!ing.baseMicros && ing.nutritionSnapshot.micros) {
       for (const [k, v] of Object.entries(ing.nutritionSnapshot.micros)) {
         if (typeof v === 'number') {
@@ -111,6 +125,10 @@ function mapInitialIngredients(recipe: CustomRecipe): ModalIngredientRow[] {
 
     return {
       ...ing,
+      nutritionSnapshot: {
+        ...ing.nutritionSnapshot,
+        micros: { ...(ing.nutritionSnapshot.micros ?? {}) },
+      },
       amountStr: String(ing.amount),
       baseNutrients,
       baseMicros,
@@ -127,6 +145,7 @@ export function RecipeBuilderModal({
   onClose,
   onSaved,
   initialRecipe,
+  initialIngredients,
 }: RecipeBuilderModalProps) {
   const [name, setName] = useState('');
   const [basis, setBasis] = useState<'perServing' | 'per100g'>('perServing');
@@ -152,15 +171,35 @@ export function RecipeBuilderModal({
   const [searchResults, setSearchResults] = useState<FoodItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Initialize or reset state when modal opens or initialRecipe changes
-  const [prevModalKey, setPrevModalKey] = useState<{ isOpen: boolean; recipeId: string | null }>({
+  // Initialize or reset state when modal opens, initialRecipe changes, or initialIngredients changes
+  const hasSeedIngredients = Boolean(initialIngredients && initialIngredients.length > 0);
+  const seedSignature = useMemo(() => {
+    if (!initialIngredients || initialIngredients.length === 0) return null;
+    return initialIngredients
+      .map(
+        (ing, idx) =>
+          `${idx}:${ing.foodId}:${ing.name}:${ing.amount}:${ing.unit}:${ing.nutritionSnapshot?.calories ?? 0}`
+      )
+      .join('|');
+  }, [initialIngredients]);
+
+  const [prevModalKey, setPrevModalKey] = useState<{
+    isOpen: boolean;
+    recipeId: string | null;
+    seedSignature: string | null;
+  }>({
     isOpen: false,
     recipeId: null,
+    seedSignature: null,
   });
 
   const currentRecipeId = initialRecipe?.id ?? null;
-  if (isOpen !== prevModalKey.isOpen || currentRecipeId !== prevModalKey.recipeId) {
-    setPrevModalKey({ isOpen, recipeId: currentRecipeId });
+  if (
+    isOpen !== prevModalKey.isOpen ||
+    currentRecipeId !== prevModalKey.recipeId ||
+    (isOpen && !currentRecipeId && seedSignature !== prevModalKey.seedSignature)
+  ) {
+    setPrevModalKey({ isOpen, recipeId: currentRecipeId, seedSignature });
     if (isOpen) {
       setTouchedName(false);
       setTouchedServings(false);
@@ -168,7 +207,13 @@ export function RecipeBuilderModal({
         setName(initialRecipe.name || '');
         setBasis(initialRecipe.basis || 'perServing');
         setServingsInput(String(initialRecipe.defaultServings || 1));
-        setIngredients(mapInitialIngredients(initialRecipe));
+        setIngredients(mapIngredientRows(initialRecipe.ingredients || []));
+        setHasRestoredDraft(false);
+      } else if (initialIngredients && initialIngredients.length > 0) {
+        setName('');
+        setBasis('perServing');
+        setServingsInput('1');
+        setIngredients(mapIngredientRows(initialIngredients));
         setHasRestoredDraft(false);
       } else {
         const draft = readRecipeDraft();
@@ -195,7 +240,7 @@ export function RecipeBuilderModal({
   }
 
   useEffect(() => {
-    if (!isOpen || initialRecipe) return;
+    if (!isOpen || initialRecipe || hasSeedIngredients) return;
     try {
       const hasContent =
         name.trim().length > 0 ||
@@ -216,7 +261,7 @@ export function RecipeBuilderModal({
     } catch {
       // Ignore storage errors
     }
-  }, [isOpen, initialRecipe, name, basis, defaultServings, ingredients]);
+  }, [isOpen, initialRecipe, hasSeedIngredients, name, basis, defaultServings, ingredients]);
 
   const handleClearDraft = () => {
     setName('');
@@ -462,7 +507,7 @@ export function RecipeBuilderModal({
         defaultServings: Math.max(1, defaultServings),
         gramWeights,
       });
-      if (!initialRecipe) {
+      if (!initialRecipe && !hasSeedIngredients) {
         try {
           window.localStorage.removeItem(RECIPE_DRAFT_KEY);
         } catch {

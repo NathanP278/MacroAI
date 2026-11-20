@@ -4,11 +4,22 @@ import React, { useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, generateId } from '@/lib/db/macroai-db';
 import { useLoggerStore } from '@/stores/logger-store';
-import { copyYesterdayLogs, offsetIsoDate } from '@/lib/recipes/recipe-builder';
+import {
+  copyLogsFromDate,
+  foodLogEntriesToRecipeIngredients,
+  offsetIsoDate,
+} from '@/lib/recipes/recipe-builder';
 import { DEFAULT_RDA_MICROS } from '@/lib/nutrition/goals';
 import { FoodRowSkeleton } from '@/components/ui/skeleton';
+import { CopyFromDateDrawer } from './copy-from-date-drawer';
+import { RecipeBuilderModal } from '@/components/recipes/recipe-builder-modal';
 import { triggerHaptic } from '@/lib/motion';
-import type { FoodLogEntry, UserGoals } from '@/types/nutrition';
+import type {
+  CustomRecipe,
+  CustomRecipeIngredient,
+  FoodLogEntry,
+  UserGoals,
+} from '@/types/nutrition';
 import {
   Plus,
   RotateCcw,
@@ -18,6 +29,10 @@ import {
   CopyPlus,
   Pencil,
   StickyNote,
+  Calendar,
+  ChefHat,
+  CheckSquare,
+  X,
 } from 'lucide-react';
 
 function formatEntryTime(timestamp: number): string | null {
@@ -30,6 +45,25 @@ function formatEntryAmount(amount: number): string {
   return String(Number(amount.toFixed(1)));
 }
 
+function getTodayIsoDate(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function cloneEntrySnapshot(entry: FoodLogEntry): FoodLogEntry {
+  return {
+    ...entry,
+    nutritionSnapshot: entry.nutritionSnapshot
+      ? {
+          ...entry.nutritionSnapshot,
+          micros: entry.nutritionSnapshot.micros
+            ? { ...entry.nutritionSnapshot.micros }
+            : {},
+        }
+      : entry.nutritionSnapshot,
+  };
+}
+
 export function MealSlotsView() {
   const activeDate = useLoggerStore((s) => s.activeDate);
   const openSheet = useLoggerStore((s) => s.openSheet);
@@ -37,6 +71,24 @@ export function MealSlotsView() {
   const showUndoToast = useLoggerStore((s) => s.showUndoToast);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
+  const [isCopyDrawerOpen, setIsCopyDrawerOpen] = useState(false);
+  const [selectionState, setSelectionState] = useState<{
+    date: string;
+    active: boolean;
+    ids: string[];
+  }>({
+    date: activeDate,
+    active: false,
+    ids: [],
+  });
+  const [isCopyToDateOpen, setIsCopyToDateOpen] = useState(false);
+  const [copyTargetDate, setCopyTargetDate] = useState<string>(() =>
+    offsetIsoDate(activeDate, 1)
+  );
+  const [recipeSeedIngredients, setRecipeSeedIngredients] = useState<
+    CustomRecipeIngredient[] | null
+  >(null);
+  const [isPreparingRecipe, setIsPreparingRecipe] = useState(false);
   const feedbackTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const rowTouchStartX = useRef<number | null>(null);
 
@@ -103,36 +155,172 @@ export function MealSlotsView() {
 
   const remainingCal = Math.round(activeGoals.dailyCalories - totalCalories);
 
+  const isSelectMode = selectionState.date === activeDate && selectionState.active;
+  const selectedIdSet = useMemo(
+    () => new Set(selectionState.date === activeDate ? selectionState.ids : []),
+    [selectionState, activeDate]
+  );
+  const activeSelectedEntries = useMemo(
+    () => (isSelectMode ? sortedLogs.filter((entry) => selectedIdSet.has(entry.id)) : []),
+    [isSelectMode, sortedLogs, selectedIdSet]
+  );
+  const selectedTotalCalories = useMemo(
+    () =>
+      activeSelectedEntries.reduce(
+        (sum, e) => sum + (Number(e.nutritionSnapshot?.calories) || 0),
+        0
+      ),
+    [activeSelectedEntries]
+  );
+
+  const showCopyFeedback = (msg: string) => {
+    setCopyFeedback(msg);
+    if (feedbackTimerRef.current) {
+      clearTimeout(feedbackTimerRef.current);
+    }
+    feedbackTimerRef.current = setTimeout(() => {
+      setCopyFeedback(null);
+      feedbackTimerRef.current = null;
+    }, 2500);
+  };
+
   const handleCopyYesterday = async () => {
     try {
-      const count = await copyYesterdayLogs(activeDate);
+      const { count, insertedIds } = await copyLogsFromDate(yesterdayDate, activeDate);
       if (count > 0) {
-        setCopyFeedback(`Copied ${count} ${count === 1 ? 'item' : 'items'}`);
-        if (feedbackTimerRef.current) {
-          clearTimeout(feedbackTimerRef.current);
-        }
-        feedbackTimerRef.current = setTimeout(() => {
-          setCopyFeedback(null);
-          feedbackTimerRef.current = null;
-        }, 2500);
+        triggerHaptic(10);
+        showCopyFeedback(`Copied ${count} ${count === 1 ? 'item' : 'items'}`);
+        showUndoToast({
+          message: `Copied ${count} ${count === 1 ? 'item' : 'items'} from yesterday`,
+          onUndo: async () => {
+            if (insertedIds.length > 0) {
+              await db.foodLogs.bulkDelete(insertedIds);
+            }
+          },
+        });
       }
     } catch (err) {
       console.error("Failed to copy yesterday's logs:", err);
     }
   };
 
+  const handleToggleSelectMode = () => {
+    triggerHaptic(6);
+    setIsCopyToDateOpen(false);
+    setSelectionState((prev) => {
+      const currentlyActive = prev.date === activeDate && prev.active;
+      return {
+        date: activeDate,
+        active: !currentlyActive,
+        ids: [],
+      };
+    });
+  };
+
+  const handleToggleEntrySelection = (entryId: string) => {
+    triggerHaptic(6);
+    setSelectionState((prev) => {
+      const currentIds = prev.date === activeDate ? prev.ids : [];
+      const exists = currentIds.includes(entryId);
+      const nextIds = exists
+        ? currentIds.filter((id) => id !== entryId)
+        : [...currentIds, entryId];
+      return {
+        date: activeDate,
+        active: true,
+        ids: nextIds,
+      };
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    triggerHaptic(6);
+    setSelectionState((prev) => {
+      const currentIds = prev.date === activeDate ? prev.ids : [];
+      const allChecked =
+        sortedLogs.length > 0 && sortedLogs.every((e) => currentIds.includes(e.id));
+      return {
+        date: activeDate,
+        active: true,
+        ids: allChecked ? [] : sortedLogs.map((e) => e.id),
+      };
+    });
+  };
+
+  const handleOpenSaveAsRecipe = async () => {
+    if (activeSelectedEntries.length === 0 || isPreparingRecipe) return;
+    setIsPreparingRecipe(true);
+    triggerHaptic(8);
+    try {
+      const converted = await foodLogEntriesToRecipeIngredients(activeSelectedEntries);
+      setRecipeSeedIngredients(converted);
+    } catch (err) {
+      console.error('Failed to prepare recipe ingredients:', err);
+    } finally {
+      setIsPreparingRecipe(false);
+    }
+  };
+
+  const handleOpenCopyToDate = () => {
+    triggerHaptic(6);
+    const todayIso = getTodayIsoDate();
+    setCopyTargetDate(activeDate < todayIso ? todayIso : offsetIsoDate(activeDate, 1));
+    setIsCopyToDateOpen((prev) => !prev);
+  };
+
+  const handleCopySelectedToDate = async () => {
+    if (activeSelectedEntries.length === 0 || !copyTargetDate.trim()) return;
+    const ids = activeSelectedEntries.map((e) => e.id);
+    const target = copyTargetDate.trim();
+    try {
+      const { count, insertedIds } = await copyLogsFromDate(activeDate, target, ids);
+      triggerHaptic(10);
+      setIsCopyToDateOpen(false);
+      setSelectionState({ date: activeDate, active: false, ids: [] });
+      if (count > 0) {
+        showCopyFeedback(`Copied ${count} to ${target}`);
+        showUndoToast({
+          message: `Copied ${count} ${count === 1 ? 'item' : 'items'} to ${target}`,
+          onUndo: async () => {
+            if (insertedIds.length > 0) {
+              await db.foodLogs.bulkDelete(insertedIds);
+            }
+          },
+        });
+      }
+    } catch (err) {
+      console.error('Failed to copy selected entries to date:', err);
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (activeSelectedEntries.length === 0) return;
+    const snapshots = activeSelectedEntries.map(cloneEntrySnapshot);
+    const idsToDelete = snapshots.map((s) => s.id);
+    try {
+      await db.foodLogs.bulkDelete(idsToDelete);
+      triggerHaptic(12);
+      setIsCopyToDateOpen(false);
+      setSelectionState({ date: activeDate, active: false, ids: [] });
+      showUndoToast({
+        message: `Removed ${snapshots.length} ${snapshots.length === 1 ? 'entry' : 'entries'}`,
+        onUndo: async () => {
+          await db.foodLogs.bulkPut(snapshots);
+        },
+      });
+    } catch (err) {
+      console.error('Failed to delete selected entries:', err);
+    }
+  };
+
+  const handleRecipeSaved = (saved: CustomRecipe) => {
+    setSelectionState({ date: activeDate, active: false, ids: [] });
+    setRecipeSeedIngredients(null);
+    showCopyFeedback(`Saved "${saved.name}"`);
+  };
+
   const handleDeleteEntry = async (entry: FoodLogEntry) => {
-    const snapshot: FoodLogEntry = {
-      ...entry,
-      nutritionSnapshot: entry.nutritionSnapshot
-        ? {
-            ...entry.nutritionSnapshot,
-            micros: entry.nutritionSnapshot.micros
-              ? { ...entry.nutritionSnapshot.micros }
-              : {},
-          }
-        : entry.nutritionSnapshot,
-    };
+    const snapshot = cloneEntrySnapshot(entry);
     try {
       await db.foodLogs.delete(entry.id);
       triggerHaptic(12);
@@ -281,14 +469,63 @@ export function MealSlotsView() {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {copyFeedback && (
               <span className="animate-check-pop text-[11px] text-[var(--macro-carbs)] flex items-center gap-1 font-semibold">
                 <Check className="w-3.5 h-3.5" aria-hidden="true" />
                 {copyFeedback}
               </span>
             )}
-            {yesterdayEntries.length > 0 && (
+            {isSelectMode && sortedLogs.length > 0 && (
+              <button
+                type="button"
+                onClick={handleToggleSelectAll}
+                className="touch-target tactile-press flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-sub hover:bg-surface-elevated text-xs text-foreground font-medium"
+              >
+                <span>
+                  {activeSelectedEntries.length === sortedLogs.length ? 'Clear' : 'Select All'}
+                </span>
+              </button>
+            )}
+            {(sortedLogs.length > 0 || isSelectMode) && (
+              <button
+                type="button"
+                onClick={handleToggleSelectMode}
+                aria-pressed={isSelectMode}
+                className={`touch-target tactile-press flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
+                  isSelectMode
+                    ? 'bg-foreground text-background shadow-xs'
+                    : 'bg-surface-sub hover:bg-surface-elevated text-foreground'
+                }`}
+              >
+                {isSelectMode ? (
+                  <>
+                    <X className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Cancel</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckSquare className="w-3.5 h-3.5 text-[var(--macro-calories)]" aria-hidden="true" />
+                    <span>Select</span>
+                  </>
+                )}
+              </button>
+            )}
+            {!isSelectMode && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic(6);
+                  setIsCopyDrawerOpen(true);
+                }}
+                aria-label="Copy From Date"
+                className="touch-target tactile-press flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-sub hover:bg-surface-elevated text-xs text-foreground font-medium"
+              >
+                <Calendar className="w-3.5 h-3.5 text-[var(--macro-calories)]" aria-hidden="true" />
+                <span>Copy From Date</span>
+              </button>
+            )}
+            {!isSelectMode && yesterdayEntries.length > 0 && (
               <button
                 type="button"
                 onClick={handleCopyYesterday}
@@ -302,15 +539,17 @@ export function MealSlotsView() {
                 </span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => openSheet('search')}
-              aria-label="Add food"
-              className="touch-target tactile-press flex items-center gap-1 px-3 py-1.5 rounded-full bg-surface-sub hover:bg-foreground hover:text-background text-xs font-semibold text-foreground"
-            >
-              <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>Add</span>
-            </button>
+            {!isSelectMode && (
+              <button
+                type="button"
+                onClick={() => openSheet('search')}
+                aria-label="Add food"
+                className="touch-target tactile-press flex items-center gap-1 px-3 py-1.5 rounded-full bg-surface-sub hover:bg-foreground hover:text-background text-xs font-semibold text-foreground"
+              >
+                <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Add</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -320,7 +559,8 @@ export function MealSlotsView() {
           <ul className="rounded-2xl bg-card border border-border/50 overflow-hidden divide-y divide-border/60">
             {sortedLogs.map((entry, idx) => {
               const entryTime = formatEntryTime(entry.createdAt);
-              const isExpanded = expandedEntryId === entry.id;
+              const isSelected = isSelectMode && selectedIdSet.has(entry.id);
+              const isExpanded = !isSelectMode && expandedEntryId === entry.id;
               const micros = entry.nutritionSnapshot?.micros;
               const trimmedNote = entry.note?.trim();
 
@@ -332,7 +572,7 @@ export function MealSlotsView() {
                     rowTouchStartX.current = e.touches[0]?.clientX ?? null;
                   }}
                   onTouchEnd={(e) => {
-                    if (rowTouchStartX.current === null) return;
+                    if (isSelectMode || rowTouchStartX.current === null) return;
                     const dx =
                       (e.changedTouches[0]?.clientX ?? rowTouchStartX.current) -
                       rowTouchStartX.current;
@@ -340,17 +580,33 @@ export function MealSlotsView() {
                     if (dx < -48) setExpandedEntryId(entry.id);
                     else if (dx > 48 && isExpanded) setExpandedEntryId(null);
                   }}
-                  className="stagger-item hover:bg-surface-sub/40 transition-colors"
+                  className={`stagger-item transition-colors ${
+                    isSelected ? 'bg-surface-sub/65' : 'hover:bg-surface-sub/40'
+                  }`}
                 >
                   <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-3.5">
+                    {isSelectMode && (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleEntrySelection(entry.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`Select ${entry.name}`}
+                        className="w-4 h-4 rounded accent-[var(--macro-calories)] shrink-0 cursor-pointer"
+                      />
+                    )}
                     <button
                       type="button"
-                      onClick={() =>
-                        setExpandedEntryId((prev) =>
-                          prev === entry.id ? null : entry.id
-                        )
-                      }
-                      aria-expanded={isExpanded}
+                      onClick={() => {
+                        if (isSelectMode) {
+                          handleToggleEntrySelection(entry.id);
+                        } else {
+                          setExpandedEntryId((prev) =>
+                            prev === entry.id ? null : entry.id
+                          );
+                        }
+                      }}
+                      aria-expanded={isSelectMode ? undefined : isExpanded}
                       className="min-w-0 flex-1 text-left group"
                     >
                       <div className="flex items-center gap-1.5">
@@ -363,14 +619,16 @@ export function MealSlotsView() {
                             aria-hidden="true"
                           />
                         )}
-                        <ChevronDown
-                          className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-150 ${
-                            isExpanded
-                              ? 'rotate-180 text-foreground'
-                              : 'opacity-60 group-hover:opacity-100'
-                          }`}
-                          aria-hidden="true"
-                        />
+                        {!isSelectMode && (
+                          <ChevronDown
+                            className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-150 ${
+                              isExpanded
+                                ? 'rotate-180 text-foreground'
+                                : 'opacity-60 group-hover:opacity-100'
+                            }`}
+                            aria-hidden="true"
+                          />
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground tabular-nums mt-0.5 truncate">
                         {formatEntryAmount(entry.amount)} {entry.unit}
@@ -401,14 +659,16 @@ export function MealSlotsView() {
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => void handleDeleteEntry(entry)}
-                        aria-label={`Delete ${entry.name}`}
-                        className="touch-target tactile-press w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-                      </button>
+                      {!isSelectMode && (
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteEntry(entry)}
+                          aria-label={`Delete ${entry.name}`}
+                          className="touch-target tactile-press w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -525,6 +785,17 @@ export function MealSlotsView() {
               Search offline staples, scan a barcode, or copy yesterday&apos;s entries to build your log.
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic(6);
+                  setIsCopyDrawerOpen(true);
+                }}
+                className="touch-target tactile-press inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-surface-sub hover:bg-surface-elevated text-xs font-semibold text-foreground"
+              >
+                <Calendar className="w-3.5 h-3.5 text-[var(--macro-calories)]" aria-hidden="true" />
+                <span>Copy From Date</span>
+              </button>
               {yesterdayEntries.length > 0 && (
                 <button
                   type="button"
@@ -546,7 +817,105 @@ export function MealSlotsView() {
             </div>
           </div>
         )}
+
+        {/* Sticky Multi-Select Action Bar */}
+        {isSelectMode && activeSelectedEntries.length > 0 && (
+          <div
+            role="region"
+            aria-label="Multi-select actions"
+            data-testid="multi-select-action-bar"
+            className="sticky bottom-[calc(8.75rem+env(safe-area-inset-bottom))] sm:bottom-[calc(9.25rem+env(safe-area-inset-bottom))] z-30 surface-elevated-sheet rounded-2xl p-3 sm:p-3.5 space-y-2.5 animate-sheet-in"
+          >
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="font-semibold text-foreground tabular-nums">
+                {activeSelectedEntries.length} selected ·{' '}
+                <span className="text-[var(--macro-calories)]">
+                  {Math.round(selectedTotalCalories).toLocaleString()} kcal
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={handleToggleSelectMode}
+                className="tactile-press text-[11px] font-medium text-muted-foreground hover:text-foreground px-2 py-0.5 rounded-full"
+              >
+                Cancel
+              </button>
+            </div>
+
+            {isCopyToDateOpen && (
+              <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-surface-sub border border-border/60">
+                <label
+                  htmlFor="multi-copy-target-date"
+                  className="text-[11px] font-semibold text-foreground shrink-0"
+                >
+                  Target Date
+                </label>
+                <div className="flex items-center gap-2 flex-1 justify-end">
+                  <input
+                    id="multi-copy-target-date"
+                    aria-label="Target date"
+                    type="date"
+                    value={copyTargetDate}
+                    onChange={(e) => setCopyTargetDate(e.target.value)}
+                    className="px-2.5 py-1 text-base sm:text-xs font-medium tabular-nums rounded-lg bg-card border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleCopySelectedToDate()}
+                    className="touch-target tactile-press px-3 py-1.5 rounded-full bg-foreground text-background text-[11px] font-semibold hover:opacity-90 tabular-nums shrink-0"
+                  >
+                    Confirm Copy ({activeSelectedEntries.length})
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void handleOpenSaveAsRecipe()}
+                disabled={isPreparingRecipe}
+                className="touch-target tactile-press inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90 disabled:opacity-50"
+              >
+                <ChefHat className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Save as Recipe</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOpenCopyToDate}
+                aria-expanded={isCopyToDateOpen}
+                className="touch-target tactile-press inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-surface-sub border border-border/60 hover:bg-card text-foreground text-xs font-semibold"
+              >
+                <CopyPlus className="w-3.5 h-3.5 text-[var(--macro-calories)]" aria-hidden="true" />
+                <span>Copy to Date...</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void handleDeleteSelected()}
+                className="touch-target tactile-press inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-surface-sub border border-border/60 hover:bg-card text-foreground text-xs font-semibold ml-auto"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
+                <span>Delete Selected</span>
+              </button>
+            </div>
+          </div>
+        )}
       </section>
+
+      <CopyFromDateDrawer
+        open={isCopyDrawerOpen}
+        targetDate={activeDate}
+        onClose={() => setIsCopyDrawerOpen(false)}
+      />
+
+      <RecipeBuilderModal
+        isOpen={Boolean(recipeSeedIngredients)}
+        initialIngredients={recipeSeedIngredients}
+        onClose={() => setRecipeSeedIngredients(null)}
+        onSaved={handleRecipeSaved}
+      />
     </div>
   );
 }

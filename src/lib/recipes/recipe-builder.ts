@@ -1,11 +1,18 @@
 import { db, generateId } from '@/lib/db/macroai-db';
-import { scaleNutrition } from '@/lib/nutrition/scaling';
+import {
+  formatPortionUnit,
+  getServingOptionsForFood,
+  scaleNutrition,
+} from '@/lib/nutrition/scaling';
+import { loadStaples } from '@/lib/foods/staples-search';
 import type {
   CustomRecipe,
   CustomRecipeIngredient,
+  FoodItem,
   FoodLogEntry,
   MacroNutrients,
   Micronutrients,
+  NutritionBasis,
 } from '@/types/nutrition';
 
 /**
@@ -297,4 +304,197 @@ export async function copyYesterdayLogs(targetDate: string): Promise<number> {
   const yesterday = offsetIsoDate(targetDate, -1);
   const { count } = await copyLogsFromDate(yesterday, targetDate);
   return count;
+}
+
+const FALLBACK_UNIT_GRAMS: Record<string, number> = {
+  g: 1,
+  ml: 1,
+  kg: 1000,
+  l: 1000,
+  oz: 28.35,
+  lb: 453.6,
+  tbsp: 15,
+  tsp: 5,
+  cup: 240,
+  cups: 240,
+};
+
+function round2(val: number): number {
+  return Math.round((val + Number.EPSILON) * 100) / 100;
+}
+
+function scaleMicrosMap(micros: Micronutrients | undefined, factor: number): Micronutrients {
+  const out: Micronutrients = {};
+  if (!micros || typeof micros !== 'object') return out;
+  for (const [key, val] of Object.entries(micros)) {
+    if (typeof val === 'number' && Number.isFinite(val)) {
+      out[key] = round2(val * factor);
+    }
+  }
+  return out;
+}
+
+function resolveRecipeGramsPerUnit(recipe: CustomRecipe, unitLower: string): number {
+  if (unitLower === 'g' || unitLower === 'ml') return 1;
+  const effectiveTotal =
+    typeof recipe.cookedWeightGrams === 'number' && recipe.cookedWeightGrams > 0
+      ? recipe.cookedWeightGrams
+      : Number(recipe.totalGrams) || 0;
+  const defaultServings = Math.max(1, Number(recipe.defaultServings) || 1);
+  const perServing = effectiveTotal > 0 ? round2(effectiveTotal / defaultServings) : 100;
+  return perServing > 0 ? perServing : 100;
+}
+
+function resolveFoodGramsPerUnit(food: FoodItem, unit: string): number {
+  const unitLower = unit.trim().toLowerCase();
+  if (unitLower === 'g' || unitLower === 'ml') return 1;
+
+  const options = getServingOptionsForFood(food);
+  const canonical = formatPortionUnit(1, unitLower).toLowerCase();
+  const matched = options.find((opt) => {
+    const optUnit = opt.unit.trim().toLowerCase();
+    return (
+      opt.id.toLowerCase() === unitLower ||
+      optUnit === unitLower ||
+      formatPortionUnit(1, optUnit).toLowerCase() === canonical
+    );
+  });
+  if (matched && matched.grams > 0) {
+    return matched.grams;
+  }
+
+  if (typeof food.servingWeightGrams === 'number' && food.servingWeightGrams > 0) {
+    const baseCount = food.servingSize > 0 ? food.servingSize : 1;
+    const foodUnit = (food.servingUnit || '').trim().toLowerCase();
+    if (!foodUnit || foodUnit === unitLower || formatPortionUnit(1, foodUnit).toLowerCase() === canonical) {
+      return round2(food.servingWeightGrams / baseCount);
+    }
+    return food.servingWeightGrams;
+  }
+
+  return FALLBACK_UNIT_GRAMS[unitLower] ?? 100;
+}
+
+/**
+ * Converts a FoodLogEntry into a CustomRecipeIngredient with normalized base nutrition
+ * and accurate gram weight so saving as a recipe produces exact per-serving and per-100g totals.
+ */
+export function foodLogEntryToRecipeIngredient(
+  entry: FoodLogEntry,
+  resolved?: { food?: FoodItem | null; recipe?: CustomRecipe | null }
+): CustomRecipeIngredient {
+  const safeAmount =
+    typeof entry.amount === 'number' && Number.isFinite(entry.amount) && entry.amount > 0
+      ? entry.amount
+      : 1;
+  const unit = (entry.unit || 'g').trim() || 'g';
+  const unitLower = unit.toLowerCase();
+  const isMetric = unitLower === 'g' || unitLower === 'ml';
+
+  const snap = entry.nutritionSnapshot;
+  const snapCalories = Number(snap?.calories) || 0;
+  const snapProtein = Number(snap?.protein) || 0;
+  const snapCarbs = Number(snap?.carbs) || 0;
+  const snapFat = Number(snap?.fat) || 0;
+  const snapFiber = Number(snap?.fiber) || 0;
+  const snapMicros = scaleMicrosMap(snap?.micros, 1);
+
+  let gramsPerUnit: number;
+  if (isMetric) {
+    gramsPerUnit = 1;
+  } else if (resolved?.recipe) {
+    gramsPerUnit = resolveRecipeGramsPerUnit(resolved.recipe, unitLower);
+  } else if (resolved?.food) {
+    gramsPerUnit = resolveFoodGramsPerUnit(resolved.food, unit);
+  } else {
+    gramsPerUnit = FALLBACK_UNIT_GRAMS[unitLower] ?? 100;
+  }
+
+  const gramWeight = round2(safeAmount * gramsPerUnit);
+  const baseBasis: NutritionBasis = isMetric
+    ? unitLower === 'ml'
+      ? 'per100ml'
+      : 'per100g'
+    : 'perServing';
+  const baseFactor = isMetric ? 100 / safeAmount : 1 / safeAmount;
+
+  const baseNutrients: MacroNutrients = {
+    calories: round2(snapCalories * baseFactor),
+    protein: round2(snapProtein * baseFactor),
+    carbs: round2(snapCarbs * baseFactor),
+    fat: round2(snapFat * baseFactor),
+    fiber: round2(snapFiber * baseFactor),
+  };
+  const baseMicros = scaleMicrosMap(snapMicros, baseFactor);
+
+  return {
+    foodId: entry.foodId || `log:${entry.id}`,
+    name: entry.name,
+    amount: safeAmount,
+    unit,
+    gramWeight,
+    gramsPerUnit,
+    ...(isMetric ? {} : { servingSize: gramsPerUnit }),
+    baseBasis,
+    baseNutrients,
+    baseMicros,
+    nutritionSnapshot: {
+      calories: snapCalories,
+      protein: snapProtein,
+      carbs: snapCarbs,
+      fat: snapFat,
+      fiber: snapFiber,
+      micros: snapMicros,
+    },
+  };
+}
+
+/**
+ * Resolves cached foods, custom recipes, and offline staples for a list of logged entries
+ * and converts them into CustomRecipeIngredient[] suitable for RecipeBuilderModal.initialIngredients.
+ */
+export async function foodLogEntriesToRecipeIngredients(
+  entries: FoodLogEntry[]
+): Promise<CustomRecipeIngredient[]> {
+  if (!entries || entries.length === 0) return [];
+
+  let staplesById: Map<string, FoodItem> | null = null;
+  const getStaplesMap = async (): Promise<Map<string, FoodItem>> => {
+    if (staplesById) return staplesById;
+    const staples = await loadStaples().catch(() => []);
+    staplesById = new Map(staples.map((s) => [s.id, s]));
+    return staplesById;
+  };
+
+  return Promise.all(
+    entries.map(async (entry) => {
+      const unitLower = (entry.unit || '').trim().toLowerCase();
+      if (!entry.foodId || entry.source === 'quick_add' || unitLower === 'g' || unitLower === 'ml') {
+        return foodLogEntryToRecipeIngredient(entry);
+      }
+
+      try {
+        if (entry.source === 'recipe' || entry.foodId.startsWith('recipe:')) {
+          const recipeId = entry.foodId.startsWith('recipe:')
+            ? entry.foodId.slice('recipe:'.length)
+            : entry.foodId;
+          const recipe = await db.customRecipes.get(recipeId);
+          if (recipe) {
+            return foodLogEntryToRecipeIngredient(entry, { recipe });
+          }
+        }
+
+        const cachedFood = await db.foodsCache.get(entry.foodId);
+        if (cachedFood) {
+          return foodLogEntryToRecipeIngredient(entry, { food: cachedFood });
+        }
+
+        const staplesMap = await getStaplesMap();
+        const stapleFood = staplesMap.get(entry.foodId) ?? null;
+        return foodLogEntryToRecipeIngredient(entry, { food: stapleFood });
+      } catch {
+        return foodLogEntryToRecipeIngredient(entry);
+      }
+    })
+  );
 }

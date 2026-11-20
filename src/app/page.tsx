@@ -15,10 +15,12 @@ import {
 import { MicronutrientPanel } from '@/components/dashboard/micronutrient-panel';
 import { AppShell } from '@/components/shell/app-shell';
 import { SettingsHeaderLink } from '@/components/shell/settings-header-link';
+import { DatePickerPopover } from '@/components/log/date-picker-popover';
 import { FoodRowSkeleton } from '@/components/ui/skeleton';
 import { runViewTransition, triggerHaptic } from '@/lib/motion';
 import type { FoodLogEntry, UserGoals } from '@/types/nutrition';
 import {
+  Calendar,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -267,6 +269,12 @@ export default function HomePage() {
       direction: today > activeDate ? 'forward' : today < activeDate ? 'backward' : null,
     });
   };
+  const handleSelectDate = (iso: string) => {
+    triggerHaptic(8);
+    runViewTransition(() => setActiveDate(iso), {
+      direction: iso > activeDate ? 'forward' : iso < activeDate ? 'backward' : null,
+    });
+  };
 
   const handleHeaderTouchStart = (e: React.TouchEvent) => {
     headerTouchStartX.current = e.touches[0]?.clientX ?? null;
@@ -300,9 +308,24 @@ export default function HomePage() {
           className="flex items-end justify-between gap-3"
         >
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground truncate">
-              {dateInfo.kicker}
-            </p>
+            <DatePickerPopover
+              activeDate={activeDate}
+              onSelectDate={handleSelectDate}
+              align="left"
+              trigger={
+                <button
+                  type="button"
+                  title="Choose date"
+                  className="tactile-press inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground transition-colors rounded-lg py-0.5 max-w-full"
+                >
+                  <Calendar
+                    className="w-3 h-3 text-[var(--macro-calories)] shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span className="truncate">{dateInfo.kicker}</span>
+                </button>
+              }
+            />
             <div className="flex items-baseline gap-2.5 mt-0.5">
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                 Dashboard

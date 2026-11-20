@@ -4,6 +4,7 @@ import React, { useRef } from 'react';
 import { AppShell } from '@/components/shell/app-shell';
 import { SettingsHeaderLink } from '@/components/shell/settings-header-link';
 import { MealSlotsView } from '@/components/log/meal-slots-view';
+import { DatePickerPopover } from '@/components/log/date-picker-popover';
 import { useLoggerStore } from '@/stores/logger-store';
 import { offsetIsoDate } from '@/lib/recipes/recipe-builder';
 import { runViewTransition, triggerHaptic } from '@/lib/motion';
@@ -68,6 +69,12 @@ export default function LogPage() {
       direction: today > activeDate ? 'forward' : today < activeDate ? 'backward' : null,
     });
   };
+  const handleSelectDate = (iso: string) => {
+    triggerHaptic(8);
+    runViewTransition(() => setActiveDate(iso), {
+      direction: iso > activeDate ? 'forward' : iso < activeDate ? 'backward' : null,
+    });
+  };
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0]?.clientX ?? null;
@@ -127,10 +134,22 @@ export default function LogPage() {
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="flex-1 sm:flex-initial justify-center text-xs font-semibold px-3.5 min-h-[36px] py-1.5 rounded-full bg-card border border-border/50 text-foreground flex items-center gap-1.5 tabular-nums whitespace-nowrap">
-              <Calendar className="w-3.5 h-3.5 text-[var(--macro-calories)] shrink-0" aria-hidden="true" />
-              {label}
-            </span>
+            <DatePickerPopover
+              activeDate={activeDate}
+              onSelectDate={handleSelectDate}
+              align="center"
+              className="flex-1 sm:flex-initial"
+              trigger={
+                <button
+                  type="button"
+                  title="Choose date"
+                  className="w-full touch-target tactile-press justify-center text-xs font-semibold px-3.5 min-h-[36px] py-1.5 rounded-full bg-card border border-border/50 hover:bg-surface-sub text-foreground flex items-center gap-1.5 tabular-nums whitespace-nowrap"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-[var(--macro-calories)] shrink-0" aria-hidden="true" />
+                  <span>{label}</span>
+                </button>
+              }
+            />
             <button
               type="button"
               onClick={handleNextDay}
