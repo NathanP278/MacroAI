@@ -3,13 +3,41 @@
 import React from 'react';
 import Link from 'next/link';
 import type { DailySummary, MacroMetric } from '@/lib/nutrition/daily-summary';
+import { computeLoggingStreak } from '@/lib/nutrition/analytics';
 import type { DayNutritionPoint } from './macro-bento-grid';
 import { ChevronRight } from 'lucide-react';
 
 export interface LoggedDayDot {
   date: string;
   hasLogs: boolean;
-  calories: number;
+  intensity?: 'none' | 'partial' | 'logged';
+  calories?: number;
+  targetCalories?: number;
+}
+
+type DotIntensity = 'none' | 'partial' | 'logged';
+
+function resolveDotIntensity(dot: LoggedDayDot, fallbackTargetCalories: number): DotIntensity {
+  if (!dot.hasLogs || dot.intensity === 'none') return 'none';
+  if (dot.intensity === 'partial') return 'partial';
+  if (dot.intensity === 'logged') return 'logged';
+  const target = dot.targetCalories ?? fallbackTargetCalories;
+  if (target > 0 && dot.calories !== undefined && dot.calories < target * 0.5) {
+    return 'partial';
+  }
+  return 'logged';
+}
+
+function dotStatusLabel(intensity: DotIntensity): string {
+  if (intensity === 'logged') return 'logged';
+  if (intensity === 'partial') return 'partially logged';
+  return 'not logged';
+}
+
+function dotToneClass(intensity: DotIntensity): string {
+  if (intensity === 'logged') return 'bg-[var(--macro-calories)]';
+  if (intensity === 'partial') return 'bg-[var(--macro-calories)]/45';
+  return 'bg-surface-sub border border-border/40';
 }
 
 export interface HabitsAnalyticsGridProps {
@@ -44,7 +72,7 @@ export function HabitsAnalyticsGrid({
   onSelectDate,
   className = '',
 }: HabitsAnalyticsGridProps) {
-  const weekLoggedCount = thirtyDayDots.slice(-7).filter((d) => d.hasLogs).length;
+  const { currentStreak, loggedCount, consistencyPct } = computeLoggingStreak(thirtyDayDots);
 
   // Target tick position cleanly allows slight headroom up to 120% when surplus occurs
   const calTarget = Math.max(1, summary.calories.target);
@@ -217,51 +245,63 @@ export function HabitsAnalyticsGrid({
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          {/* Food Logging 30-Day Heatmap Grid (Pic 1 right card) */}
-          <Link
-            href="/log"
-            className="min-w-0 rounded-2xl bg-card border border-border/50 p-3.5 sm:p-4 flex flex-col justify-between gap-3 hover:bg-surface-sub/60 tactile-press macro-card-interactive group"
-          >
-            <div>
-              <div className="text-sm font-semibold text-foreground">Food Logging</div>
-              <div className="text-xs text-muted-foreground">Last 30 Days</div>
+          {/* Food Logging 30-Day Interactive Heatmap Grid */}
+          <div className="min-w-0 rounded-2xl bg-card border border-border/50 p-3.5 sm:p-4 flex flex-col justify-between gap-3">
+            <div className="flex items-start justify-between gap-1">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-foreground truncate">
+                  Food Logging
+                </div>
+                <div className="text-xs text-muted-foreground">Last 30 Days</div>
+              </div>
+              <Link
+                href="/trends"
+                aria-label="Open logging trends"
+                className="touch-target p-1 -mr-1 -mt-0.5 rounded-full text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              >
+                <ChevronRight className="w-4 h-4" aria-hidden="true" />
+              </Link>
             </div>
 
             <div
+              role="group"
               className="grid grid-cols-10 gap-1"
-              aria-label={`Food logged on ${thirtyDayDots.filter((d) => d.hasLogs).length} of last 30 days`}
+              aria-label={`Food logging 30-day heatmap: ${loggedCount} of ${thirtyDayDots.length} days logged`}
             >
-              {thirtyDayDots.map((dot, idx) => (
-                <span
-                  key={dot.date}
-                  title={`${dot.date}: ${Math.round(dot.calories)} kcal`}
-                  className={`aspect-square rounded-[3px] transition-colors duration-150 ${
-                    idx === thirtyDayDots.length - 1
-                      ? 'ring-1 ring-foreground/45 ring-offset-1 ring-offset-card'
-                      : ''
-                  }`}
-                  style={{
-                    backgroundColor: dot.hasLogs
-                      ? 'var(--macro-calories)'
-                      : 'var(--surface-sub)',
-                  }}
-                />
-              ))}
+              {thirtyDayDots.map((dot, idx) => {
+                const intensity = resolveDotIntensity(dot, calTarget);
+                const status = dotStatusLabel(intensity);
+                const kcalText =
+                  dot.calories !== undefined ? `, ${Math.round(dot.calories)} kcal` : '';
+                return (
+                  <button
+                    key={dot.date}
+                    type="button"
+                    onClick={() => onSelectDate?.(dot.date)}
+                    data-intensity={intensity}
+                    title={`${dot.date}: ${status}${kcalText}`}
+                    aria-label={`${dot.date}: ${status}${kcalText}`}
+                    className={`aspect-square w-full rounded-[3px] transition-all duration-150 hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground ${dotToneClass(
+                      intensity
+                    )} ${
+                      idx === thirtyDayDots.length - 1
+                        ? 'ring-1 ring-foreground/45 ring-offset-1 ring-offset-card'
+                        : ''
+                    }`}
+                  />
+                );
+              })}
             </div>
 
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-xs font-medium text-muted-foreground tabular-nums truncate">
-                <strong className="text-sm sm:text-base font-bold text-foreground">
-                  {weekLoggedCount}/7
-                </strong>{' '}
-                this week
+            <div className="flex items-center justify-between gap-1.5 text-xs tabular-nums">
+              <span className="font-semibold text-foreground truncate">
+                {currentStreak} day streak
               </span>
-              <ChevronRight
-                className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0"
-                aria-hidden="true"
-              />
+              <span className="font-medium text-muted-foreground shrink-0">
+                {consistencyPct}%
+              </span>
             </div>
-          </Link>
+          </div>
 
           {/* Daily Balance Tile */}
           <Link
