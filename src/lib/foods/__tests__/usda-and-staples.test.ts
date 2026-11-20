@@ -373,4 +373,65 @@ describe('USDA adapter and Staples search', () => {
       setStaplesCache(null);
     }
   });
+
+  test('maps USDA sugar, added sugar, saturated fat, cholesterol, caffeine, and alcohol IDs and nutrient numbers', () => {
+    const item = mapUsdaFoodToFoodItem({
+      fdcId: 999,
+      description: 'Iced Coffee Mocha',
+      foodNutrients: [
+        { nutrientId: 2000, value: 14 },
+        { nutrientId: 1235, value: 10 },
+        { nutrientId: 1258, value: 2.5 },
+        { nutrientId: 1253, value: 15 },
+        { nutrientId: 1057, value: 95 },
+        { nutrientId: 1018, value: 0 },
+      ],
+    });
+    expect(item.micronutrientsPerBasis).toMatchObject({
+      sugarG: 14,
+      addedSugarG: 10,
+      saturatedFatG: 2.5,
+      cholesterolMg: 15,
+      caffeineMg: 95,
+      alcoholG: 0,
+    });
+
+    const byNumber = mapUsdaFoodToFoodItem({
+      fdcId: 1000,
+      description: 'Espresso Tiramisu',
+      foodNutrients: [
+        { nutrientNumber: '269.3', value: 18.4 },
+        { nutrientNumber: '539', value: 12.1 },
+        { nutrientNumber: '606', value: 6.2 },
+        { nutrientNumber: '601', value: 85 },
+        { nutrientNumber: '262', value: 64 },
+        { nutrientNumber: '221', value: 3.5 },
+      ],
+    });
+    expect(byNumber.micronutrientsPerBasis).toMatchObject({
+      sugarG: 18.4,
+      addedSugarG: 12.1,
+      saturatedFatG: 6.2,
+      cholesterolMg: 85,
+      caffeineMg: 64,
+      alcoholG: 3.5,
+    });
+  });
+
+  test('backfills extended nutrients on loaded staples and enriches meal items with extended nutrients', async () => {
+    setStaplesCache(null);
+    const loaded = await loadStaples();
+    const eggMcMuffin = loaded.find((f) => f.name === 'Egg McMuffin');
+    expect(eggMcMuffin).toBeDefined();
+    expect(typeof eggMcMuffin?.micronutrientsPerBasis.saturatedFatG).toBe('number');
+    expect(typeof eggMcMuffin?.micronutrientsPerBasis.cholesterolMg).toBe('number');
+    expect((eggMcMuffin?.micronutrientsPerBasis.cholesterolMg ?? 0)).toBeGreaterThan(0);
+
+    const enriched = await enrichMealItemsWithStaples<
+      { name: string; microsPer100g?: Micronutrients }
+    >([{ name: 'Egg McMuffin' }]);
+    expect(typeof enriched[0].microsPer100g?.saturatedFatG).toBe('number');
+    expect(typeof enriched[0].microsPer100g?.cholesterolMg).toBe('number');
+    expect(typeof enriched[0].microsPer100g?.sugarG).toBe('number');
+  });
 });

@@ -33,6 +33,12 @@ export const AiMicronutrientsSchema = z.object({
   vitaminB6Mg: optionalNonNegativeNumber,
   vitaminB12Mcg: optionalNonNegativeNumber,
   folateMcg: optionalNonNegativeNumber,
+  sugarG: optionalNonNegativeNumber,
+  addedSugarG: optionalNonNegativeNumber,
+  saturatedFatG: optionalNonNegativeNumber,
+  cholesterolMg: optionalNonNegativeNumber,
+  caffeineMg: optionalNonNegativeNumber,
+  alcoholG: optionalNonNegativeNumber,
 });
 
 export const AiMealItemSchema = z.object({
@@ -57,8 +63,14 @@ export const AiLabelOcrResponseSchema = z.object({
   protein: z.number().nonnegative(),
   carbs: z.number().nonnegative(),
   fat: z.number().nonnegative(),
-  fiber: z.number().nonnegative().optional(),
-  sodiumMg: z.number().nonnegative().optional(),
+  fiber: optionalNonNegativeNumber,
+  sodiumMg: optionalNonNegativeNumber,
+  sugarG: optionalNonNegativeNumber,
+  addedSugarG: optionalNonNegativeNumber,
+  saturatedFatG: optionalNonNegativeNumber,
+  cholesterolMg: optionalNonNegativeNumber,
+  caffeineMg: optionalNonNegativeNumber,
+  alcoholG: optionalNonNegativeNumber,
 });
 
 export type AiMacroNutrients = z.infer<typeof AiMacroNutrientsSchema>;

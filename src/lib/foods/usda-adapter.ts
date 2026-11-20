@@ -151,18 +151,24 @@ function extractUsdaServingOptions(raw: UsdaFoodPayload): {
 
 function extractNutrient(entry: UsdaNutrientEntry): {
   id?: number;
+  number?: string;
   name: string;
   unit: string;
   value: number;
 } {
+  const number =
+    typeof entry.nutrient?.number === 'string' && entry.nutrient.number.trim()
+      ? entry.nutrient.number.trim()
+      : typeof entry.nutrientNumber === 'string' && entry.nutrientNumber.trim()
+        ? entry.nutrientNumber.trim()
+        : undefined;
+
   const id =
     typeof entry.nutrient?.id === 'number'
       ? entry.nutrient.id
       : typeof entry.nutrientId === 'number'
         ? entry.nutrientId
-        : entry.nutrientNumber
-          ? parseInt(entry.nutrientNumber, 10)
-          : undefined;
+        : undefined;
 
   const name = entry.nutrient?.name || entry.nutrientName || '';
   const unit = entry.nutrient?.unitName || entry.unitName || '';
@@ -174,7 +180,7 @@ function extractNutrient(entry: UsdaNutrientEntry): {
         : 0;
 
   const value = Number.isFinite(rawValue) && rawValue > 0 ? rawValue : 0;
-  return { id, name, unit, value };
+  return { id, number, name, unit, value };
 }
 
 /**
@@ -201,48 +207,67 @@ export function mapUsdaFoodToFoodItem(
   const nutrientsList = Array.isArray(raw.foodNutrients) ? raw.foodNutrients : [];
 
   for (const entry of nutrientsList) {
-    const { id: nutId, unit, value } = extractNutrient(entry);
-    if (!nutId) continue;
+    const { id: nutId, number: nutNum, unit, value } = extractNutrient(entry);
+    if (!nutId && !nutNum) continue;
 
     // Reject Energy in kJ (1062) to prevent energy corruption
-    if (nutId === 1062 || unit.toLowerCase() === 'kj') {
+    if (nutId === 1062 || nutNum === '268' || unit.toLowerCase() === 'kj') {
       continue;
     }
 
-    if (nutId === 1008) {
+    if (nutId === 1008 || nutNum === '208') {
       calories = value;
-    } else if (nutId === 1003) {
+    } else if (nutId === 1003 || nutNum === '203') {
       protein = value;
-    } else if (nutId === 1004) {
+    } else if (nutId === 1004 || nutNum === '204') {
       fat = value;
-    } else if (nutId === 1005) {
+    } else if (nutId === 1005 || nutNum === '205') {
       carbs = value;
-    } else if (nutId === 1079) {
+    } else if (nutId === 1079 || nutNum === '291') {
       fiber = value;
-    } else if (nutId === 1093) {
+    } else if (nutId === 1093 || nutNum === '307') {
       micros.sodiumMg = round2(value);
-    } else if (nutId === 1092) {
+    } else if (nutId === 1092 || nutNum === '306') {
       micros.potassiumMg = round2(value);
-    } else if (nutId === 1087) {
+    } else if (nutId === 1087 || nutNum === '301') {
       micros.calciumMg = round2(value);
-    } else if (nutId === 1089) {
+    } else if (nutId === 1089 || nutNum === '303') {
       micros.ironMg = round2(value);
-    } else if (nutId === 1090) {
+    } else if (nutId === 1090 || nutNum === '304') {
       micros.magnesiumMg = round2(value);
-    } else if (nutId === 1095) {
+    } else if (nutId === 1095 || nutNum === '309') {
       micros.zincMg = round2(value);
-    } else if (nutId === 1106) {
+    } else if (nutId === 1106 || nutNum === '320') {
       micros.vitaminAMcg = round2(value);
-    } else if (nutId === 1162) {
+    } else if (nutId === 1162 || nutNum === '401') {
       micros.vitaminCMg = round2(value);
-    } else if (nutId === 1114) {
+    } else if (nutId === 1114 || nutNum === '328') {
       micros.vitaminDMcg = round2(value);
-    } else if (nutId === 1175) {
+    } else if (nutId === 1175 || nutNum === '415') {
       micros.vitaminB6Mg = round2(value);
-    } else if (nutId === 1178) {
+    } else if (nutId === 1178 || nutNum === '418') {
       micros.vitaminB12Mcg = round2(value);
-    } else if (nutId === 1177) {
+    } else if (nutId === 1177 || nutNum === '417') {
       micros.folateMcg = round2(value);
+    } else if (
+      nutId === 2000 ||
+      nutId === 1063 ||
+      nutNum === '269' ||
+      nutNum === '269.3'
+    ) {
+      if (micros.sugarG === undefined || value > 0) {
+        micros.sugarG = round2(value);
+      }
+    } else if (nutId === 1235 || nutNum === '539') {
+      micros.addedSugarG = round2(value);
+    } else if (nutId === 1258 || nutNum === '606') {
+      micros.saturatedFatG = round2(value);
+    } else if (nutId === 1253 || nutNum === '601') {
+      micros.cholesterolMg = round2(value);
+    } else if (nutId === 1057 || nutNum === '262') {
+      micros.caffeineMg = round2(value);
+    } else if (nutId === 1018 || nutNum === '221') {
+      micros.alcoholG = round2(value);
     }
   }
 

@@ -31,6 +31,25 @@ export interface OffNutriments {
   salt_100g?: number;
   salt_100ml?: number;
   salt_serving?: number;
+  sugars_100g?: number;
+  sugars_100ml?: number;
+  sugars_serving?: number;
+  'added-sugars_100g'?: number;
+  'added-sugars_100ml'?: number;
+  'added-sugars_serving'?: number;
+  'saturated-fat_100g'?: number;
+  'saturated-fat_100ml'?: number;
+  'saturated-fat_serving'?: number;
+  cholesterol_100g?: number;
+  cholesterol_100ml?: number;
+  cholesterol_serving?: number;
+  caffeine_100g?: number;
+  caffeine_100ml?: number;
+  caffeine_serving?: number;
+  alcohol?: number;
+  alcohol_100g?: number;
+  alcohol_100ml?: number;
+  alcohol_serving?: number;
   [key: string]: unknown;
 }
 
@@ -281,6 +300,56 @@ export function parseOffProduct(barcode: string, payload: unknown): FoodItem | n
     micros.sodiumMg = round2(rawSodium * 1000);
   } else if (rawSalt !== undefined) {
     micros.sodiumMg = round2(rawSalt * 400);
+  }
+
+  const pickBasisNutriment = (
+    baseKey: string,
+    fallbackBareKey = false
+  ): number | undefined => {
+    if (basis === 'perServing') {
+      return parseNumeric(nutriments[`${baseKey}_serving`]);
+    }
+    if (basis === 'per100ml') {
+      return (
+        parseNumeric(nutriments[`${baseKey}_100ml`]) ??
+        parseNumeric(nutriments[`${baseKey}_100g`]) ??
+        (fallbackBareKey ? parseNumeric(nutriments[baseKey]) : undefined)
+      );
+    }
+    return (
+      parseNumeric(nutriments[`${baseKey}_100g`]) ??
+      (fallbackBareKey ? parseNumeric(nutriments[baseKey]) : undefined)
+    );
+  };
+
+  const rawSugar = pickBasisNutriment('sugars');
+  if (rawSugar !== undefined) {
+    micros.sugarG = round2(Math.max(0, rawSugar));
+  }
+
+  const rawAddedSugar = pickBasisNutriment('added-sugars');
+  if (rawAddedSugar !== undefined) {
+    micros.addedSugarG = round2(Math.max(0, rawAddedSugar));
+  }
+
+  const rawSaturatedFat = pickBasisNutriment('saturated-fat');
+  if (rawSaturatedFat !== undefined) {
+    micros.saturatedFatG = round2(Math.max(0, rawSaturatedFat));
+  }
+
+  const rawCholesterol = pickBasisNutriment('cholesterol');
+  if (rawCholesterol !== undefined) {
+    micros.cholesterolMg = round2(Math.max(0, rawCholesterol) * 1000);
+  }
+
+  const rawCaffeine = pickBasisNutriment('caffeine');
+  if (rawCaffeine !== undefined) {
+    micros.caffeineMg = round2(Math.max(0, rawCaffeine) * 1000);
+  }
+
+  const rawAlcohol = pickBasisNutriment('alcohol', true);
+  if (rawAlcohol !== undefined) {
+    micros.alcoholG = round2(Math.max(0, rawAlcohol));
   }
 
   const nutrientsPerBasis: MacroNutrients = {

@@ -143,6 +143,59 @@ describe('Open Food Facts Adapter & Barcode Waterfall', () => {
       expect(withServingSodium?.basis).toBe('perServing');
       expect(withServingSodium?.micronutrientsPerBasis.sodiumMg).toBe(150);
     });
+
+    test('parses OFF extended nutrients across 100g and serving bases with g->mg conversion for cholesterol and caffeine', () => {
+      const per100gItem = parseOffProduct('0888', {
+        status: 1,
+        product: {
+          product_name: 'Dark Chocolate Espresso Bar',
+          nutriments: {
+            'energy-kcal_100g': 540,
+            sugars_100g: 32.5,
+            'added-sugars_100g': 28,
+            'saturated-fat_100g': 22.4,
+            cholesterol_100g: 0.015, // 15mg
+            caffeine_100g: 0.085, // 85mg
+            alcohol_100g: 1.2,
+          },
+        },
+      });
+      expect(per100gItem?.micronutrientsPerBasis).toMatchObject({
+        sugarG: 32.5,
+        addedSugarG: 28,
+        saturatedFatG: 22.4,
+        cholesterolMg: 15,
+        caffeineMg: 85,
+        alcoholG: 1.2,
+      });
+
+      const perServingItem = parseOffProduct('0889', {
+        status: 1,
+        product: {
+          product_name: 'Canned Iced Latte',
+          serving_quantity: 250,
+          serving_quantity_unit: 'ml',
+          nutriments: {
+            'energy-kcal_serving': 140,
+            sugars_serving: 18,
+            'added-sugars_serving': 12,
+            'saturated-fat_serving': 2.5,
+            cholesterol_serving: 0.01, // 10mg
+            caffeine_serving: 0.12, // 120mg
+            alcohol_serving: 0,
+          },
+        },
+      });
+      expect(perServingItem?.basis).toBe('perServing');
+      expect(perServingItem?.micronutrientsPerBasis).toMatchObject({
+        sugarG: 18,
+        addedSugarG: 12,
+        saturatedFatG: 2.5,
+        cholesterolMg: 10,
+        caffeineMg: 120,
+        alcoholG: 0,
+      });
+    });
   });
 
   describe('lookupBarcodeWaterfall', () => {

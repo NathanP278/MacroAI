@@ -18,7 +18,7 @@ export interface MicroMetric {
   key: string;
   name: string;
   unit: string;
-  category: 'mineral' | 'vitamin';
+  category: 'mineral' | 'vitamin' | 'extended';
   consumed: number;
   target: number;
   remaining: number;
@@ -33,7 +33,7 @@ export interface MicronutrientMeta {
   key: string;
   name: string;
   unit: string;
-  category: 'mineral' | 'vitamin';
+  category: 'mineral' | 'vitamin' | 'extended';
 }
 
 export interface DailySummary {
@@ -42,6 +42,8 @@ export interface DailySummary {
   carbs: MacroMetric;
   fat: MacroMetric;
   fiber: MacroMetric;
+  netCarbsG: number;
+  potassiumSodiumRatio: number | null;
   micros: Record<string, MicroMetric>;
   logsCount: number;
 }
@@ -61,9 +63,30 @@ export const RDA_MICRONUTRIENT_METADATA: Record<string, MicronutrientMeta> = {
   folateMcg: { key: 'folateMcg', name: 'Folate', unit: 'mcg', category: 'vitamin' },
 };
 
+export const EXTENDED_NUTRIENT_METADATA: Record<string, MicronutrientMeta> = {
+  sugarG: { key: 'sugarG', name: 'Sugar', unit: 'g', category: 'extended' },
+  addedSugarG: { key: 'addedSugarG', name: 'Added Sugar', unit: 'g', category: 'extended' },
+  saturatedFatG: { key: 'saturatedFatG', name: 'Saturated Fat', unit: 'g', category: 'extended' },
+  cholesterolMg: { key: 'cholesterolMg', name: 'Cholesterol', unit: 'mg', category: 'extended' },
+  caffeineMg: { key: 'caffeineMg', name: 'Caffeine', unit: 'mg', category: 'extended' },
+  alcoholG: { key: 'alcoholG', name: 'Alcohol', unit: 'g', category: 'extended' },
+};
+
+export const DEFAULT_EXTENDED_TARGETS: Record<string, number> = {
+  saturatedFatG: 20,
+  addedSugarG: 50,
+  cholesterolMg: 300,
+  caffeineMg: 400,
+  sugarG: 0,
+  alcoholG: 0,
+};
+
 export function getMicronutrientMeta(key: string): MicronutrientMeta {
   if (RDA_MICRONUTRIENT_METADATA[key]) {
     return RDA_MICRONUTRIENT_METADATA[key];
+  }
+  if (EXTENDED_NUTRIENT_METADATA[key]) {
+    return EXTENDED_NUTRIENT_METADATA[key];
   }
 
   // Graceful fallback for non-RDA or custom micronutrient keys
@@ -72,7 +95,7 @@ export function getMicronutrientMeta(key: string): MicronutrientMeta {
   const name = key
     .replace(/([A-Z])/g, ' $1')
     .replace(/^(.)/, (s) => s.toUpperCase())
-    .replace(/(Mg|Mcg)$/i, '')
+    .replace(/(Mg|Mcg|G)$/i, '')
     .trim();
 
   return {
@@ -92,6 +115,10 @@ function safeNum(val: unknown): number {
 
 function round1(val: number): number {
   return Math.round(val * 10) / 10;
+}
+
+function round2(val: number): number {
+  return Math.round((val + Number.EPSILON) * 100) / 100;
 }
 
 function computeMetric(
@@ -158,8 +185,11 @@ export function aggregateDailySummary(
   let totalFiber = 0;
   const microsSum: Record<string, number> = {};
 
-  // Initialize all standard RDA micro sums to 0
+  // Initialize all standard RDA and extended micro sums to 0
   for (const key of Object.keys(DEFAULT_RDA_MICROS)) {
+    microsSum[key] = 0;
+  }
+  for (const key of Object.keys(EXTENDED_NUTRIENT_METADATA)) {
     microsSum[key] = 0;
   }
 
@@ -196,9 +226,10 @@ export function aggregateDailySummary(
   const fatMetric = computeMetric(totalFat, targetFat, false);
   const fiberMetric = computeMetric(totalFiber, targetFiber, false);
 
-  // Micronutrients collection: standard 12 RDA plus any extras in targets or logs
+  // Micronutrients collection: standard 12 RDA + 6 extended nutrients plus any extras in targets or logs
   const allMicroKeys = new Set<string>([
     ...Object.keys(DEFAULT_RDA_MICROS),
+    ...Object.keys(EXTENDED_NUTRIENT_METADATA),
     ...Object.keys(microTargets ?? {}),
     ...Object.keys(microsSum),
   ]);
@@ -208,7 +239,11 @@ export function aggregateDailySummary(
   for (const key of allMicroKeys) {
     const meta = getMicronutrientMeta(key);
     const consumed = microsSum[key] ?? 0;
-    const target = microTargets?.[key] ?? DEFAULT_RDA_MICROS[key] ?? 0;
+    const target =
+      microTargets?.[key] ??
+      DEFAULT_RDA_MICROS[key] ??
+      DEFAULT_EXTENDED_TARGETS[key] ??
+      0;
     const metric = computeMetric(consumed, target, false);
 
     micros[key] = {
@@ -220,12 +255,19 @@ export function aggregateDailySummary(
     };
   }
 
+  const netCarbsG = Math.max(0, round1(carbsMetric.consumed - fiberMetric.consumed));
+  const sodiumMg = micros.sodiumMg?.consumed ?? 0;
+  const potassiumMg = micros.potassiumMg?.consumed ?? 0;
+  const potassiumSodiumRatio = sodiumMg > 0 ? round2(potassiumMg / sodiumMg) : null;
+
   return {
     calories: caloriesMetric,
     protein: proteinMetric,
     carbs: carbsMetric,
     fat: fatMetric,
     fiber: fiberMetric,
+    netCarbsG,
+    potassiumSodiumRatio,
     micros,
     logsCount: safeLogs.length,
   };

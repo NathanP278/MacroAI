@@ -43,9 +43,9 @@ export async function POST(request: Request) {
 
   const promptText = [
     'Output JSON immediately without extended thinking.',
-    'Extract nutrition facts from this label image: optional name, optional brand, servingSize (>0), servingUnit ("g"|"ml"|"serving"), calories, protein, carbs, fat, optional fiber, optional sodiumMg per serving.',
+    'Extract nutrition facts from this label image: optional name, optional brand, servingSize (>0), servingUnit ("g"|"ml"|"serving"), calories, protein, carbs, fat, and optional fiber, sodiumMg, sugarG, addedSugarG, saturatedFatG, cholesterolMg, caffeineMg, alcoholG per serving.',
     'Return ONLY compact JSON:',
-    '{"name":"Product Name","brand":"Brand","servingSize":30,"servingUnit":"g","calories":150,"protein":5,"carbs":25,"fat":3,"fiber":2,"sodiumMg":140}',
+    '{"name":"Product Name","brand":"Brand","servingSize":30,"servingUnit":"g","calories":150,"protein":5,"carbs":25,"fat":3,"fiber":2,"sodiumMg":140,"sugarG":8,"addedSugarG":6,"saturatedFatG":1,"cholesterolMg":15}',
   ].join('\n');
 
   try {

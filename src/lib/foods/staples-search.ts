@@ -37,7 +37,7 @@ const COOKED_MODIFIERS = new Set([
   'seared', 'sauteed', 'poached', 'scrambled', 'mashed', 'cooked',
 ]);
 
-const TRACKED_MICRONUTRIENT_KEYS = [
+const CORE_RDA_MICRONUTRIENT_KEYS = [
   'sodiumMg',
   'potassiumMg',
   'calciumMg',
@@ -51,6 +51,139 @@ const TRACKED_MICRONUTRIENT_KEYS = [
   'vitaminB12Mcg',
   'folateMcg',
 ] as const;
+
+export const TRACKED_MICRONUTRIENT_KEYS = [
+  ...CORE_RDA_MICRONUTRIENT_KEYS,
+  'sugarG',
+  'addedSugarG',
+  'saturatedFatG',
+  'cholesterolMg',
+  'caffeineMg',
+  'alcoholG',
+] as const;
+
+const round2 = (val: number): number => Math.round((val + Number.EPSILON) * 100) / 100;
+
+/**
+ * Deterministically estimates missing extended nutrients (sugarG, addedSugarG, saturatedFatG,
+ * cholesterolMg, caffeineMg, alcoholG) for offline staples and PH foods when not explicitly stored,
+ * preserving all pre-existing micronutrient values.
+ */
+export function estimateMissingStapleMicros(item: FoodItem): Micronutrients {
+  const existing: Micronutrients = { ...(item.micronutrientsPerBasis ?? {}) };
+  const { protein = 0, carbs = 0, fat = 0, fiber = 0 } = item.nutrientsPerBasis ?? {};
+  const netCarbs = Math.max(0, carbs - fiber);
+  const text = `${item.brand ?? ''} ${item.name ?? ''}`.toLowerCase();
+
+  if (typeof existing.sugarG !== 'number') {
+    if (netCarbs <= 0) {
+      existing.sugarG = 0;
+    } else if (
+      /\b(fruit|apple|banana|orange|mango|grape|berry|strawberry|blueberry|pineapple|watermelon|peach|pear|plum|cherry|papaya|guava|juice|soda|cola|sprite|royal|sarsi|honey|syrup|sugar|candy|chocolate|cake|cookie|ice cream|halo-halo|flan|donut|pastry|jam|jelly|sweet|sundae|float|shake|mocha|latte|caramel)\b/.test(
+        text
+      )
+    ) {
+      existing.sugarG = round2(Math.min(netCarbs, netCarbs * 0.65));
+    } else if (/\b(milk|yogurt|curd|whey)\b/.test(text)) {
+      existing.sugarG = round2(Math.min(netCarbs, netCarbs * 0.75));
+    } else if (
+      /\b(tomato|carrot|onion|beet|pepper|squash|corn|pea|sauce|ketchup|bbq|teriyaki|tocino|longganisa|tapa|adobo|bread|pandesal|bun|roll|cereal|granola|mcmuffin|burger)\b/.test(
+        text
+      )
+    ) {
+      existing.sugarG = round2(Math.min(netCarbs, netCarbs * 0.15));
+    } else {
+      existing.sugarG = round2(Math.min(netCarbs, netCarbs * 0.05));
+    }
+  }
+
+  if (typeof existing.addedSugarG !== 'number') {
+    const sugarVal = existing.sugarG ?? 0;
+    if (
+      sugarVal > 0 &&
+      /\b(sweetened|soda|cola|sprite|royal|sarsi|candy|chocolate|cake|cookie|ice cream|halo-halo|flan|donut|pastry|syrup|jam|jelly|sundae|float|shake|mocha|caramel|cereal|granola|tocino|bbq|ketchup)\b/.test(
+        text
+      )
+    ) {
+      existing.addedSugarG = round2(sugarVal * 0.75);
+    } else {
+      existing.addedSugarG = 0;
+    }
+  }
+
+  if (typeof existing.saturatedFatG !== 'number') {
+    if (fat <= 0) {
+      existing.saturatedFatG = 0;
+    } else if (
+      /\b(butter|cheese|cream|milk|yogurt|coconut|beef|steak|burger|pork|bacon|sausage|ham|longganisa|tocino|lechon|sisig|crispy|fried|chickenjoy|mcmuffin|mcdo|jollibee|chowking|kfc|chocolate|lard|tallow|ghee|egg)\b/.test(
+        text
+      )
+    ) {
+      existing.saturatedFatG = round2(Math.min(fat, fat * 0.38));
+    } else {
+      existing.saturatedFatG = round2(Math.min(fat, fat * 0.18));
+    }
+  }
+
+  if (typeof existing.cholesterolMg !== 'number') {
+    if (/\b(egg|mcmuffin|kwek|balut)\b/.test(text)) {
+      existing.cholesterolMg = round2(Math.max(120, protein * 14));
+    } else if (
+      /\b(liver|giblet|kidney|heart|shrimp|prawn|squid|calamari|crab|oyster|clam)\b/.test(
+        text
+      )
+    ) {
+      existing.cholesterolMg = round2(Math.max(140, protein * 7.5));
+    } else if (
+      /\b(chicken|turkey|duck|beef|steak|veal|pork|ham|bacon|sausage|lamb|goat|venison|fish|salmon|tuna|cod|tilapia|bangus|galunggong|sardine|mackerel|trout|halibut|milk|cheese|butter|cream|yogurt|ice cream|mcdo|jollibee|kfc|chowking|burger|chickenjoy|adobo|sinigang|sisig|lechon|tapa|tocino|longganisa)\b/.test(
+        text
+      )
+    ) {
+      existing.cholesterolMg = round2(Math.max(10, protein * 3.2 + fat * 1.1));
+    } else {
+      existing.cholesterolMg = 0;
+    }
+  }
+
+  if (typeof existing.caffeineMg !== 'number') {
+    if (/\bespresso\b/.test(text)) {
+      existing.caffeineMg = 212;
+    } else if (/\b(coffee|mocha|latte|cappuccino|americano|macchiato|brew)\b/.test(text)) {
+      existing.caffeineMg = 45;
+    } else if (/\b(energy drink|red bull|monster|cobra|sting)\b/.test(text)) {
+      existing.caffeineMg = 32;
+    } else if (/\b(tea|matcha|chai)\b/.test(text)) {
+      existing.caffeineMg = 20;
+    } else if (/\b(cola|coke|pepsi|mountain dew)\b/.test(text)) {
+      existing.caffeineMg = 10;
+    } else if (/\b(chocolate|cocoa|cacao|milo|ovaltine)\b/.test(text)) {
+      existing.caffeineMg = 12;
+    } else {
+      existing.caffeineMg = 0;
+    }
+  }
+
+  if (typeof existing.alcoholG !== 'number') {
+    if (/\b(gin|rum|vodka|whiskey|whisky|tequila|brandy|liquor)\b/.test(text)) {
+      existing.alcoholG = 33;
+    } else if (/\b(wine|sangria|sake|champagne|prosecco)\b/.test(text)) {
+      existing.alcoholG = 10;
+    } else if (/\b(beer|ale|lager|stout|cider|san miguel|red horse)\b/.test(text)) {
+      existing.alcoholG = 4;
+    } else {
+      existing.alcoholG = 0;
+    }
+  }
+
+  return existing;
+}
+
+function hydrateStapleList(items: FoodItem[]): FoodItem[] {
+  return items.map((item) => ({
+    ...item,
+    micronutrientsPerBasis: estimateMissingStapleMicros(item),
+  }));
+}
 
 function getFoodTokens(item: FoodItem): IndexedFoodTokens {
   const cached = foodTokenCache.get(item);
@@ -550,7 +683,7 @@ export async function loadStaples(): Promise<FoodItem[]> {
       const phData = phRes && phRes.ok ? await phRes.json() : null;
       const baseItems = Array.isArray(baseData) ? baseData : [];
       const phItems = Array.isArray(phData) ? phData : [];
-      const merged = [...baseItems, ...phItems];
+      const merged = hydrateStapleList([...baseItems, ...phItems]);
       if (merged.length > 0) {
         cachedStaples = merged;
         return cachedStaples;
@@ -578,7 +711,7 @@ export async function loadStaples(): Promise<FoodItem[]> {
         readJsonArray('public/data/staples-2500.json'),
         readJsonArray('public/data/ph-foods.json'),
       ]);
-      cachedStaples = [...baseItems, ...phItems];
+      cachedStaples = hydrateStapleList([...baseItems, ...phItems]);
       return cachedStaples;
     } catch (err) {
       console.warn('Could not read staples file:', err);
@@ -606,7 +739,7 @@ export async function searchStaples(query: string, limit: number = 25): Promise<
 
 function hasAllTrackedMicros(micros?: Micronutrients): boolean {
   if (!micros) return false;
-  for (const key of TRACKED_MICRONUTRIENT_KEYS) {
+  for (const key of CORE_RDA_MICRONUTRIENT_KEYS) {
     if (typeof micros[key] !== 'number') {
       return false;
     }
@@ -632,7 +765,7 @@ function selectCleanStapleCandidate(candidates: FoodItem[], query: string): Food
  */
 export async function enrichMealItemsWithStaples<
   T extends { name: string; microsPer100g?: Micronutrients },
->(items: T[]): Promise<T[]> {
+>(items: T[]): Promise<Array<T & { microsPer100g?: Micronutrients }>> {
   if (!Array.isArray(items) || items.length === 0) {
     return items;
   }
@@ -658,11 +791,12 @@ export async function enrichMealItemsWithStaples<
       return item;
     }
 
+    const stapleMicros = estimateMissingStapleMicros(bestStaple);
     const mergedMicros: Micronutrients = { ...(item.microsPer100g ?? {}) };
     let changed = false;
     for (const key of TRACKED_MICRONUTRIENT_KEYS) {
       const existingVal = mergedMicros[key];
-      const stapleVal = bestStaple.micronutrientsPerBasis[key];
+      const stapleVal = stapleMicros[key];
       if (typeof existingVal !== 'number' && typeof stapleVal === 'number') {
         mergedMicros[key] = stapleVal;
         changed = true;

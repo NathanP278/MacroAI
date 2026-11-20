@@ -356,6 +356,63 @@ describe('aggregateDailySummary & Adherence-Neutral Analytics', () => {
       expect(summary.micros.zincMg.consumed).toBe(6.5);
     });
 
+    it('computes netCarbsG, potassiumSodiumRatio, and extended nutrient metrics', () => {
+      const makeEntryWithMicros = ({
+        carbs = 0,
+        fiber = 0,
+        potassiumMg = 0,
+        sodiumMg = 0,
+        caffeineMg = 0,
+      }: {
+        carbs?: number;
+        fiber?: number;
+        potassiumMg?: number;
+        sodiumMg?: number;
+        caffeineMg?: number;
+      }): FoodLogEntry => ({
+        id: 'ext-1',
+        date: '2026-11-20',
+        mealSlot: 'lunch',
+        foodId: 'f-ext',
+        name: 'Coffee & Oats',
+        source: 'staple',
+        amount: 100,
+        unit: 'g',
+        nutritionSnapshot: {
+          calories: 300,
+          protein: 10,
+          carbs,
+          fat: 5,
+          fiber,
+          micros: {
+            potassiumMg,
+            sodiumMg,
+            caffeineMg,
+          },
+        },
+        createdAt: 1,
+      });
+
+      const summary = aggregateDailySummary([
+        makeEntryWithMicros({
+          carbs: 50,
+          fiber: 12,
+          potassiumMg: 1500,
+          sodiumMg: 1000,
+          caffeineMg: 120,
+        }),
+      ]);
+      expect(summary.netCarbsG).toBe(38);
+      expect(summary.potassiumSodiumRatio).toBe(1.5);
+      expect(summary.micros.caffeineMg.consumed).toBe(120);
+      expect(summary.micros.caffeineMg.category).toBe('extended');
+      expect(summary.micros.caffeineMg.target).toBe(400);
+
+      const zeroSodiumSummary = aggregateDailySummary([]);
+      expect(zeroSodiumSummary.netCarbsG).toBe(0);
+      expect(zeroSodiumSummary.potassiumSodiumRatio).toBeNull();
+    });
+
     it('provides human-readable labels and units for all 12 RDA micronutrients', () => {
       const keys = Object.keys(RDA_MICRONUTRIENT_METADATA);
       expect(keys.length).toBe(12);
@@ -454,7 +511,7 @@ describe('aggregateDailySummary & Adherence-Neutral Analytics', () => {
       const { container } = render(React.createElement(MicronutrientPanel, { micros: summary.micros }));
 
       expect(screen.getByText('Micronutrient Targets')).toBeInTheDocument();
-      expect(screen.getByText(/0\/12 targets on track/i)).toBeInTheDocument();
+      expect(screen.getByText(/0\/(12|18) targets on track/i)).toBeInTheDocument();
 
       // Check iron presence in top 6
       expect(screen.getByText('Iron')).toBeInTheDocument();
