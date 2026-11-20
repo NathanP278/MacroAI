@@ -2,6 +2,7 @@
 
 import React, { useRef } from 'react';
 import { AppShell } from '@/components/shell/app-shell';
+import { SettingsHeaderLink } from '@/components/shell/settings-header-link';
 import { MealSlotsView } from '@/components/log/meal-slots-view';
 import { useLoggerStore } from '@/stores/logger-store';
 import { offsetIsoDate } from '@/lib/recipes/recipe-builder';
@@ -96,9 +97,9 @@ export default function LogPage() {
         <header
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
-          className="flex flex-wrap items-end justify-between gap-3"
+          className="flex flex-wrap items-center sm:items-end justify-between gap-x-2 gap-y-3"
         >
-          <div>
+          <div className="min-w-0 flex-1 sm:flex-initial">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Food Log
             </h1>
@@ -107,7 +108,7 @@ export default function LogPage() {
             </p>
           </div>
 
-          <div className="flex items-center justify-between sm:justify-end gap-1.5 w-full sm:w-auto shrink-0">
+          <div className="order-3 sm:order-2 sm:ml-auto flex items-center justify-between sm:justify-end gap-1.5 w-full sm:w-auto shrink-0">
             {!isToday && (
               <button
                 type="button"
@@ -138,6 +139,10 @@ export default function LogPage() {
             >
               <ChevronRight className="w-4 h-4" />
             </button>
+          </div>
+
+          <div className="order-2 sm:order-3 shrink-0">
+            <SettingsHeaderLink />
           </div>
         </header>
 

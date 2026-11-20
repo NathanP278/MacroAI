@@ -1,8 +1,19 @@
 import { create } from 'zustand';
-import type { MacroNutrients, Micronutrients } from '@/types/nutrition';
+import type {
+  CustomRecipeIngredient,
+  FoodLogEntry,
+  MacroNutrients,
+  Micronutrients,
+} from '@/types/nutrition';
 import type { TransitionDirection } from '@/lib/motion';
 
-export type LogSheetType = 'ai-scan' | 'barcode' | 'search' | 'quick-add' | 'weight';
+export type LogSheetType =
+  | 'ai-scan'
+  | 'barcode'
+  | 'search'
+  | 'quick-add'
+  | 'weight'
+  | 'meal-ideas';
 
 export interface UndoToastItem {
   id: string;
@@ -33,6 +44,8 @@ export interface LoggerState {
   activeSheet: LogSheetType | null;
   searchInitialQuery: string;
   aiDraft: AiDraft | null;
+  editingEntry: FoodLogEntry | null;
+  recipeSeedIngredients: CustomRecipeIngredient[] | null;
   undoToast: UndoToastItem | null;
   isCommandPaletteOpen: boolean;
   syncAuthLocked: boolean;
@@ -43,6 +56,9 @@ export interface LoggerState {
   setActiveMealSlot: (slot: string) => void;
   setAiDraft: (draft: AiDraft | null) => void;
   resetDraft: () => void;
+  setEditingEntry: (entry: FoodLogEntry | null) => void;
+  setRecipeSeedIngredients: (ingredients: CustomRecipeIngredient[] | null) => void;
+  openRecipeBuilderWithIngredients: (ingredients: CustomRecipeIngredient[]) => void;
   showUndoToast: (item: Omit<UndoToastItem, 'id'>) => void;
   dismissUndoToast: () => void;
   setCommandPaletteOpen: (open: boolean) => void;
@@ -64,6 +80,8 @@ export const useLoggerStore = create<LoggerState>((set) => ({
   activeSheet: null,
   searchInitialQuery: '',
   aiDraft: null,
+  editingEntry: null,
+  recipeSeedIngredients: null,
   undoToast: null,
   isCommandPaletteOpen: false,
   syncAuthLocked: false,
@@ -72,7 +90,12 @@ export const useLoggerStore = create<LoggerState>((set) => ({
       activeSheet: sheet,
       activeMealSlot: mealSlot ?? (state.activeMealSlot || 'log'),
     })),
-  closeSheet: () => set({ activeSheet: null, searchInitialQuery: '' }),
+  closeSheet: () =>
+    set({
+      activeSheet: null,
+      searchInitialQuery: '',
+      activeMealSlot: 'log',
+    }),
   setSearchInitialQuery: (query) => set({ searchInitialQuery: query }),
   setActiveDate: (date) =>
     set((state) => ({
@@ -87,6 +110,11 @@ export const useLoggerStore = create<LoggerState>((set) => ({
   setActiveMealSlot: (slot) => set({ activeMealSlot: slot }),
   setAiDraft: (draft) => set({ aiDraft: draft }),
   resetDraft: () => set({ aiDraft: null }),
+  setEditingEntry: (entry) => set({ editingEntry: entry }),
+  setRecipeSeedIngredients: (ingredients) =>
+    set({ recipeSeedIngredients: ingredients }),
+  openRecipeBuilderWithIngredients: (ingredients) =>
+    set({ recipeSeedIngredients: ingredients }),
   showUndoToast: (item) =>
     set({
       undoToast: {

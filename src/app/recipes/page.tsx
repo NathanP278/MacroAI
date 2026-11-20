@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db/macroai-db';
 import { AppShell } from '@/components/shell/app-shell';
+import { SettingsHeaderLink } from '@/components/shell/settings-header-link';
 import { RecipeBuilderModal } from '@/components/recipes/recipe-builder-modal';
 import { RecipeCardSkeleton } from '@/components/ui/skeleton';
 import { logCustomRecipe } from '@/lib/recipes/recipe-builder';
@@ -123,14 +124,17 @@ export default function RecipesPage() {
               )}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleOpenCreate}
-            className="touch-target tactile-press shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
-          >
-            <Plus className="w-4 h-4" aria-hidden="true" />
-            <span>Create</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleOpenCreate}
+              className="touch-target tactile-press shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
+            >
+              <Plus className="w-4 h-4" aria-hidden="true" />
+              <span>Create</span>
+            </button>
+            <SettingsHeaderLink />
+          </div>
         </header>
 
         {/* Search Bar & Count Summary */}

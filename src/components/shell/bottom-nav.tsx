@@ -8,7 +8,7 @@ import {
   Apple,
   Plus,
   UtensilsCrossed,
-  Settings,
+  TrendingUp,
   Search,
   ScanBarcode,
   Sparkles,
@@ -34,8 +34,8 @@ const NAV_ITEMS_LEFT: NavItem[] = [
 ];
 
 const NAV_ITEMS_RIGHT: NavItem[] = [
+  { label: "Trends", href: "/trends", icon: TrendingUp },
   { label: "Recipes", href: "/recipes", icon: UtensilsCrossed },
-  { label: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps) {

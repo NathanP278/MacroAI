@@ -1,10 +1,23 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { Sparkles, ScanBarcode, Search, Zap, X } from "lucide-react";
+import {
+  Sparkles,
+  ScanBarcode,
+  Search,
+  Zap,
+  Scale,
+  ChevronRight,
+  X,
+} from "lucide-react";
 import { triggerHaptic } from "@/lib/motion";
 
-export type QuickActionType = "ai-scan" | "barcode" | "search" | "quick-add";
+export type QuickActionType =
+  | "ai-scan"
+  | "barcode"
+  | "search"
+  | "quick-add"
+  | "weight";
 
 export interface QuickActionDockProps {
   onAction: (action: QuickActionType) => void;
@@ -77,13 +90,15 @@ export function QuickActionDock({ onAction, onClose }: QuickActionDockProps) {
       );
       if (activeIdx === -1) return;
 
+      const totalButtons = ACTION_ITEMS.length + 1;
+
       if (e.key === "ArrowDown" || e.key === "ArrowRight") {
         e.preventDefault();
-        const next = (activeIdx + 1) % ACTION_ITEMS.length;
+        const next = (activeIdx + 1) % totalButtons;
         buttonRefs.current[next]?.focus();
       } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
         e.preventDefault();
-        const prev = (activeIdx - 1 + ACTION_ITEMS.length) % ACTION_ITEMS.length;
+        const prev = (activeIdx - 1 + totalButtons) % totalButtons;
         buttonRefs.current[prev]?.focus();
       }
     };
@@ -126,40 +141,75 @@ export function QuickActionDock({ onAction, onClose }: QuickActionDockProps) {
           </button>
         </div>
 
-        {/* Action Grid */}
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 pt-4 pb-1 sm:pb-0">
-          {ACTION_ITEMS.map((item, idx) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                ref={(el) => {
-                  buttonRefs.current[idx] = el;
-                }}
-                type="button"
-                onClick={() => {
-                  triggerHaptic(8);
-                  onAction(item.id);
-                  onClose?.();
-                }}
-                aria-label={item.label}
-                style={{ "--stagger-index": idx } as React.CSSProperties}
-                className="stagger-item tactile-press flex flex-col items-start p-3 sm:p-3.5 rounded-2xl bg-surface-sub hover:bg-accent border border-border hover:border-border-focus text-left group min-w-0"
-              >
-                <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center border mb-2.5 transition-transform duration-150 group-hover:scale-105 ${item.accentColor}`}
+        {/* Action Grid + Full-Width Weigh-In Action */}
+        <div className="pt-4 pb-1 sm:pb-0 space-y-2.5 sm:space-y-3">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+            {ACTION_ITEMS.map((item, idx) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  ref={(el) => {
+                    buttonRefs.current[idx] = el;
+                  }}
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic(8);
+                    onAction(item.id);
+                    onClose?.();
+                  }}
+                  aria-label={item.label}
+                  style={{ "--stagger-index": idx } as React.CSSProperties}
+                  className="stagger-item tactile-press flex flex-col items-start p-3 sm:p-3.5 rounded-2xl bg-surface-sub hover:bg-accent border border-border hover:border-border-focus text-left group min-w-0"
                 >
-                  <Icon className="w-5 h-5" aria-hidden="true" />
-                </div>
-                <span className="text-xs font-semibold text-foreground tracking-tight">
-                  {item.label}
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center border mb-2.5 transition-transform duration-150 group-hover:scale-105 ${item.accentColor}`}
+                  >
+                    <Icon className="w-5 h-5" aria-hidden="true" />
+                  </div>
+                  <span className="text-xs font-semibold text-foreground tracking-tight">
+                    {item.label}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+                    {item.sublabel}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            ref={(el) => {
+              buttonRefs.current[ACTION_ITEMS.length] = el;
+            }}
+            type="button"
+            onClick={() => {
+              triggerHaptic(8);
+              onAction("weight");
+              onClose?.();
+            }}
+            aria-label="Log Weigh-In"
+            style={{ "--stagger-index": ACTION_ITEMS.length } as React.CSSProperties}
+            className="stagger-item tactile-press touch-target w-full flex items-center justify-between gap-3 px-3.5 py-3 rounded-2xl bg-surface-sub hover:bg-accent border border-border hover:border-border-focus text-left group"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center border text-[var(--macro-fiber)] bg-[var(--macro-fiber)]/12 border-[var(--macro-fiber)]/25 shrink-0 transition-transform duration-150 group-hover:scale-105">
+                <Scale className="w-5 h-5" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <span className="block text-xs font-semibold text-foreground tracking-tight">
+                  Log Weigh-In
                 </span>
-                <span className="text-[11px] text-muted-foreground leading-snug mt-0.5">
-                  {item.sublabel}
+                <span className="block text-[11px] text-muted-foreground leading-snug">
+                  Record body weight &amp; trend
                 </span>
-              </button>
-            );
-          })}
+              </div>
+            </div>
+            <ChevronRight
+              className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0 transition-transform duration-150 group-hover:translate-x-0.5"
+              aria-hidden="true"
+            />
+          </button>
         </div>
       </div>
     </div>

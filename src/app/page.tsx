@@ -14,6 +14,7 @@ import {
 } from '@/components/dashboard/habits-analytics-grid';
 import { MicronutrientPanel } from '@/components/dashboard/micronutrient-panel';
 import { AppShell } from '@/components/shell/app-shell';
+import { SettingsHeaderLink } from '@/components/shell/settings-header-link';
 import { FoodRowSkeleton } from '@/components/ui/skeleton';
 import { runViewTransition, triggerHaptic } from '@/lib/motion';
 import type { FoodLogEntry, UserGoals } from '@/types/nutrition';
@@ -337,6 +338,7 @@ export default function HomePage() {
             >
               <ChevronRight className="w-4 h-4" />
             </button>
+            <SettingsHeaderLink />
           </div>
         </header>
 

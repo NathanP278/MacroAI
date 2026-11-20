@@ -1,19 +1,51 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { AppShell } from '../app-shell';
-import { useLoggerStore } from '@/stores/logger-store';
+import { useLoggerStore, type LogSheetType } from '@/stores/logger-store';
+import { db } from '@/lib/db/macroai-db';
+import HomePage from '@/app/page';
+import LogPage from '@/app/log/page';
+import RecipesPage from '@/app/recipes/page';
+import TrendsPage from '@/app/trends/page';
+
+const { mockUsePathname } = vi.hoisted(() => ({
+  mockUsePathname: vi.fn<() => string | null>(() => null),
+}));
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => mockUsePathname(),
+}));
 
 describe('AppShell', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    mockUsePathname.mockReturnValue(null);
+    if (!db.isOpen()) {
+      await db.open();
+    }
+    await Promise.all([
+      db.foodLogs.clear(),
+      db.customRecipes.clear(),
+      db.userGoals.clear(),
+    ]);
     useLoggerStore.setState({
       activeDate: '2026-11-14',
+      dateDirection: null,
       activeMealSlot: 'breakfast',
       activeSheet: null,
+      searchInitialQuery: '',
       aiDraft: null,
+      editingEntry: null,
+      recipeSeedIngredients: null,
       isCommandPaletteOpen: false,
       undoToast: null,
+      syncAuthLocked: false,
     });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('toggles quick-action dock with all four logging entry points', () => {
@@ -142,5 +174,187 @@ describe('AppShell', () => {
       expect(onUndoKey).toHaveBeenCalledTimes(1);
       expect(screen.queryByTestId('undo-toast')).not.toBeInTheDocument();
     });
+  });
+
+  it('renders Dashboard, Food Log, Trends, Recipes in bottom nav and Log Weigh-In in quick actions dock', () => {
+    const handleQuickAction = vi.fn();
+    render(
+      <AppShell onQuickAction={handleQuickAction}>
+        <div>Body</div>
+      </AppShell>
+    );
+
+    const nav = screen.getByTestId('bottom-nav');
+    expect(nav).toHaveTextContent(/dashboard/i);
+    expect(nav).toHaveTextContent(/food log/i);
+    expect(nav).toHaveTextContent(/trends/i);
+    expect(nav).toHaveTextContent(/recipes/i);
+    expect(nav).not.toHaveTextContent(/settings/i);
+
+    expect(screen.getByRole('link', { name: /trends/i })).toHaveAttribute('href', '/trends');
+    expect(screen.getByRole('link', { name: /recipes/i })).toHaveAttribute('href', '/recipes');
+
+    fireEvent.click(screen.getByRole('button', { name: /open quick actions/i }));
+    const weighInBtn = screen.getByRole('button', { name: /log weigh-in/i });
+    expect(weighInBtn).toBeInTheDocument();
+
+    fireEvent.click(weighInBtn);
+    expect(handleQuickAction).toHaveBeenCalledWith('weight');
+    expect(useLoggerStore.getState().activeSheet).toBe('weight');
+    expect(screen.queryByTestId('quick-action-dock')).not.toBeInTheDocument();
+  });
+
+  it('extends useLoggerStore with v2 sheet types, editingEntry, recipeSeedIngredients, and resets activeMealSlot on closeSheet', () => {
+    const mealIdeasSheet: LogSheetType = 'meal-ideas';
+    const weightSheet: LogSheetType = 'weight';
+
+    const store = useLoggerStore.getState();
+    store.openSheet(mealIdeasSheet, 'dinner');
+    expect(useLoggerStore.getState().activeSheet).toBe('meal-ideas');
+    expect(useLoggerStore.getState().activeMealSlot).toBe('dinner');
+
+    store.closeSheet();
+    expect(useLoggerStore.getState().activeSheet).toBeNull();
+    expect(useLoggerStore.getState().activeMealSlot).toBe('log');
+
+    store.openSheet(weightSheet);
+    expect(useLoggerStore.getState().activeSheet).toBe('weight');
+
+    const sampleEntry = {
+      id: 'entry-1',
+      date: '2026-11-14',
+      mealSlot: 'log',
+      foodId: 'staple:eggs',
+      name: 'Boiled Eggs',
+      source: 'staple' as const,
+      amount: 100,
+      unit: 'g',
+      nutritionSnapshot: {
+        calories: 155,
+        protein: 13,
+        carbs: 1.1,
+        fat: 11,
+        fiber: 0,
+        micros: {},
+      },
+      createdAt: 1000,
+    };
+    store.setEditingEntry(sampleEntry);
+    expect(useLoggerStore.getState().editingEntry).toEqual(sampleEntry);
+    store.setEditingEntry(null);
+    expect(useLoggerStore.getState().editingEntry).toBeNull();
+
+    const seedIngredients = [
+      {
+        foodId: 'staple:eggs',
+        name: 'Boiled Eggs',
+        amount: 100,
+        unit: 'g',
+        nutritionSnapshot: {
+          calories: 155,
+          protein: 13,
+          carbs: 1.1,
+          fat: 11,
+          fiber: 0,
+          micros: {},
+        },
+      },
+    ];
+    store.openRecipeBuilderWithIngredients(seedIngredients);
+    expect(useLoggerStore.getState().recipeSeedIngredients).toEqual(seedIngredients);
+    store.setRecipeSeedIngredients(null);
+    expect(useLoggerStore.getState().recipeSeedIngredients).toBeNull();
+  });
+
+  it('renders non-blocking dismissible syncAuthLocked banner with inline SyncUnlockCard and reappears on re-lock', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ authenticated: true }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <AppShell>
+        <div>Offline Workspace Content</div>
+      </AppShell>
+    );
+
+    expect(screen.queryByTestId('sync-auth-banner')).not.toBeInTheDocument();
+
+    act(() => {
+      useLoggerStore.getState().setSyncAuthLocked(true);
+    });
+
+    const banner = await screen.findByTestId('sync-auth-banner');
+    expect(banner).toBeInTheDocument();
+    expect(screen.getByText('Offline Workspace Content')).toBeInTheDocument();
+    expect(banner.innerHTML).not.toMatch(/#ef4444|text-red|bg-red|border-red/i);
+
+    // Dismissing hides banner while keeping workspace accessible
+    fireEvent.click(screen.getByRole('button', { name: /dismiss cloud sync notice/i }));
+    expect(screen.queryByTestId('sync-auth-banner')).not.toBeInTheDocument();
+    expect(screen.getByText('Offline Workspace Content')).toBeInTheDocument();
+
+    // Cycling false -> true resurfaces banner
+    act(() => {
+      useLoggerStore.getState().setSyncAuthLocked(false);
+    });
+    act(() => {
+      useLoggerStore.getState().setSyncAuthLocked(true);
+    });
+
+    expect(await screen.findByTestId('sync-auth-banner')).toBeInTheDocument();
+
+    // 1-tap Unlock Cloud Sync expands SyncUnlockCard inline and unlocks on valid passphrase
+    fireEvent.click(screen.getByRole('button', { name: /unlock cloud sync/i }));
+    expect(screen.getByTestId('sync-unlock-card')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/sync access passphrase/i), {
+      target: { value: 'secret-key' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^unlock$/i }));
+
+    await waitFor(() => {
+      expect(useLoggerStore.getState().syncAuthLocked).toBe(false);
+      expect(screen.queryByTestId('sync-auth-banner')).not.toBeInTheDocument();
+    });
+  });
+
+  it('hides Quick Search Strip on /trends and marks Trends nav tab active', () => {
+    mockUsePathname.mockReturnValue('/trends');
+
+    render(<TrendsPage />);
+
+    expect(screen.getByRole('heading', { name: /^trends$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /search for a food/i })).not.toBeInTheDocument();
+
+    const trendsLink = screen.getByRole('link', { name: /trends/i });
+    expect(trendsLink).toHaveAttribute('aria-current', 'page');
+
+    const settingsLink = screen.getByRole('link', { name: /^settings$/i });
+    expect(settingsLink).toHaveAttribute('href', '/settings');
+  });
+
+  it('renders top-right Settings link (/settings) on /, /log, and /recipes headers and keeps Quick Search Strip only on / and /log', () => {
+    const pages = [
+      { name: 'Dashboard', node: <HomePage />, path: '/', hasSearchStrip: true },
+      { name: 'Food Log', node: <LogPage />, path: '/log', hasSearchStrip: true },
+      { name: 'Recipes', node: <RecipesPage />, path: '/recipes', hasSearchStrip: false },
+    ];
+
+    for (const page of pages) {
+      mockUsePathname.mockReturnValue(page.path);
+      const { unmount } = render(page.node);
+      const settingsLink = screen.getByRole('link', { name: /^settings$/i });
+      expect(settingsLink).toHaveAttribute('href', '/settings');
+
+      const searchStripBtn = screen.queryByRole('button', { name: /search for a food/i });
+      if (page.hasSearchStrip) {
+        expect(searchStripBtn).toBeInTheDocument();
+      } else {
+        expect(searchStripBtn).not.toBeInTheDocument();
+      }
+      unmount();
+    }
   });
 });
