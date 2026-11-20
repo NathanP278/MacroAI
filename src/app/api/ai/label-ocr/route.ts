@@ -11,11 +11,17 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON request body' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid JSON request body' },
+      { status: 400, headers: NO_STORE_HEADERS }
+    );
   }
 
-  if (!body || typeof body !== 'object') {
-    return NextResponse.json({ error: 'Request body must be a JSON object' }, { status: 400 });
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return NextResponse.json(
+      { error: 'Request body must be a JSON object' },
+      { status: 400, headers: NO_STORE_HEADERS }
+    );
   }
 
   const { imageDataUrl } = body as { imageDataUrl?: string };
@@ -23,7 +29,7 @@ export async function POST(request: Request) {
   if (!imageDataUrl || typeof imageDataUrl !== 'string' || !imageDataUrl.startsWith('data:')) {
     return NextResponse.json(
       { error: 'Missing or invalid imageDataUrl: must be a valid base64 data URL' },
-      { status: 400 }
+      { status: 400, headers: NO_STORE_HEADERS }
     );
   }
 
@@ -31,7 +37,7 @@ export async function POST(request: Request) {
   if (!config.isConfigured) {
     return NextResponse.json(
       { error: 'AI service is not configured. Please set server environment variables.' },
-      { status: 503 }
+      { status: 503, headers: NO_STORE_HEADERS }
     );
   }
 
@@ -69,9 +75,15 @@ export async function POST(request: Request) {
     return NextResponse.json(parsed, { status: 200, headers: NO_STORE_HEADERS });
   } catch (err: unknown) {
     if (err instanceof AiServiceError) {
-      return NextResponse.json({ error: err.message }, { status: err.status });
+      return NextResponse.json(
+        { error: err.message },
+        { status: err.status, headers: NO_STORE_HEADERS }
+      );
     }
     const message = err instanceof Error ? err.message : 'Failed to scan nutrition label';
-    return NextResponse.json({ error: message }, { status: 422 });
+    return NextResponse.json(
+      { error: message },
+      { status: 422, headers: NO_STORE_HEADERS }
+    );
   }
 }

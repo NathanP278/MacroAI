@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -23,8 +23,9 @@ export function CentralDbStatusCard() {
   const [error, setError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const syncAuthLocked = useLoggerStore((s) => s.syncAuthLocked);
+  const prevSyncLockedRef = useRef(syncAuthLocked);
 
-  const handleSync = async () => {
+  const handleSync = useCallback(async () => {
     setIsSyncing(true);
     setError(null);
     try {
@@ -40,15 +41,26 @@ export function CentralDbStatusCard() {
     } finally {
       setIsSyncing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!isCloudSyncEnabled()) return;
     const timer = setTimeout(() => {
-      handleSync();
+      void handleSync();
     }, 0);
     return () => clearTimeout(timer);
-  }, []);
+  }, [handleSync]);
+
+  useEffect(() => {
+    const wasLocked = prevSyncLockedRef.current;
+    prevSyncLockedRef.current = syncAuthLocked;
+    if (wasLocked && !syncAuthLocked && isCloudSyncEnabled()) {
+      const timer = setTimeout(() => {
+        void handleSync();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [syncAuthLocked, handleSync]);
 
   const modeDisplay = (() => {
     if (!status) return null;
@@ -102,7 +114,7 @@ export function CentralDbStatusCard() {
       )}
 
       {/* Status Details */}
-      {(status || error) && (
+      {!syncAuthLocked && (status || error) && (
         <div className="bg-surface-sub rounded-xl p-3 space-y-2 text-xs">
           {status && (
             <>

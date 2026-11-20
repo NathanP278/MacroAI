@@ -1,7 +1,7 @@
 import React from 'react';
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { db } from '../macroai-db';
 import {
   SyncAuthError,
@@ -498,6 +498,79 @@ describe('Central Database (Turso / libSQL) & Hybrid Dexie Sync', () => {
       expect(latest?.weightKg).toBe(76.5);
     });
 
+    it('breaks same-day weightLogs ties by recordedAt DESC, then createdAt DESC', async () => {
+      const sameDayEarlierRecordedNewerCreated: WeightLogEntry = {
+        id: 'w-tie-a',
+        date: '2026-11-20',
+        weightKg: 77.0,
+        source: 'manual',
+        recordedAt: '2026-11-20T06:00:00.000Z',
+        createdAt: 5000,
+        updatedAt: 5000,
+      };
+      const sameDayLaterRecordedEarlierCreated: WeightLogEntry = {
+        id: 'w-tie-b',
+        date: '2026-11-20',
+        weightKg: 76.4,
+        source: 'apple_health',
+        recordedAt: '2026-11-20T08:30:00.000Z',
+        createdAt: 2000,
+        updatedAt: 2000,
+      };
+
+      await applyTableMutation({
+        table: 'weightLogs',
+        op: 'put',
+        values: [sameDayEarlierRecordedNewerCreated, sameDayLaterRecordedEarlierCreated],
+      });
+
+      const latestByRecorded = await getLatestWeightLog();
+      expect(latestByRecorded?.id).toBe('w-tie-b');
+
+      const allAfterRecorded = await getAllCentralTables();
+      expect(allAfterRecorded.tables.weightLogs.map((w) => w.id)).toEqual([
+        'w-tie-b',
+        'w-tie-a',
+      ]);
+
+      // Exact same date & recordedAt -> breaks tie by createdAt DESC
+      const exactTieOlder: WeightLogEntry = {
+        id: 'w-tie-c',
+        date: '2026-11-21',
+        weightKg: 76.2,
+        source: 'manual',
+        recordedAt: '2026-11-21T07:00:00.000Z',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const exactTieNewer: WeightLogEntry = {
+        id: 'w-tie-d',
+        date: '2026-11-21',
+        weightKg: 76.1,
+        source: 'manual',
+        recordedAt: '2026-11-21T07:00:00.000Z',
+        createdAt: 3000,
+        updatedAt: 3000,
+      };
+
+      await applyTableMutation({
+        table: 'weightLogs',
+        op: 'put',
+        values: [exactTieOlder, exactTieNewer],
+      });
+
+      const latestByCreated = await getLatestWeightLog();
+      expect(latestByCreated?.id).toBe('w-tie-d');
+
+      const allAfterCreated = await getAllCentralTables();
+      expect(allAfterCreated.tables.weightLogs.map((w) => w.id)).toEqual([
+        'w-tie-d',
+        'w-tie-c',
+        'w-tie-b',
+        'w-tie-a',
+      ]);
+    });
+
     it('rejects unauthenticated /api/db/sync and /api/ai/* when SYNC_ACCESS_KEY is set, and accepts Bearer token', async () => {
       process.env.SYNC_ACCESS_KEY = 'secret-passphrase';
 
@@ -583,6 +656,16 @@ describe('Central Database (Turso / libSQL) & Hybrid Dexie Sync', () => {
         })
       );
       expect(badPassRes.status).toBe(401);
+
+      const arrayBodyRes = await syncSessionPost(
+        new Request('http://localhost/api/auth/sync-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '[]',
+        })
+      );
+      expect(arrayBodyRes.status).toBe(400);
+      expect(arrayBodyRes.headers.get('Cache-Control')).toContain('no-store');
 
       const goodPassRes = await syncSessionPost(
         new Request('http://localhost/api/auth/sync-session', {
@@ -718,6 +801,132 @@ describe('Central Database (Turso / libSQL) & Hybrid Dexie Sync', () => {
         expect(screen.getByText(/Local SQLite \(Test Memory\)/i)).toBeInTheDocument();
         expect(screen.getByText(/Not configured/i)).toBeInTheDocument();
       });
+    });
+
+    it('auto-refreshes CentralDbStatusCard when unlocked via AiHealthStatusCard and sets no-store on AI error responses', async () => {
+      process.env.SYNC_ACCESS_KEY = 'secret-passphrase';
+      delete process.env.AI_BASE_URL;
+      delete process.env.AI_API_KEY;
+      delete process.env.AI_MODEL;
+
+      // Verify NO_STORE_HEADERS on AI error responses (authenticated 400 / 503)
+      const bearerHeader = {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer secret-passphrase',
+      };
+      const mealBadRes = await mealScanPost(
+        new Request('http://localhost/api/ai/meal-scan', {
+          method: 'POST',
+          headers: bearerHeader,
+          body: '{}',
+        })
+      );
+      expect(mealBadRes.status).toBe(400);
+      expect(mealBadRes.headers.get('Cache-Control')).toContain('no-store');
+
+      const refineBadRes = await refinePost(
+        new Request('http://localhost/api/ai/refine', {
+          method: 'POST',
+          headers: bearerHeader,
+          body: '{}',
+        })
+      );
+      expect(refineBadRes.status).toBe(400);
+      expect(refineBadRes.headers.get('Cache-Control')).toContain('no-store');
+
+      const ocrUnconfiguredRes = await labelOcrPost(
+        new Request('http://localhost/api/ai/label-ocr', {
+          method: 'POST',
+          headers: bearerHeader,
+          body: JSON.stringify({ imageDataUrl: 'data:image/png;base64,AAAA' }),
+        })
+      );
+      expect(ocrUnconfiguredRes.status).toBe(503);
+      expect(ocrUnconfiguredRes.headers.get('Cache-Control')).toContain('no-store');
+
+      // Now test unlocking via AiHealthStatusCard (second unlock card) refreshing CentralDbStatusCard
+      let cookieHeader = '';
+      vi.spyOn(globalThis, 'fetch').mockImplementation(
+        async (input: RequestInfo | URL, init?: RequestInit) => {
+          const url = typeof input === 'string' ? input : input.toString();
+          const method = init?.method ?? 'GET';
+          const headers = new Headers(init?.headers);
+          if (cookieHeader && !headers.has('Cookie')) {
+            headers.set('Cookie', cookieHeader);
+          }
+
+          if (url.includes('/api/auth/sync-session')) {
+            const res = await syncSessionPost(
+              new Request('http://localhost/api/auth/sync-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: typeof init?.body === 'string' ? init.body : undefined,
+              })
+            );
+            const setCookie = res.headers.get('set-cookie');
+            if (setCookie) {
+              cookieHeader = setCookie.split(';')[0];
+            }
+            return res;
+          }
+
+          if (url.includes('/api/ai/health')) {
+            return aiHealthGet(
+              new Request('http://localhost/api/ai/health', { headers })
+            );
+          }
+
+          if (method === 'GET') {
+            return syncGetRoute(
+              new Request('http://localhost/api/db/sync', { headers })
+            );
+          }
+          return syncPostRoute(
+            new Request('http://localhost/api/db/sync', {
+              method: 'POST',
+              headers,
+              body: typeof init?.body === 'string' ? init.body : undefined,
+            })
+          );
+        }
+      );
+
+      setCloudSyncEnabledForTests(true);
+
+      render(
+        React.createElement(
+          React.Fragment,
+          null,
+          React.createElement(CentralDbStatusCard),
+          React.createElement(AiHealthStatusCard)
+        )
+      );
+
+      const inputs = await screen.findAllByPlaceholderText(/enter sync passphrase/i);
+      expect(inputs).toHaveLength(2);
+      await waitFor(() => {
+        expect(screen.queryByText(/Syncing\.\.\.|Checking\.\.\./i)).not.toBeInTheDocument();
+      });
+
+      // Unlock using the SECOND unlock card (AiHealthStatusCard)
+      fireEvent.change(inputs[1], { target: { value: 'secret-passphrase' } });
+      fireEvent.click(screen.getAllByRole('button', { name: /^unlock$/i })[1]);
+
+      await waitFor(() => {
+        expect(useLoggerStore.getState().syncAuthLocked).toBe(false);
+        expect(screen.queryByPlaceholderText(/enter sync passphrase/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Syncing\.\.\.|Checking\.\.\./i)).not.toBeInTheDocument();
+        expect(screen.getByText(/Local SQLite \(Test Memory\)/i)).toBeInTheDocument();
+        expect(screen.getByText(/Not configured/i)).toBeInTheDocument();
+      });
+
+      // When syncAuthLocked flips back to true, neither card shows stale status details
+      act(() => {
+        useLoggerStore.getState().setSyncAuthLocked(true);
+      });
+      expect(screen.queryByText(/Local SQLite \(Test Memory\)/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Not configured/i)).not.toBeInTheDocument();
+      expect(screen.getAllByPlaceholderText(/enter sync passphrase/i)).toHaveLength(2);
     });
   });
 });

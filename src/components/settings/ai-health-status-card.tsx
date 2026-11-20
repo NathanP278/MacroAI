@@ -116,7 +116,7 @@ export function AiHealthStatusCard() {
       )}
 
       {/* Status Details */}
-      {!authLocked && status && (
+      {!(authLocked || syncAuthLocked) && status && (
         <div className="bg-surface-sub rounded-xl p-3 space-y-2 text-xs">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Configured in Server:</span>

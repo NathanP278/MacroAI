@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!body || typeof body !== 'object') {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return NextResponse.json(
       { ok: false, error: 'Request body must be a JSON object' },
       { status: 400, headers: NO_STORE_HEADERS }

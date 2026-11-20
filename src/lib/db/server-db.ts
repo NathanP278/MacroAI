@@ -399,7 +399,7 @@ export async function getAllCentralTables(): Promise<AllCentralTablesResult> {
     client.execute('SELECT data FROM custom_recipes ORDER BY created_at ASC'),
     client.execute('SELECT data FROM user_goals ORDER BY updated_at DESC'),
     client.execute(
-      'SELECT data FROM weight_logs ORDER BY date DESC, created_at DESC, recorded_at DESC'
+      'SELECT data FROM weight_logs ORDER BY date DESC, recorded_at DESC, created_at DESC'
     ),
     client.execute('SELECT data FROM pinned_foods ORDER BY pinned_at DESC'),
     client.execute({
@@ -477,7 +477,7 @@ export async function getLatestWeightLog(): Promise<WeightLogEntry | null> {
   await ensureServerSchema();
   const client = getLibsqlClient();
   const res = await client.execute(
-    'SELECT data FROM weight_logs ORDER BY date DESC, created_at DESC, recorded_at DESC LIMIT 1'
+    'SELECT data FROM weight_logs ORDER BY date DESC, recorded_at DESC, created_at DESC LIMIT 1'
   );
   const row = res.rows[0] as Record<string, unknown> | undefined;
   if (!row || typeof row.data !== 'string') {
