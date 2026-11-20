@@ -736,9 +736,10 @@ export async function loadStaples(): Promise<FoodItem[]> {
     try {
       const fs = await import('fs/promises');
       const path = await import('path');
-      const readJsonArray = async (relPath: string): Promise<FoodItem[]> => {
+      const readJsonArray = async (fileName: 'staples-2500.json' | 'ph-foods.json'): Promise<FoodItem[]> => {
         try {
-          const content = await fs.readFile(path.resolve(process.cwd(), relPath), 'utf8');
+          const filePath = path.join(process.cwd(), 'public', 'data', fileName);
+          const content = await fs.readFile(filePath, 'utf8');
           const parsed = JSON.parse(content);
           return Array.isArray(parsed) ? parsed : [];
         } catch {
@@ -746,8 +747,8 @@ export async function loadStaples(): Promise<FoodItem[]> {
         }
       };
       const [baseItems, phItems] = await Promise.all([
-        readJsonArray('public/data/staples-2500.json'),
-        readJsonArray('public/data/ph-foods.json'),
+        readJsonArray('staples-2500.json'),
+        readJsonArray('ph-foods.json'),
       ]);
       cachedStaples = hydrateStapleList([...baseItems, ...phItems]);
       return cachedStaples;
