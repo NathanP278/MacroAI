@@ -4,6 +4,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Sparkles, Loader2, Save, AlertCircle } from 'lucide-react';
 import { db, generateId } from '@/lib/db/macroai-db';
 import { compressImageToJpeg } from '@/lib/media/image-compress';
+import { SyncUnlockCard } from '@/components/auth/sync-unlock-modal';
+import { buildServingOptions } from '@/components/recipes/custom-food-modal';
 import { useLoggerStore } from '@/stores/logger-store';
 import { triggerHaptic } from '@/lib/motion';
 import type { FoodItem, FoodLogEntry, NutritionBasis } from '@/types/nutrition';
@@ -17,7 +19,8 @@ export interface AddBarcodeProductModalProps {
   onSaved?: (item: FoodItem) => void;
 }
 
-const round2 = (val: number): number => Math.round((val + Number.EPSILON) * 100) / 100;
+const round2 = (val: number): number =>
+  Math.round((val + Number.EPSILON) * 100) / 100;
 
 export function AddBarcodeProductModal({
   open,
@@ -29,6 +32,7 @@ export function AddBarcodeProductModal({
 }: AddBarcodeProductModalProps) {
   const storeDate = useLoggerStore((s) => s.activeDate);
   const storeMealSlot = useLoggerStore((s) => s.activeMealSlot);
+  const syncAuthLocked = useLoggerStore((s) => s.syncAuthLocked);
 
   const effectiveDate = date ?? storeDate ?? '2026-11-14';
   const effectiveMealSlot = mealSlot ?? storeMealSlot ?? 'log';
@@ -37,6 +41,7 @@ export function AddBarcodeProductModal({
   const [brand, setBrand] = useState('');
   const [servingSize, setServingSize] = useState('100');
   const [servingUnit, setServingUnit] = useState<'g' | 'ml' | 'serving'>('g');
+  const [servingWeightGrams, setServingWeightGrams] = useState('');
   const [calories, setCalories] = useState('');
   const [protein, setProtein] = useState('');
   const [carbs, setCarbs] = useState('');
@@ -81,6 +86,12 @@ export function AddBarcodeProductModal({
         body: JSON.stringify({ imageDataUrl }),
       });
 
+      if (res.status === 401) {
+        useLoggerStore.getState().setSyncAuthLocked(true);
+        setOcrError('Sync & AI locked. Unlock below to scan nutrition labels.');
+        return;
+      }
+
       if (!res.ok) {
         throw new Error(`OCR service failed with status ${res.status}`);
       }
@@ -88,9 +99,16 @@ export function AddBarcodeProductModal({
       const data = await res.json();
       if (data.name) setName(data.name);
       if (data.brand) setBrand(data.brand);
-      if (data.servingSize !== undefined) setServingSize(String(data.servingSize));
-      if (data.servingUnit && ['g', 'ml', 'serving'].includes(data.servingUnit)) {
+      if (data.servingSize !== undefined)
+        setServingSize(String(data.servingSize));
+      if (
+        data.servingUnit &&
+        ['g', 'ml', 'serving'].includes(data.servingUnit)
+      ) {
         setServingUnit(data.servingUnit as 'g' | 'ml' | 'serving');
+      }
+      if (data.servingWeightGrams !== undefined) {
+        setServingWeightGrams(String(data.servingWeightGrams));
       }
       if (data.calories !== undefined) setCalories(String(data.calories));
       if (data.protein !== undefined) setProtein(String(data.protein));
@@ -99,7 +117,9 @@ export function AddBarcodeProductModal({
       if (data.fiber !== undefined) setFiber(String(data.fiber));
       if (data.sodiumMg !== undefined) setSodiumMg(String(data.sodiumMg));
     } catch (err: unknown) {
-      setOcrError(err instanceof Error ? err.message : 'Failed to scan nutrition label.');
+      setOcrError(
+        err instanceof Error ? err.message : 'Failed to scan nutrition label.'
+      );
     } finally {
       setIsOcrLoading(false);
       if (e.target) e.target.value = '';
@@ -115,7 +135,9 @@ export function AddBarcodeProductModal({
       const cleanBarcode = barcode.trim();
       const rawServingSize = parseFloat(servingSize);
       if (!Number.isFinite(rawServingSize) || rawServingSize <= 0) {
-        setServingError('Serving size must be a positive number. Enter a value above 0 matching the package label.');
+        setServingError(
+          'Serving size must be a positive number. Enter a value above 0 matching the package label.'
+        );
         return;
       }
       setServingError(null);
@@ -125,7 +147,18 @@ export function AddBarcodeProductModal({
       const parsedC = Math.max(0, parseFloat(carbs) || 0);
       const parsedF = Math.max(0, parseFloat(fat) || 0);
       const parsedFib = Math.max(0, parseFloat(fiber) || 0);
-      const parsedSod = sodiumMg.trim() !== '' ? Math.max(0, parseFloat(sodiumMg) || 0) : undefined;
+      const parsedSod =
+        sodiumMg.trim() !== ''
+          ? Math.max(0, parseFloat(sodiumMg) || 0)
+          : undefined;
+      const rawWeight =
+        servingWeightGrams.trim() !== ''
+          ? parseFloat(servingWeightGrams)
+          : undefined;
+      const validWeight =
+        rawWeight !== undefined && Number.isFinite(rawWeight) && rawWeight > 0
+          ? round2(rawWeight)
+          : undefined;
 
       let basis: NutritionBasis;
       let factor = 1;
@@ -141,6 +174,13 @@ export function AddBarcodeProductModal({
         factor = parsedSize > 0 ? 100 / parsedSize : 1;
       }
 
+      const servingOptions = buildServingOptions({
+        basis,
+        servingSize: parsedSize,
+        servingUnit,
+        servingWeightGrams: validWeight,
+      });
+
       const foodItem: FoodItem = {
         id: `custom_barcode:${cleanBarcode}`,
         barcode: cleanBarcode,
@@ -150,6 +190,10 @@ export function AddBarcodeProductModal({
         basis,
         servingSize: parsedSize,
         servingUnit,
+        ...(validWeight !== undefined
+          ? { servingWeightGrams: validWeight }
+          : {}),
+        ...(servingOptions ? { servingOptions } : {}),
         nutrientsPerBasis: {
           calories: round2(parsedCal * factor),
           protein: round2(parsedP * factor),
@@ -157,7 +201,8 @@ export function AddBarcodeProductModal({
           fat: round2(parsedF * factor),
           fiber: round2(parsedFib * factor),
         },
-        micronutrientsPerBasis: parsedSod !== undefined ? { sodiumMg: round2(parsedSod * factor) } : {},
+        micronutrientsPerBasis:
+          parsedSod !== undefined ? { sodiumMg: round2(parsedSod * factor) } : {},
         updatedAt: Date.now(),
       };
 
@@ -208,7 +253,10 @@ export function AddBarcodeProductModal({
         className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 animate-sheet-in sm:animate-modal-in max-h-[90dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0 sm:hidden" aria-hidden="true" />
+        <div
+          className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0 sm:hidden"
+          aria-hidden="true"
+        />
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-border">
           <div>
@@ -230,7 +278,7 @@ export function AddBarcodeProductModal({
         </div>
 
         {/* AI OCR Scan Header Button */}
-        <div className="pt-3 pb-2">
+        <div className="pt-3 pb-2 space-y-2">
           <input
             ref={fileInputRef}
             data-testid="ocr-file-input"
@@ -247,22 +295,43 @@ export function AddBarcodeProductModal({
             className="tactile-press w-full py-2.5 px-4 rounded-full bg-[var(--macro-calories)]/15 hover:bg-[var(--macro-calories)]/25 text-[var(--macro-calories)] font-semibold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {isOcrLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin text-[var(--macro-calories)]" aria-hidden="true" />
+              <Loader2
+                className="w-4 h-4 animate-spin text-[var(--macro-calories)]"
+                aria-hidden="true"
+              />
             ) : (
-              <Sparkles className="w-4 h-4 text-[var(--macro-calories)]" aria-hidden="true" />
+              <Sparkles
+                className="w-4 h-4 text-[var(--macro-calories)]"
+                aria-hidden="true"
+              />
             )}
             <span>
-              {isOcrLoading ? 'Scanning Label with AI...' : 'Scan Nutrition Label (AI OCR)'}
+              {isOcrLoading
+                ? 'Scanning Label with AI...'
+                : 'Scan Nutrition Label (AI OCR)'}
             </span>
           </button>
 
-          {ocrError && (
-            <div className="mt-2 p-2.5 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+          {syncAuthLocked && (
+            <SyncUnlockCard
+              compact
+              onUnlocked={() => {
+                setOcrError(null);
+              }}
+            />
+          )}
+
+          {ocrError && !syncAuthLocked && (
+            <div className="p-2.5 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-start gap-2">
+              <AlertCircle
+                className="w-4 h-4 shrink-0 mt-0.5"
+                aria-hidden="true"
+              />
               <div className="space-y-0.5">
                 <p>{ocrError}</p>
                 <p className="text-[11px] text-muted-foreground">
-                  Check AI service setup in Settings or enter the label nutrition values manually below.
+                  Check AI service setup in Settings or enter the label
+                  nutrition values manually below.
                 </p>
               </div>
             </div>
@@ -270,10 +339,17 @@ export function AddBarcodeProductModal({
         </div>
 
         {/* Form */}
-        <form noValidate onSubmit={handleSaveAndLog} className="flex-1 overflow-y-auto overscroll-contain space-y-3 pt-1 pr-0.5">
+        <form
+          noValidate
+          onSubmit={handleSaveAndLog}
+          className="flex-1 overflow-y-auto overscroll-contain space-y-3 pt-1 pr-0.5"
+        >
           {/* Product Name */}
           <div className="space-y-1">
-            <label htmlFor="product-name" className="text-xs font-semibold text-foreground">
+            <label
+              htmlFor="product-name"
+              className="text-xs font-semibold text-foreground"
+            >
               Product Name *
             </label>
             <input
@@ -297,7 +373,10 @@ export function AddBarcodeProductModal({
 
           {/* Brand */}
           <div className="space-y-1">
-            <label htmlFor="brand" className="text-xs font-semibold text-foreground">
+            <label
+              htmlFor="brand"
+              className="text-xs font-semibold text-foreground"
+            >
               Brand
             </label>
             <input
@@ -311,10 +390,13 @@ export function AddBarcodeProductModal({
             />
           </div>
 
-          {/* Serving Size & Unit */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* Serving Size, Unit & Optional Gram Weight */}
+          <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1">
-              <label htmlFor="serving-size" className="text-xs font-semibold text-foreground">
+              <label
+                htmlFor="serving-size"
+                className="text-xs font-semibold text-foreground"
+              >
                 Serving Size *
               </label>
               <input
@@ -339,19 +421,21 @@ export function AddBarcodeProductModal({
                 }}
                 className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
               />
-              {servingError && (
-                <p className="text-[11px] text-[var(--neutral-over)]">{servingError}</p>
-              )}
             </div>
             <div className="space-y-1">
-              <label htmlFor="serving-unit" className="text-xs font-semibold text-foreground">
+              <label
+                htmlFor="serving-unit"
+                className="text-xs font-semibold text-foreground"
+              >
                 Serving Unit *
               </label>
               <select
                 id="serving-unit"
                 aria-label="Serving Unit"
                 value={servingUnit}
-                onChange={(e) => setServingUnit(e.target.value as 'g' | 'ml' | 'serving')}
+                onChange={(e) =>
+                  setServingUnit(e.target.value as 'g' | 'ml' | 'serving')
+                }
                 className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground"
               >
                 <option value="g">g</option>
@@ -359,12 +443,39 @@ export function AddBarcodeProductModal({
                 <option value="serving">serving</option>
               </select>
             </div>
+            <div className="space-y-1">
+              <label
+                htmlFor="serving-weight"
+                className="text-xs font-semibold text-foreground"
+              >
+                Weight (g)
+              </label>
+              <input
+                id="serving-weight"
+                aria-label="Weight (g)"
+                type="number"
+                step="any"
+                min="0"
+                value={servingWeightGrams}
+                onChange={(e) => setServingWeightGrams(e.target.value)}
+                placeholder="Optional"
+                className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums placeholder:text-muted-foreground/50"
+              />
+            </div>
           </div>
+          {servingError && (
+            <p className="text-[11px] text-[var(--neutral-over)]">
+              {servingError}
+            </p>
+          )}
 
           {/* Calories & Protein */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <label htmlFor="calories" className="text-xs font-semibold text-foreground">
+              <label
+                htmlFor="calories"
+                className="text-xs font-semibold text-foreground"
+              >
                 Calories (kcal) *
               </label>
               <input
@@ -381,7 +492,10 @@ export function AddBarcodeProductModal({
               />
             </div>
             <div className="space-y-1">
-              <label htmlFor="protein" className="text-xs font-semibold text-foreground">
+              <label
+                htmlFor="protein"
+                className="text-xs font-semibold text-foreground"
+              >
                 Protein (g) *
               </label>
               <input
@@ -402,7 +516,10 @@ export function AddBarcodeProductModal({
           {/* Carbs & Fat */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <label htmlFor="carbs" className="text-xs font-semibold text-foreground">
+              <label
+                htmlFor="carbs"
+                className="text-xs font-semibold text-foreground"
+              >
                 Carbs (g)
               </label>
               <input
@@ -418,7 +535,10 @@ export function AddBarcodeProductModal({
               />
             </div>
             <div className="space-y-1">
-              <label htmlFor="fat" className="text-xs font-semibold text-foreground">
+              <label
+                htmlFor="fat"
+                className="text-xs font-semibold text-foreground"
+              >
                 Fat (g)
               </label>
               <input
@@ -438,7 +558,10 @@ export function AddBarcodeProductModal({
           {/* Fiber & Sodium */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <label htmlFor="fiber" className="text-xs font-semibold text-foreground">
+              <label
+                htmlFor="fiber"
+                className="text-xs font-semibold text-foreground"
+              >
                 Fiber (g)
               </label>
               <input
@@ -454,7 +577,10 @@ export function AddBarcodeProductModal({
               />
             </div>
             <div className="space-y-1">
-              <label htmlFor="sodium" className="text-xs font-semibold text-foreground">
+              <label
+                htmlFor="sodium"
+                className="text-xs font-semibold text-foreground"
+              >
                 Sodium (mg)
               </label>
               <input
@@ -479,7 +605,10 @@ export function AddBarcodeProductModal({
               className="tactile-press w-full py-2.5 px-4 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
             >
               {isSaving ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                <Loader2
+                  className="w-3.5 h-3.5 animate-spin"
+                  aria-hidden="true"
+                />
               ) : (
                 <Save className="w-3.5 h-3.5" aria-hidden="true" />
               )}
