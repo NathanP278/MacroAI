@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { MacroNutrients, Micronutrients } from '@/types/nutrition';
 import type { TransitionDirection } from '@/lib/motion';
 
-export type LogSheetType = 'ai-scan' | 'barcode' | 'search' | 'quick-add';
+export type LogSheetType = 'ai-scan' | 'barcode' | 'search' | 'quick-add' | 'weight';
 
 export interface UndoToastItem {
   id: string;

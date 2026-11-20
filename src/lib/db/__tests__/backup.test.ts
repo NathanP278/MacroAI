@@ -2,7 +2,14 @@ import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from '../macroai-db';
 import { exportBackupJson, importBackupJson } from '../backup';
-import type { FoodLogEntry, FoodItem, CustomRecipe, UserGoals } from '@/types/nutrition';
+import type {
+  FoodLogEntry,
+  FoodItem,
+  CustomRecipe,
+  UserGoals,
+  WeightLogEntry,
+  PinnedFood,
+} from '@/types/nutrition';
 
 describe('JSON Backup Export & Transactional Import', () => {
   beforeEach(async () => {
@@ -168,26 +175,50 @@ describe('JSON Backup Export & Transactional Import', () => {
       updatedAt: 1500,
     };
 
+    const weightLog: WeightLogEntry = {
+      id: 'w-1',
+      date: '2026-11-14',
+      weightKg: 76.4,
+      note: 'Morning fasted',
+      source: 'manual',
+      recordedAt: '2026-11-14T07:30:00.000Z',
+      createdAt: 1500,
+      updatedAt: 1500,
+    };
+
+    const pinnedFood: PinnedFood = {
+      id: 'food:staple:eggs',
+      kind: 'food',
+      refId: 'staple:eggs',
+      pinnedAt: 1500,
+    };
+
     await db.foodLogs.put(foodLog);
     await db.foodsCache.put(foodItem);
     await db.customRecipes.put(recipe);
     await db.userGoals.put(goals);
+    await db.weightLogs.put(weightLog);
+    await db.pinnedFoods.put(pinnedFood);
 
     const exportedJson = await exportBackupJson();
     const parsed = JSON.parse(exportedJson);
 
-    expect(parsed.version).toBe(1);
+    expect(parsed.version).toBe(2);
     expect(typeof parsed.exportedAt).toBe('number');
     expect(parsed.tables.foodLogs).toHaveLength(1);
     expect(parsed.tables.foodsCache).toHaveLength(1);
     expect(parsed.tables.customRecipes).toHaveLength(1);
     expect(parsed.tables.userGoals).toHaveLength(1);
+    expect(parsed.tables.weightLogs).toHaveLength(1);
+    expect(parsed.tables.pinnedFoods).toHaveLength(1);
 
     // Wipe database
     await db.foodLogs.clear();
     await db.foodsCache.clear();
     await db.customRecipes.clear();
     await db.userGoals.clear();
+    await db.weightLogs.clear();
+    await db.pinnedFoods.clear();
 
     expect(await db.foodLogs.count()).toBe(0);
 
@@ -197,12 +228,106 @@ describe('JSON Backup Export & Transactional Import', () => {
     expect(result.importedCounts.foodsCache).toBe(1);
     expect(result.importedCounts.customRecipes).toBe(1);
     expect(result.importedCounts.userGoals).toBe(1);
+    expect(result.importedCounts.weightLogs).toBe(1);
+    expect(result.importedCounts.pinnedFoods).toBe(1);
 
     expect((await db.foodLogs.get('log-1'))?.name).toBe('Boiled Eggs');
     expect((await db.foodsCache.get('staple:eggs'))?.name).toBe('Boiled Eggs');
     expect((await db.customRecipes.get('recipe-1'))?.name).toBe('Egg Toast');
     expect((await db.userGoals.get('active'))?.dailyCalories).toBe(2200);
     expect((await db.userGoals.get('active'))?.profile?.weightKg).toBe(65);
+    expect((await db.weightLogs.get('w-1'))?.weightKg).toBe(76.4);
+    expect((await db.pinnedFoods.get('food:staple:eggs'))?.refId).toBe('staple:eggs');
+  });
+
+  it('exports version 2 with weightLogs/pinnedFoods and imports legacy version 1 backups cleanly', async () => {
+    const v1Payload = JSON.stringify({
+      version: 1,
+      exportedAt: 100,
+      tables: { foodLogs: [], foodsCache: [], customRecipes: [], userGoals: [] },
+    });
+    await expect(importBackupJson(v1Payload, 'merge')).resolves.toMatchObject({
+      importedCounts: {
+        foodLogs: 0,
+        foodsCache: 0,
+        customRecipes: 0,
+        userGoals: 0,
+        weightLogs: 0,
+        pinnedFoods: 0,
+      },
+    });
+
+    const exported = JSON.parse(await exportBackupJson());
+    expect(exported.version).toBe(2);
+    expect(exported.tables).toHaveProperty('weightLogs');
+    expect(exported.tables).toHaveProperty('pinnedFoods');
+  });
+
+  it('merge mode resolves weightLogs by updatedAt and replace mode clears v2 tables even on v1 import', async () => {
+    await db.weightLogs.put({
+      id: 'w-keep',
+      date: '2026-11-14',
+      weightKg: 75.2,
+      source: 'manual',
+      recordedAt: '2026-11-14T08:00:00.000Z',
+      createdAt: 1000,
+      updatedAt: 2000,
+    });
+
+    const v2MergePayload = JSON.stringify({
+      version: 2,
+      exportedAt: 3000,
+      tables: {
+        foodLogs: [],
+        foodsCache: [],
+        customRecipes: [],
+        userGoals: [],
+        weightLogs: [
+          {
+            id: 'w-keep',
+            date: '2026-11-14',
+            weightKg: 99.9,
+            source: 'manual',
+            recordedAt: '2026-11-14T08:00:00.000Z',
+            createdAt: 1000,
+            updatedAt: 1000,
+          },
+          {
+            id: 'w-new',
+            date: '2026-11-15',
+            weightKg: 74.9,
+            source: 'apple_health',
+            recordedAt: '2026-11-15T08:00:00.000Z',
+            createdAt: 3000,
+            updatedAt: 3000,
+          },
+        ],
+        pinnedFoods: [
+          {
+            id: 'recipe:r-1',
+            kind: 'recipe',
+            refId: 'r-1',
+            pinnedAt: 3000,
+          },
+        ],
+      },
+    });
+
+    const mergeResult = await importBackupJson(v2MergePayload, 'merge');
+    expect(mergeResult.importedCounts.weightLogs).toBe(1);
+    expect(mergeResult.importedCounts.pinnedFoods).toBe(1);
+    expect((await db.weightLogs.get('w-keep'))?.weightKg).toBe(75.2);
+    expect((await db.weightLogs.get('w-new'))?.weightKg).toBe(74.9);
+    expect((await db.pinnedFoods.get('recipe:r-1'))?.kind).toBe('recipe');
+
+    const v1ReplacePayload = JSON.stringify({
+      version: 1,
+      exportedAt: 4000,
+      tables: { foodLogs: [], foodsCache: [], customRecipes: [], userGoals: [] },
+    });
+    await importBackupJson(v1ReplacePayload, 'replace');
+    expect(await db.weightLogs.count()).toBe(0);
+    expect(await db.pinnedFoods.count()).toBe(0);
   });
 
   it('merge mode overwrites userGoals when incoming.updatedAt > existing.updatedAt', async () => {

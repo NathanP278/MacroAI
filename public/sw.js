@@ -1,16 +1,23 @@
 // MacroAI Vanilla PWA Service Worker (Zero-dependency, Next.js 16 Turbopack compatible)
-const CACHE_NAME = 'macroai-v1';
+const CACHE_NAME = 'macroai-v2';
 
 const PRECACHE_ASSETS = [
   '/',
   '/log',
+  '/trends',
   '/recipes',
   '/settings',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/data/staples-2500.json',
+  '/data/ph-foods.json',
 ];
+
+const CACHE_FIRST_DATA_PATHS = new Set([
+  '/data/staples-2500.json',
+  '/data/ph-foods.json',
+]);
 
 // Install: precache app shell and static staples dataset, immediately activate
 self.addEventListener('install', (event) => {
@@ -60,8 +67,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. /data/staples-2500.json: Cache-first
-  if (url.pathname === '/data/staples-2500.json') {
+  // 2. Offline food datasets (/data/staples-2500.json & /data/ph-foods.json): Cache-first
+  if (CACHE_FIRST_DATA_PATHS.has(url.pathname)) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
         if (cachedResponse) {

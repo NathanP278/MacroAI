@@ -62,24 +62,74 @@ describe('Task 13: Manifest, Service Worker & PwaRegister', () => {
   });
 
   describe('public/sw.js Service Worker file', () => {
-    it('implements required offline caching strategies and precache list', () => {
+    it('implements required offline caching strategies and precache list (v2 with /trends & ph-foods.json)', () => {
       const swPath = path.resolve(process.cwd(), 'public/sw.js');
       expect(fs.existsSync(swPath)).toBe(true);
       const sw = fs.readFileSync(swPath, 'utf-8');
 
+      // Version bump
+      expect(sw).toContain("CACHE_NAME = 'macroai-v2'");
+
       // Precache assets
-      expect(sw).toContain("'/data/staples-2500.json'");
-      expect(sw).toContain("'/icons/icon-192.png'");
-      expect(sw).toContain("'/icons/icon-512.png'");
-      expect(sw).toContain("'/manifest.webmanifest'");
+      const precacheMatch = sw.match(/const\s+PRECACHE_ASSETS\s*=\s*\[([\s\S]*?)\]/);
+      expect(precacheMatch).not.toBeNull();
+      const precacheBlock = precacheMatch![1];
+      expect(precacheBlock).toContain("'/trends'");
+      expect(precacheBlock).toContain("'/data/staples-2500.json'");
+      expect(precacheBlock).toContain("'/data/ph-foods.json'");
+      expect(precacheBlock).toContain("'/icons/icon-192.png'");
+      expect(precacheBlock).toContain("'/icons/icon-512.png'");
+      expect(precacheBlock).toContain("'/manifest.webmanifest'");
 
       // Lifecycle hooks
       expect(sw).toMatch(/skipWaiting/);
       expect(sw).toMatch(/clients\.claim/);
 
-      // Routing strategies
-      expect(sw).toMatch(/\/api\//); // network-only for api
-      expect(sw).toMatch(/staples-2500\.json/); // cache-first for staples
+      // Routing strategies: verify cache-first branch covers both staples-2500.json and ph-foods.json
+      const fetchBlock = sw.slice(sw.indexOf("addEventListener('fetch'"));
+      expect(fetchBlock).toMatch(/\/api\//); // network-only for api
+      expect(sw).toContain('/data/staples-2500.json');
+      expect(sw).toContain('/data/ph-foods.json');
+
+      // Execute SW fetch handler in isolation to prove cache-first serves /data/ph-foods.json
+      const listeners: Record<string, (event: unknown) => void> = {};
+      const cachedPhResponse = { ok: true, status: 200, id: 'cached-ph' };
+      const cachesMatchMock = vi.fn().mockResolvedValue(cachedPhResponse);
+      const fetchMock = vi.fn();
+
+      const swRunner = new Function(
+        'self',
+        'caches',
+        'fetch',
+        'URL',
+        sw
+      );
+      const fakeSelf = {
+        location: { origin: 'https://macroai.test' },
+        addEventListener: (type: string, cb: (event: unknown) => void) => {
+          listeners[type] = cb;
+        },
+        skipWaiting: vi.fn(),
+        clients: { claim: vi.fn() },
+      };
+      swRunner(
+        fakeSelf,
+        { match: cachesMatchMock, open: vi.fn(), keys: vi.fn().mockResolvedValue([]) },
+        fetchMock,
+        URL
+      );
+
+      let respondedPromise: Promise<unknown> | undefined;
+      listeners.fetch({
+        request: { method: 'GET', url: 'https://macroai.test/data/ph-foods.json' },
+        respondWith: (p: Promise<unknown>) => {
+          respondedPromise = p;
+        },
+      });
+      expect(respondedPromise).toBeDefined();
+      return expect(respondedPromise).resolves.toBe(cachedPhResponse).then(() => {
+        expect(fetchMock).not.toHaveBeenCalled();
+      });
     });
   });
 

@@ -6,6 +6,8 @@ import type {
   FoodItem,
   CustomRecipe,
   UserGoals,
+  WeightLogEntry,
+  PinnedFood,
 } from '@/types/nutrition';
 
 export const MacroNutrientsSchema = z.object({
@@ -199,7 +201,7 @@ export const CentralTablesSyncSchema = z.object({
   tombstones: z.array(SyncTombstoneSchema).default([]),
 });
 
-export const MacroAIBackupSchema = z.object({
+export const MacroAIBackupV1Schema = z.object({
   version: z.literal(1),
   exportedAt: z.number(),
   tables: z.object({
@@ -210,7 +212,26 @@ export const MacroAIBackupSchema = z.object({
   }),
 });
 
+export const MacroAIBackupV2Schema = z.object({
+  version: z.literal(2),
+  exportedAt: z.number(),
+  tables: z.object({
+    foodLogs: z.array(FoodLogEntrySchema).default([]),
+    foodsCache: z.array(FoodItemSchema).default([]),
+    customRecipes: z.array(CustomRecipeSchema).default([]),
+    userGoals: z.array(UserGoalsSchema).default([]),
+    weightLogs: z.array(WeightLogEntrySchema).default([]),
+    pinnedFoods: z.array(PinnedFoodSchema).default([]),
+  }),
+});
+
+export const MacroAIBackupSchema = z.discriminatedUnion('version', [
+  MacroAIBackupV1Schema,
+  MacroAIBackupV2Schema,
+]);
+
 export type MacroAIBackup = z.infer<typeof MacroAIBackupSchema>;
+export type MacroAIBackupV2 = z.infer<typeof MacroAIBackupV2Schema>;
 
 export interface ImportBackupResult {
   importedCounts: {
@@ -218,30 +239,37 @@ export interface ImportBackupResult {
     foodsCache: number;
     customRecipes: number;
     userGoals: number;
+    weightLogs: number;
+    pinnedFoods: number;
     [key: string]: number;
   };
 }
 
 /**
- * Exports all IndexedDB tables (foodLogs, foodsCache, customRecipes, userGoals)
- * into a formatted JSON string following the version 1 backup schema.
+ * Exports all IndexedDB data tables (foodLogs, foodsCache, customRecipes, userGoals,
+ * weightLogs, pinnedFoods) into a formatted JSON string following the version 2 backup schema.
  */
 export async function exportBackupJson(): Promise<string> {
-  const [foodLogs, foodsCache, customRecipes, userGoals] = await Promise.all([
-    db.foodLogs.toArray(),
-    db.foodsCache.toArray(),
-    db.customRecipes.toArray(),
-    db.userGoals.toArray(),
-  ]);
+  const [foodLogs, foodsCache, customRecipes, userGoals, weightLogs, pinnedFoods] =
+    await Promise.all([
+      db.foodLogs.toArray(),
+      db.foodsCache.toArray(),
+      db.customRecipes.toArray(),
+      db.userGoals.toArray(),
+      db.weightLogs.toArray(),
+      db.pinnedFoods.toArray(),
+    ]);
 
-  const backupData: MacroAIBackup = {
-    version: 1,
+  const backupData: MacroAIBackupV2 = {
+    version: 2,
     exportedAt: Date.now(),
     tables: {
       foodLogs,
       foodsCache,
       customRecipes,
       userGoals,
+      weightLogs,
+      pinnedFoods,
     },
   };
 
@@ -249,17 +277,17 @@ export async function exportBackupJson(): Promise<string> {
 }
 
 /**
- * Validates and imports a JSON backup string into MacroAIDB.
+ * Validates and imports a JSON backup string (v1 or v2) into MacroAIDB.
  *
  * Pre-validation:
- * Strictly parses and validates with Zod (version === 1, tables schema) BEFORE
+ * Strictly parses and validates with Zod (version 1 or 2, tables schema) BEFORE
  * opening any IndexedDB transaction. Any corrupt data throws immediately, leaving
  * existing tables completely untouched.
  *
  * Modes:
- * - 'replace': Clears all 4 tables and puts the backup records in a single Dexie transaction.
- * - 'merge': Upserts foodLogs, foodsCache, customRecipes by UUID, and resolves userGoals
- *   via updatedAt-wins (overwrites only if incoming.updatedAt > existing.updatedAt or if absent).
+ * - 'replace': Clears all backup tables (and stale tombstones) and puts backup records in a single Dexie transaction.
+ * - 'merge': Upserts foodLogs, foodsCache, customRecipes, pinnedFoods by ID, and resolves
+ *   userGoals & weightLogs via updatedAt-wins (overwrites only if incoming.updatedAt > existing.updatedAt or if absent).
  */
 export async function importBackupJson(
   rawJson: string,
@@ -275,68 +303,110 @@ export async function importBackupJson(
 
   // 2. Validate strictly with Zod before touching IndexedDB
   const validated = MacroAIBackupSchema.parse(parsed);
+  const { foodLogs, foodsCache, customRecipes, userGoals } = validated.tables;
+  const weightLogs = validated.version === 2 ? validated.tables.weightLogs : [];
+  const pinnedFoods = validated.version === 2 ? validated.tables.pinnedFoods : [];
 
   const importedCounts = {
     foodLogs: 0,
     foodsCache: 0,
     customRecipes: 0,
     userGoals: 0,
+    weightLogs: 0,
+    pinnedFoods: 0,
   };
 
-  // 3. Execute inside an atomic Dexie read-write transaction across all 4 tables
-  await db.transaction('rw', [db.foodLogs, db.foodsCache, db.customRecipes, db.userGoals], async () => {
-    if (mode === 'replace') {
-      await Promise.all([
-        db.foodLogs.clear(),
-        db.foodsCache.clear(),
-        db.customRecipes.clear(),
-        db.userGoals.clear(),
-      ]);
+  // 3. Execute inside an atomic Dexie read-write transaction across all tables
+  await db.transaction(
+    'rw',
+    [
+      db.foodLogs,
+      db.foodsCache,
+      db.customRecipes,
+      db.userGoals,
+      db.weightLogs,
+      db.pinnedFoods,
+      db.tombstones,
+    ],
+    async () => {
+      if (mode === 'replace') {
+        await Promise.all([
+          db.foodLogs.clear(),
+          db.foodsCache.clear(),
+          db.customRecipes.clear(),
+          db.userGoals.clear(),
+          db.weightLogs.clear(),
+          db.pinnedFoods.clear(),
+          db.tombstones.clear(),
+        ]);
 
-      if (validated.tables.foodLogs.length > 0) {
-        await db.foodLogs.bulkPut(validated.tables.foodLogs as FoodLogEntry[]);
-      }
-      if (validated.tables.foodsCache.length > 0) {
-        await db.foodsCache.bulkPut(validated.tables.foodsCache as FoodItem[]);
-      }
-      if (validated.tables.customRecipes.length > 0) {
-        await db.customRecipes.bulkPut(validated.tables.customRecipes as CustomRecipe[]);
-      }
-      if (validated.tables.userGoals.length > 0) {
-        await db.userGoals.bulkPut(validated.tables.userGoals as UserGoals[]);
-      }
-
-      importedCounts.foodLogs = validated.tables.foodLogs.length;
-      importedCounts.foodsCache = validated.tables.foodsCache.length;
-      importedCounts.customRecipes = validated.tables.customRecipes.length;
-      importedCounts.userGoals = validated.tables.userGoals.length;
-    } else {
-      // mode === 'merge'
-      if (validated.tables.foodLogs.length > 0) {
-        await db.foodLogs.bulkPut(validated.tables.foodLogs as FoodLogEntry[]);
-      }
-      if (validated.tables.foodsCache.length > 0) {
-        await db.foodsCache.bulkPut(validated.tables.foodsCache as FoodItem[]);
-      }
-      if (validated.tables.customRecipes.length > 0) {
-        await db.customRecipes.bulkPut(validated.tables.customRecipes as CustomRecipe[]);
-      }
-
-      importedCounts.foodLogs = validated.tables.foodLogs.length;
-      importedCounts.foodsCache = validated.tables.foodsCache.length;
-      importedCounts.customRecipes = validated.tables.customRecipes.length;
-
-      let goalsUpdated = 0;
-      for (const incomingGoal of validated.tables.userGoals) {
-        const existing = await db.userGoals.get(incomingGoal.id);
-        if (!existing || incomingGoal.updatedAt > existing.updatedAt) {
-          await db.userGoals.put(incomingGoal as UserGoals);
-          goalsUpdated++;
+        if (foodLogs.length > 0) {
+          await db.foodLogs.bulkPut(foodLogs as FoodLogEntry[]);
         }
+        if (foodsCache.length > 0) {
+          await db.foodsCache.bulkPut(foodsCache as FoodItem[]);
+        }
+        if (customRecipes.length > 0) {
+          await db.customRecipes.bulkPut(customRecipes as CustomRecipe[]);
+        }
+        if (userGoals.length > 0) {
+          await db.userGoals.bulkPut(userGoals as UserGoals[]);
+        }
+        if (weightLogs.length > 0) {
+          await db.weightLogs.bulkPut(weightLogs as WeightLogEntry[]);
+        }
+        if (pinnedFoods.length > 0) {
+          await db.pinnedFoods.bulkPut(pinnedFoods as PinnedFood[]);
+        }
+
+        importedCounts.foodLogs = foodLogs.length;
+        importedCounts.foodsCache = foodsCache.length;
+        importedCounts.customRecipes = customRecipes.length;
+        importedCounts.userGoals = userGoals.length;
+        importedCounts.weightLogs = weightLogs.length;
+        importedCounts.pinnedFoods = pinnedFoods.length;
+      } else {
+        // mode === 'merge'
+        if (foodLogs.length > 0) {
+          await db.foodLogs.bulkPut(foodLogs as FoodLogEntry[]);
+        }
+        if (foodsCache.length > 0) {
+          await db.foodsCache.bulkPut(foodsCache as FoodItem[]);
+        }
+        if (customRecipes.length > 0) {
+          await db.customRecipes.bulkPut(customRecipes as CustomRecipe[]);
+        }
+        if (pinnedFoods.length > 0) {
+          await db.pinnedFoods.bulkPut(pinnedFoods as PinnedFood[]);
+        }
+
+        importedCounts.foodLogs = foodLogs.length;
+        importedCounts.foodsCache = foodsCache.length;
+        importedCounts.customRecipes = customRecipes.length;
+        importedCounts.pinnedFoods = pinnedFoods.length;
+
+        let goalsUpdated = 0;
+        for (const incomingGoal of userGoals) {
+          const existing = await db.userGoals.get(incomingGoal.id);
+          if (!existing || incomingGoal.updatedAt > existing.updatedAt) {
+            await db.userGoals.put(incomingGoal as UserGoals);
+            goalsUpdated++;
+          }
+        }
+        importedCounts.userGoals = goalsUpdated;
+
+        let weightsUpdated = 0;
+        for (const incomingWeight of weightLogs) {
+          const existing = await db.weightLogs.get(incomingWeight.id);
+          if (!existing || incomingWeight.updatedAt > existing.updatedAt) {
+            await db.weightLogs.put(incomingWeight as WeightLogEntry);
+            weightsUpdated++;
+          }
+        }
+        importedCounts.weightLogs = weightsUpdated;
       }
-      importedCounts.userGoals = goalsUpdated;
     }
-  });
+  );
 
   if (isCloudSyncEnabled()) {
     await syncWithCentralDb(db, { forcePushMode: mode }).catch(() => {});

@@ -3,23 +3,30 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BackupPanel } from '../backup-panel';
 import * as backupModule from '@/lib/db/backup';
+import * as csvExportModule from '@/lib/db/csv-export';
+import { db } from '@/lib/db/macroai-db';
 
 describe('BackupPanel', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.restoreAllMocks();
+    await db.delete();
+    await db.open();
   });
 
-  it('renders backup export and import controls', () => {
+  it('renders backup export, CSV export, and import controls', () => {
     render(<BackupPanel />);
 
     expect(screen.getByRole('button', { name: /export backup/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /food logs csv/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /daily summary csv/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /weigh-ins csv/i })).toBeInTheDocument();
     expect(screen.getByText(/data backup & restore/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^merge$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^replace$/i })).toBeInTheDocument();
   });
 
   it('triggers export and creates a downloadable JSON file', async () => {
-    const mockJson = JSON.stringify({ version: 1, exportedAt: 1000, tables: {} });
+    const mockJson = JSON.stringify({ version: 2, exportedAt: 1000, tables: {} });
     vi.spyOn(backupModule, 'exportBackupJson').mockResolvedValue(mockJson);
 
     // Mock URL.createObjectURL and URL.revokeObjectURL
@@ -40,6 +47,68 @@ describe('BackupPanel', () => {
     });
   });
 
+  it('downloads Food Logs CSV, Daily Summary CSV, and Weigh-Ins CSV from IndexedDB', async () => {
+    await db.foodLogs.put({
+      id: 'log-csv-1',
+      date: '2026-11-20',
+      foodId: 'staple:oats',
+      name: '=SUM(1,2) Oats',
+      source: 'staple',
+      amount: 80,
+      unit: 'g',
+      nutritionSnapshot: {
+        calories: 300,
+        protein: 10,
+        carbs: 54,
+        fat: 5,
+        fiber: 8,
+        micros: { sodiumMg: 5 },
+      },
+      createdAt: 1000,
+    });
+    await db.weightLogs.put({
+      id: 'weight-csv-1',
+      date: '2026-11-20',
+      weightKg: 76.2,
+      source: 'manual',
+      recordedAt: '2026-11-20T07:00:00.000Z',
+      createdAt: 1000,
+      updatedAt: 1000,
+    });
+
+    const foodCsvSpy = vi.spyOn(csvExportModule, 'buildFoodLogsCsv');
+    const summaryCsvSpy = vi.spyOn(csvExportModule, 'buildDailySummaryCsv');
+    const weightCsvSpy = vi.spyOn(csvExportModule, 'buildWeightLogsCsv');
+
+    const createObjectURLSpy = vi.fn().mockReturnValue('blob:mock-csv');
+    const revokeObjectURLSpy = vi.fn();
+    window.URL.createObjectURL = createObjectURLSpy;
+    window.URL.revokeObjectURL = revokeObjectURLSpy;
+
+    render(<BackupPanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: /food logs csv/i }));
+    await waitFor(() => {
+      expect(foodCsvSpy).toHaveBeenCalledTimes(1);
+      expect(createObjectURLSpy).toHaveBeenCalledTimes(1);
+      expect(screen.getByText(/food logs csv exported/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /daily summary csv/i }));
+    await waitFor(() => {
+      expect(summaryCsvSpy).toHaveBeenCalledTimes(1);
+      expect(createObjectURLSpy).toHaveBeenCalledTimes(2);
+      expect(screen.getByText(/daily summary csv exported/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /weigh-ins csv/i }));
+    await waitFor(() => {
+      expect(weightCsvSpy).toHaveBeenCalledTimes(1);
+      expect(createObjectURLSpy).toHaveBeenCalledTimes(3);
+      expect(screen.getByText(/weigh-ins csv exported/i)).toBeInTheDocument();
+    });
+  });
+
   it('imports valid backup file in merge mode and shows imported counts', async () => {
     vi.spyOn(backupModule, 'importBackupJson').mockResolvedValue({
       importedCounts: {
@@ -47,12 +116,14 @@ describe('BackupPanel', () => {
         foodsCache: 2,
         customRecipes: 1,
         userGoals: 1,
+        weightLogs: 3,
+        pinnedFoods: 2,
       },
     });
 
     render(<BackupPanel />);
 
-    const file = new File(['{"version": 1}'], 'macroai-backup.json', {
+    const file = new File(['{"version": 2}'], 'macroai-backup.json', {
       type: 'application/json',
     });
 
@@ -64,7 +135,9 @@ describe('BackupPanel', () => {
         expect.any(String),
         'merge'
       );
-      expect(screen.getByText(/imported: 5 logs, 2 foods, 1 recipe/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/imported: 5 logs, 2 foods, 1 recipe, 1 goal, 3 weigh-ins, 2 pinned/i)
+      ).toBeInTheDocument();
     });
   });
 
@@ -94,6 +167,8 @@ describe('BackupPanel', () => {
         foodsCache: 0,
         customRecipes: 0,
         userGoals: 0,
+        weightLogs: 0,
+        pinnedFoods: 0,
       },
     });
 

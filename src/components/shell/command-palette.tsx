@@ -10,11 +10,13 @@ import {
   Moon,
   Plus,
   RotateCcw,
+  Scale,
   ScanBarcode,
   Search,
   Settings,
   Sparkles,
   Sun,
+  TrendingUp,
   UtensilsCrossed,
   X,
   Zap,
@@ -22,7 +24,8 @@ import {
 } from "lucide-react";
 import { useLoggerStore } from "@/stores/logger-store";
 import { useOptionalTheme } from "@/components/theme/theme-provider";
-import { copyYesterdayLogs, offsetIsoDate } from "@/lib/recipes/recipe-builder";
+import { db } from "@/lib/db/macroai-db";
+import { copyLogsFromDate, offsetIsoDate } from "@/lib/recipes/recipe-builder";
 import { searchStaples } from "@/lib/foods/staples-search";
 import { runViewTransition, triggerHaptic } from "@/lib/motion";
 import type { FoodItem } from "@/types/nutrition";
@@ -48,18 +51,6 @@ interface CommandAction {
 export function CommandPalette() {
   const isOpen = useLoggerStore((s) => s.isCommandPaletteOpen);
   const setOpen = useLoggerStore((s) => s.setCommandPaletteOpen);
-  const activeDate = useLoggerStore((s) => s.activeDate);
-  const setActiveDate = useLoggerStore((s) => s.setActiveDate);
-  const openSheet = useLoggerStore((s) => s.openSheet);
-  const setSearchInitialQuery = useLoggerStore((s) => s.setSearchInitialQuery);
-  const showUndoToast = useLoggerStore((s) => s.showUndoToast);
-
-  const themeCtx = useOptionalTheme();
-  const [query, setQuery] = useState("");
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [foodMatches, setFoodMatches] = useState<FoodItem[]>([]);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const itemRefs = useRef<Array<HTMLElement | null>>([]);
 
   // Global Cmd/Ctrl + K and Escape handler
   useEffect(() => {
@@ -81,39 +72,68 @@ export function CommandPalette() {
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, [setOpen]);
 
-  // Reset and autofocus whenever opened
+  if (!isOpen) return null;
+
+  return <CommandPaletteDialog />;
+}
+
+function CommandPaletteDialog() {
+  const setOpen = useLoggerStore((s) => s.setCommandPaletteOpen);
+  const activeDate = useLoggerStore((s) => s.activeDate);
+  const setActiveDate = useLoggerStore((s) => s.setActiveDate);
+  const openSheet = useLoggerStore((s) => s.openSheet);
+  const setSearchInitialQuery = useLoggerStore((s) => s.setSearchInitialQuery);
+  const showUndoToast = useLoggerStore((s) => s.showUndoToast);
+
+  const themeCtx = useOptionalTheme();
+  const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [foodSearchResult, setFoodSearchResult] = useState<{
+    query: string;
+    items: FoodItem[];
+  }>({ query: "", items: [] });
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const itemRefs = useRef<Array<HTMLElement | null>>([]);
+
+  // Autofocus search input on mount
   useEffect(() => {
-    if (!isOpen) {
-      setQuery("");
-      setFoodMatches([]);
-      setActiveIndex(0);
-      return;
-    }
     const id = setTimeout(() => {
       inputRef.current?.focus();
     }, 10);
     return () => clearTimeout(id);
-  }, [isOpen]);
+  }, []);
+
+  const trimmedQuery = query.trim();
 
   // Instant offline staple search when query >= 2 chars
   useEffect(() => {
-    const trimmed = query.trim();
-    if (!isOpen || trimmed.length < 2) {
-      setFoodMatches([]);
+    if (trimmedQuery.length < 2) {
       return;
     }
     let cancelled = false;
-    searchStaples(trimmed, 5)
+    searchStaples(trimmedQuery, 5)
       .then((items) => {
-        if (!cancelled) setFoodMatches(items);
+        if (!cancelled) {
+          setFoodSearchResult({ query: trimmedQuery, items });
+        }
       })
       .catch(() => {
-        if (!cancelled) setFoodMatches([]);
+        if (!cancelled) {
+          setFoodSearchResult({ query: trimmedQuery, items: [] });
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [isOpen, query]);
+  }, [trimmedQuery]);
+
+  const foodMatches = useMemo(
+    () =>
+      trimmedQuery.length >= 2 && foodSearchResult.query === trimmedQuery
+        ? foodSearchResult.items
+        : [],
+    [trimmedQuery, foodSearchResult]
+  );
 
   const actions: CommandAction[] = useMemo(() => {
     const closeAnd = (fn: () => void) => () => {
@@ -161,20 +181,37 @@ export function CommandPalette() {
         onSelect: closeAnd(() => openSheet("ai-scan")),
       },
       {
+        id: "action-log-weight",
+        section: "Log & Actions",
+        label: "Log Weight",
+        hint: "Record daily weigh-in",
+        icon: Scale,
+        onSelect: closeAnd(() => openSheet("weight")),
+      },
+      {
         id: "action-copy-yesterday",
         section: "Log & Actions",
         label: "Copy Yesterday's Logs",
         hint: `Duplicate previous day into ${activeDate}`,
         icon: RotateCcw,
         onSelect: closeAnd(async () => {
-          const count = await copyYesterdayLogs(activeDate);
-          showUndoToast({
-            message:
-              count > 0
-                ? `Copied ${count} ${count === 1 ? "item" : "items"} from yesterday`
-                : "No entries found for yesterday",
-            onUndo: () => {},
-          });
+          try {
+            const yesterday = offsetIsoDate(activeDate, -1);
+            const { count, insertedIds } = await copyLogsFromDate(yesterday, activeDate);
+            showUndoToast({
+              message:
+                count > 0
+                  ? `Copied ${count} ${count === 1 ? "item" : "items"} from yesterday`
+                  : "No entries found for yesterday",
+              onUndo: async () => {
+                if (insertedIds.length > 0) {
+                  await db.foodLogs.bulkDelete(insertedIds);
+                }
+              },
+            });
+          } catch (err) {
+            console.error("Failed to copy yesterday's logs:", err);
+          }
         }),
       },
       {
@@ -193,6 +230,15 @@ export function CommandPalette() {
         hint: "/log",
         href: "/log",
         icon: Apple,
+        onSelect: closeAnd(() => {}),
+      },
+      {
+        id: "nav-trends",
+        section: "Navigate",
+        label: "Go to Trends",
+        hint: "/trends",
+        href: "/trends",
+        icon: TrendingUp,
         onSelect: closeAnd(() => {}),
       },
       {
@@ -302,35 +348,32 @@ export function CommandPalette() {
     themeCtx,
   ]);
 
-  useEffect(() => {
-    setActiveIndex(0);
-  }, [query, actions.length]);
+  const safeActiveIndex =
+    actions.length > 0 ? Math.min(activeIndex, actions.length - 1) : 0;
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (actions.length === 0) return;
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      const next = (activeIndex + 1) % actions.length;
+      const next = (safeActiveIndex + 1) % actions.length;
       setActiveIndex(next);
       itemRefs.current[next]?.scrollIntoView?.({ block: "nearest" });
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      const prev = (activeIndex - 1 + actions.length) % actions.length;
+      const prev = (safeActiveIndex - 1 + actions.length) % actions.length;
       setActiveIndex(prev);
       itemRefs.current[prev]?.scrollIntoView?.({ block: "nearest" });
     } else if (e.key === "Enter") {
       e.preventDefault();
-      const targetEl = itemRefs.current[activeIndex];
+      const targetEl = itemRefs.current[safeActiveIndex];
       if (targetEl) {
         targetEl.click();
       } else {
-        actions[activeIndex]?.onSelect();
+        actions[safeActiveIndex]?.onSelect();
       }
     }
   };
-
-  if (!isOpen) return null;
 
   return (
     <div
@@ -360,7 +403,10 @@ export function CommandPalette() {
             aria-label="Search commands or staple foods"
             placeholder="Type a command, route, or food..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setActiveIndex(0);
+            }}
             onKeyDown={handleInputKeyDown}
             className="flex-1 bg-transparent text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
           />
@@ -390,7 +436,7 @@ export function CommandPalette() {
           ) : (
             actions.map((action, idx) => {
               const Icon = action.icon;
-              const isHighlighted = idx === activeIndex;
+              const isHighlighted = idx === safeActiveIndex;
               const prevSection = idx > 0 ? actions[idx - 1].section : null;
               const showSectionHeader = action.section !== prevSection;
 
