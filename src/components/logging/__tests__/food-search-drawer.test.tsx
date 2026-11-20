@@ -1,12 +1,18 @@
 import 'fake-indexeddb/auto';
 import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { db } from '@/lib/db/macroai-db';
 import { useLoggerStore } from '@/stores/logger-store';
 import { FoodSearchDrawer, clearOnlineSearchCache } from '../food-search-drawer';
 import { setStaplesCache } from '@/lib/foods/staples-search';
+import { saveCustomRecipe } from '@/lib/recipes/recipe-builder';
+import {
+  computeRecentEntries,
+  computeFrequentEntries,
+  togglePinEntry,
+} from '@/lib/foods/search-history';
 import { AppShell } from '@/components/shell/app-shell';
-import type { FoodItem } from '@/types/nutrition';
+import type { CustomRecipeIngredient, FoodItem, FoodLogEntry } from '@/types/nutrition';
 
 const mockStaples: FoodItem[] = [
   {
@@ -61,6 +67,7 @@ describe('FoodSearchDrawer component', () => {
       activeDate: '2026-11-14',
       activeMealSlot: 'lunch',
       activeSheet: null,
+      undoToast: null,
     });
   });
 
@@ -439,5 +446,242 @@ describe('FoodSearchDrawer component', () => {
     // Second Escape closes the drawer
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(handleClose).toHaveBeenCalledTimes(1);
+  });
+
+  test('computeRecentEntries, computeFrequentEntries, and togglePinEntry rank and persist history accurately', async () => {
+    const sampleIngredient: CustomRecipeIngredient = {
+      foodId: 'staple:101',
+      name: 'Chicken breast, raw',
+      amount: 150,
+      unit: 'g',
+      nutritionSnapshot: {
+        calories: 180,
+        protein: 33.75,
+        carbs: 0,
+        fat: 3.9,
+        fiber: 0,
+        micros: { potassiumMg: 525 },
+      },
+    };
+    const recipe = await saveCustomRecipe({
+      name: 'Chicken Rice Bowl',
+      ingredients: [sampleIngredient],
+      basis: 'perServing',
+      defaultServings: 1,
+    });
+
+    const foodsById = new Map(mockStaples.map((f) => [f.id, f]));
+    const recipesById = new Map([[recipe.id, recipe]]);
+    const now = Date.now();
+
+    const logs: FoodLogEntry[] = [
+      {
+        id: 'log-1',
+        date: '2026-11-18',
+        foodId: 'staple:101',
+        name: 'Chicken breast, raw',
+        source: 'staple',
+        amount: 120,
+        unit: 'g',
+        nutritionSnapshot: { calories: 144, protein: 27, carbs: 0, fat: 3.1, fiber: 0, micros: {} },
+        createdAt: now - 3000,
+      },
+      {
+        id: 'log-2',
+        date: '2026-11-19',
+        foodId: 'staple:102',
+        name: 'Brown rice, medium-grain, cooked',
+        source: 'staple',
+        amount: 200,
+        unit: 'g',
+        nutritionSnapshot: { calories: 224, protein: 4.6, carbs: 47, fat: 1.6, fiber: 3.6, micros: {} },
+        createdAt: now - 2000,
+      },
+      {
+        id: 'log-3',
+        date: '2026-11-19',
+        foodId: 'staple:102',
+        name: 'Brown rice, medium-grain, cooked',
+        source: 'staple',
+        amount: 250,
+        unit: 'g',
+        nutritionSnapshot: { calories: 280, protein: 5.75, carbs: 58.75, fat: 2, fiber: 4.5, micros: {} },
+        createdAt: now - 1500,
+      },
+      {
+        id: 'log-4',
+        date: '2026-11-20',
+        foodId: `recipe:${recipe.id}`,
+        name: 'Chicken Rice Bowl',
+        source: 'recipe',
+        amount: 2,
+        unit: 'servings',
+        nutritionSnapshot: { calories: 360, protein: 68, carbs: 0, fat: 8, fiber: 0, micros: {} },
+        createdAt: now - 500,
+      },
+    ];
+
+    const recents = computeRecentEntries(logs, foodsById, recipesById);
+    expect(recents).toHaveLength(3);
+    expect(recents[0].kind).toBe('recipe');
+    expect(recents[0].lastAmount).toBe(2);
+    expect(recents[0].lastUnit).toBe('servings');
+    expect(recents[1].kind).toBe('food');
+    if (recents[1].kind === 'food') {
+      expect(recents[1].food.id).toBe('staple:102');
+      expect(recents[1].lastAmount).toBe(250);
+    }
+
+    const frequent = computeFrequentEntries(logs, foodsById, recipesById, 60);
+    expect(frequent[0].kind).toBe('food');
+    if (frequent[0].kind === 'food') {
+      expect(frequent[0].food.id).toBe('staple:102');
+      expect(frequent[0].lastAmount).toBe(250);
+    }
+
+    const pinned1 = await togglePinEntry('food', 'staple:101');
+    expect(pinned1).toBe(true);
+    expect(await db.pinnedFoods.get('food:staple:101')).toBeDefined();
+
+    const pinned2 = await togglePinEntry('food', 'staple:101');
+    expect(pinned2).toBe(false);
+    expect(await db.pinnedFoods.get('food:staple:101')).toBeUndefined();
+  });
+
+  test('shows Recents, Frequent, and Pinned tabs on empty query and finds Custom Recipes in unified search', async () => {
+    const sampleIngredient: CustomRecipeIngredient = {
+      foodId: 'staple:102',
+      name: 'Rolled Oats',
+      amount: 80,
+      unit: 'g',
+      nutritionSnapshot: {
+        calories: 300,
+        protein: 10,
+        carbs: 54,
+        fat: 5,
+        fiber: 8,
+        micros: { magnesiumMg: 110 },
+      },
+    };
+    await saveCustomRecipe({
+      name: 'Protein Overnight Oats',
+      ingredients: [sampleIngredient],
+      basis: 'perServing',
+      defaultServings: 1,
+    });
+
+    const handleClose = vi.fn();
+    render(<FoodSearchDrawer open date="2026-11-20" onClose={handleClose} />);
+
+    expect(screen.getByRole('tab', { name: /recents/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /frequent/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /pinned/i })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/search foods/i), {
+      target: { value: 'Overnight Oats' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Protein Overnight Oats')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/^recipe$/i)).toBeInTheDocument();
+
+    // Pin the custom recipe and verify it appears under Pinned tab when query is cleared
+    fireEvent.click(screen.getByRole('button', { name: /pin protein overnight oats/i }));
+    fireEvent.change(screen.getByLabelText(/search foods/i), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('tab', { name: /pinned/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Protein Overnight Oats')).toBeInTheDocument();
+    });
+
+    // Open portion screen for the recipe and log 2 servings
+    fireEvent.click(screen.getByText('Protein Overnight Oats'));
+    const amountInput = screen.getByLabelText(/portion amount/i);
+    fireEvent.change(amountInput, { target: { value: '2' } });
+    expect(screen.getByText('600 kcal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /log food/i }));
+
+    await waitFor(async () => {
+      expect(await db.foodLogs.count()).toBe(1);
+    });
+    const [loggedRecipe] = await db.foodLogs.toArray();
+    expect(loggedRecipe.name).toBe('Protein Overnight Oats');
+    expect(loggedRecipe.source).toBe('recipe');
+    expect(loggedRecipe.amount).toBe(2);
+    expect(loggedRecipe.nutritionSnapshot.calories).toBe(600);
+    expect(handleClose).toHaveBeenCalled();
+  });
+
+  test('supports 1-tap quick log (+) with Undo toast and multi-add staging tray logging multiple foods atomically', async () => {
+    const handleClose = vi.fn();
+    render(<FoodSearchDrawer open date="2026-11-20" mealSlot="lunch" onClose={handleClose} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Chicken breast, raw')).toBeInTheDocument();
+      expect(screen.getByText('Brown rice, medium-grain, cooked')).toBeInTheDocument();
+    });
+
+    // 1-tap quick log (+) on Egg McMuffin logs immediately without closing drawer
+    const quickLogMcMuffin = screen.getByRole('button', { name: /quick log egg mcmuffin/i });
+    fireEvent.click(quickLogMcMuffin);
+
+    await waitFor(async () => {
+      expect(await db.foodLogs.count()).toBe(1);
+      expect(useLoggerStore.getState().undoToast).not.toBeNull();
+    });
+    expect(handleClose).not.toHaveBeenCalled();
+
+    const undoToastAfterQuick = useLoggerStore.getState().undoToast;
+    expect(undoToastAfterQuick?.message).toMatch(/egg mcmuffin/i);
+
+    // Undo the quick-logged entry
+    await act(async () => {
+      await undoToastAfterQuick?.onUndo();
+    });
+    expect(await db.foodLogs.count()).toBe(0);
+
+    // Stage item 1: Chicken breast 150g (180 kcal)
+    fireEvent.click(screen.getByText('Chicken breast, raw'));
+    fireEvent.change(screen.getByLabelText(/portion amount/i), { target: { value: '150' } });
+    fireEvent.click(screen.getByRole('button', { name: /stage & add another/i }));
+
+    // Returns to search list and shows sticky multi-add tray with 1 item · 180 kcal
+    await waitFor(() => {
+      expect(screen.getByTestId('multi-add-tray')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('multi-add-tray')).toHaveTextContent(/1 item/i);
+    expect(screen.getByTestId('multi-add-tray')).toHaveTextContent(/180 kcal/i);
+
+    // Stage item 2: Brown rice 200g (224 kcal)
+    fireEvent.click(screen.getByText('Brown rice, medium-grain, cooked'));
+    fireEvent.change(screen.getByLabelText(/portion amount/i), { target: { value: '200' } });
+    fireEvent.click(screen.getByRole('button', { name: /stage & add another/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('multi-add-tray')).toHaveTextContent(/2 items/i);
+    });
+    expect(screen.getByTestId('multi-add-tray')).toHaveTextContent(/404 kcal/i);
+
+    // Commit staged tray atomically via Log All
+    fireEvent.click(screen.getByRole('button', { name: /log all/i }));
+
+    await waitFor(async () => {
+      expect(await db.foodLogs.count()).toBe(2);
+    });
+    expect(handleClose).toHaveBeenCalledTimes(1);
+
+    const allLogs = await db.foodLogs.toArray();
+    const names = allLogs.map((l) => l.name).sort();
+    expect(names).toEqual(['Brown rice, medium-grain, cooked', 'Chicken breast, raw']);
+
+    // Verify Undo toast can bulk-delete both staged items
+    const batchUndo = useLoggerStore.getState().undoToast;
+    expect(batchUndo).not.toBeNull();
+    await act(async () => {
+      await batchUndo?.onUndo();
+    });
+    expect(await db.foodLogs.count()).toBe(0);
   });
 });
