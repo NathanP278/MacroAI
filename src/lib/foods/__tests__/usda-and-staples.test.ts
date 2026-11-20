@@ -1,7 +1,8 @@
 import 'fake-indexeddb/auto';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mapUsdaFoodToFoodItem, fetchAndCacheUsdaFood } from '../usda-adapter';
-import { filterStaples, searchStaples, loadStaples, setStaplesCache, enrichMealItemsWithStaples } from '../staples-search';
+import { filterStaples, searchStaples, loadStaples, setStaplesCache, enrichMealItemsWithStaples, estimateMissingStapleMicros } from '../staples-search';
+import { scaleNutrition } from '@/lib/nutrition/scaling';
 import { GET as usdaRouteHandler } from '@/app/api/usda/[...path]/route';
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db/macroai-db';
@@ -433,5 +434,106 @@ describe('USDA adapter and Staples search', () => {
     expect(typeof enriched[0].microsPer100g?.saturatedFatG).toBe('number');
     expect(typeof enriched[0].microsPer100g?.cholesterolMg).toBe('number');
     expect(typeof enriched[0].microsPer100g?.sugarG).toBe('number');
+  });
+
+  test('enrichMealItemsWithStaples normalizes perServing PH staple micros to per100g without double-scaling and skips weightless perServing items', async () => {
+    const sample: FoodItem[] = [
+      {
+        id: 'staple:ph-mcdo-egg-mcmuffin',
+        source: 'staple',
+        name: 'Egg McMuffin',
+        brand: "McDonald's",
+        region: 'PH',
+        basis: 'perServing',
+        servingSize: 1,
+        servingUnit: 'pc',
+        servingWeightGrams: 136,
+        nutrientsPerBasis: { calories: 310, protein: 17, carbs: 30, fat: 13, fiber: 2 },
+        micronutrientsPerBasis: { sodiumMg: 770, calciumMg: 250, ironMg: 2.5, potassiumMg: 210 },
+        updatedAt: 1700000000000,
+      },
+      {
+        id: 'staple:ph-weightless-snack',
+        source: 'staple',
+        name: 'Mystery Street Snack',
+        region: 'PH',
+        basis: 'perServing',
+        servingSize: 1,
+        servingUnit: 'pc',
+        nutrientsPerBasis: { calories: 150, protein: 4, carbs: 20, fat: 6, fiber: 1 },
+        micronutrientsPerBasis: { sodiumMg: 400 },
+        updatedAt: 1700000000000,
+      },
+    ];
+
+    setStaplesCache(sample);
+    try {
+      const enriched = await enrichMealItemsWithStaples<{
+        name: string;
+        microsPer100g?: Micronutrients;
+      }>([
+        { name: 'Egg McMuffin' },
+        { name: 'Mystery Street Snack' },
+      ]);
+
+      expect(enriched[0].microsPer100g?.sodiumMg).toBeCloseTo((770 * 100) / 136, 1);
+      const scaled = scaleNutrition(
+        { calories: 228, protein: 12.5, carbs: 22, fat: 9.6, fiber: 1.5 },
+        enriched[0].microsPer100g!,
+        'per100g',
+        136
+      );
+      expect(scaled.micros.sodiumMg).toBeCloseTo(770, 0);
+      expect(scaled.micros.calciumMg).toBeCloseTo(250, 0);
+      expect(scaled.micros.ironMg).toBeCloseTo(2.5, 1);
+      expect(scaled.micros.potassiumMg).toBeCloseTo(210, 0);
+
+      // Weightless perServing item must not inject unscalable micros into microsPer100g
+      expect(enriched[1].microsPer100g).toBeUndefined();
+    } finally {
+      setStaplesCache(null);
+    }
+  });
+
+  test('estimateMissingStapleMicros scales caffeineMg and alcoholG by servingWeightGrams/100 for perServing items', () => {
+    const espresso: FoodItem = {
+      id: 'staple:espresso-shot',
+      source: 'staple',
+      name: 'Espresso Shot',
+      basis: 'perServing',
+      servingSize: 1,
+      servingUnit: 'shot',
+      servingWeightGrams: 30,
+      nutrientsPerBasis: { calories: 3, protein: 0.1, carbs: 0.5, fat: 0, fiber: 0 },
+      micronutrientsPerBasis: {},
+      updatedAt: 1700000000000,
+    };
+    const brewedCoffee: FoodItem = {
+      id: 'staple:coffee-cup',
+      source: 'staple',
+      name: 'Brewed Coffee',
+      basis: 'perServing',
+      servingSize: 240,
+      servingUnit: 'ml',
+      nutrientsPerBasis: { calories: 2, protein: 0.3, carbs: 0, fat: 0, fiber: 0 },
+      micronutrientsPerBasis: {},
+      updatedAt: 1700000000000,
+    };
+    const beerBottle: FoodItem = {
+      id: 'staple:san-miguel-bottle',
+      source: 'staple',
+      name: 'San Miguel Pale Pilsen Beer',
+      basis: 'perServing',
+      servingSize: 1,
+      servingUnit: 'bottle',
+      servingWeightGrams: 330,
+      nutrientsPerBasis: { calories: 142, protein: 1, carbs: 11, fat: 0, fiber: 0 },
+      micronutrientsPerBasis: {},
+      updatedAt: 1700000000000,
+    };
+
+    expect(estimateMissingStapleMicros(espresso).caffeineMg).toBeCloseTo(63.6, 1);
+    expect(estimateMissingStapleMicros(brewedCoffee).caffeineMg).toBeCloseTo(108, 1);
+    expect(estimateMissingStapleMicros(beerBottle).alcoholG).toBeCloseTo(13.2, 1);
   });
 });

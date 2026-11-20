@@ -4,11 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { db } from '../macroai-db';
 import {
+  PENDING_REPLACE_SYNC_KEY,
   SyncAuthError,
   flushPendingMutationsForTests,
   setCloudSyncEnabledForTests,
   syncWithCentralDb,
 } from '../cloud-sync';
+import { importBackupJson } from '../backup';
 import {
   applyTableMutation,
   ensureServerSchema,
@@ -927,6 +929,127 @@ describe('Central Database (Turso / libSQL) & Hybrid Dexie Sync', () => {
       expect(screen.queryByText(/Local SQLite \(Test Memory\)/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Not configured/i)).not.toBeInTheDocument();
       expect(screen.getAllByPlaceholderText(/enter sync passphrase/i)).toHaveLength(2);
+    });
+
+    it('persists PENDING_REPLACE_SYNC_KEY when importBackupJson(replace) hits 401 or network error and upgrades reconnect sync to mode: replace', async () => {
+      await syncCentralTables(
+        {
+          foodLogs: [makeLog('server-stale-1', 'Old Server Pizza'), makeLog('server-stale-2', 'Old Server Soda')],
+          foodsCache: [],
+          customRecipes: [],
+          userGoals: [makeGoals(2600, 5000)],
+        },
+        'replace'
+      );
+
+      localStorage.setItem('macroai_central_migrated_v1', '1');
+      setCloudSyncEnabledForTests(true);
+
+      // 1. Simulate 401 locked state during importBackupJson(..., 'replace')
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+        return new Response(JSON.stringify({ ok: false, error: 'Unauthorized', authRequired: true }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      });
+
+      const backupPayload = JSON.stringify({
+        version: 2,
+        exportedAt: 9000,
+        tables: {
+          foodLogs: [makeLog('backup-only-1', 'Backup Oats')],
+          foodsCache: [],
+          customRecipes: [],
+          userGoals: [makeGoals(1950, 9000)],
+          weightLogs: [],
+          pinnedFoods: [],
+        },
+      });
+
+      const importResult = await importBackupJson(backupPayload, 'replace');
+      expect(importResult.syncPending).toBe(true);
+      expect(localStorage.getItem(PENDING_REPLACE_SYNC_KEY)).toBe('1');
+
+      // 2. Reconnect / unlock and call syncWithCentralDb(db) without explicit forcePushMode
+      const sentSyncModes: string[] = [];
+      vi.spyOn(globalThis, 'fetch').mockImplementation(
+        async (_input: RequestInfo | URL, init?: RequestInit) => {
+          const method = init?.method ?? 'GET';
+          const body = typeof init?.body === 'string' ? init.body : undefined;
+          if (method === 'POST' && body) {
+            const parsed = JSON.parse(body) as { action?: string; mode?: string };
+            if (parsed.action === 'sync' && parsed.mode) {
+              sentSyncModes.push(parsed.mode);
+            }
+          }
+          if (method === 'GET') {
+            return syncGetRoute(new Request('http://localhost/api/db/sync'));
+          }
+          return syncPostRoute(
+            new Request('http://localhost/api/db/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body,
+            })
+          );
+        }
+      );
+
+      const syncRes = await syncWithCentralDb(db);
+      expect(sentSyncModes).toEqual(['replace']);
+      expect(localStorage.getItem(PENDING_REPLACE_SYNC_KEY)).toBeNull();
+      expect(syncRes.counts.foodLogs).toBe(1);
+
+      const serverAfter = await getAllCentralTables();
+      expect(serverAfter.tables.foodLogs.map((l) => l.id)).toEqual(['backup-only-1']);
+      expect(serverAfter.tables.userGoals[0].dailyCalories).toBe(1950);
+
+      // 3. Also verify offline network failure path preserves pending replace intent
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Network offline'));
+      const secondBackup = JSON.stringify({
+        version: 2,
+        exportedAt: 12000,
+        tables: {
+          foodLogs: [],
+          foodsCache: [],
+          customRecipes: [],
+          userGoals: [makeGoals(1800, 12000)],
+          weightLogs: [],
+          pinnedFoods: [],
+        },
+      });
+      const offlineResult = await importBackupJson(secondBackup, 'replace');
+      expect(offlineResult.syncPending).toBe(true);
+      expect(localStorage.getItem(PENDING_REPLACE_SYNC_KEY)).toBe('1');
+
+      sentSyncModes.length = 0;
+      vi.spyOn(globalThis, 'fetch').mockImplementation(
+        async (_input: RequestInfo | URL, init?: RequestInit) => {
+          const method = init?.method ?? 'GET';
+          const body = typeof init?.body === 'string' ? init.body : undefined;
+          if (method === 'POST' && body) {
+            const parsed = JSON.parse(body) as { action?: string; mode?: string };
+            if (parsed.action === 'sync' && parsed.mode) {
+              sentSyncModes.push(parsed.mode);
+            }
+          }
+          if (method === 'GET') {
+            return syncGetRoute(new Request('http://localhost/api/db/sync'));
+          }
+          return syncPostRoute(
+            new Request('http://localhost/api/db/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body,
+            })
+          );
+        }
+      );
+
+      const secondSync = await syncWithCentralDb(db);
+      expect(sentSyncModes).toEqual(['replace']);
+      expect(localStorage.getItem(PENDING_REPLACE_SYNC_KEY)).toBeNull();
+      expect(secondSync.counts.foodLogs).toBe(0);
     });
   });
 });

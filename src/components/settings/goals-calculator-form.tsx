@@ -122,13 +122,8 @@ export function GoalsCalculatorForm() {
   const [cyclingExpanded, setCyclingExpanded] = useState(false);
   const [weeklyCyclingEnabled, setWeeklyCyclingEnabled] = useState(false);
   const [weeklySchedule, setWeeklySchedule] = useState<
-    Record<WeekdayKey, DailyMacroTargets>
-  >(() =>
-    buildCyclingPreset(
-      { calories: 2000, proteinG: 150, carbsG: 200, fatG: 65, fiberG: 30 },
-      'even'
-    )
-  );
+    Record<WeekdayKey, DailyMacroTargets> | null
+  >(null);
 
   // Custom Micronutrient & Extended Targets state
   const [microsExpanded, setMicrosExpanded] = useState(false);
@@ -147,6 +142,15 @@ export function GoalsCalculatorForm() {
         const goals = await db.userGoals.get('active');
         if (!goals) return;
 
+        const isUncustomizedSeed =
+          goals.updatedAt === 0 && !goals.profile && !goals.lastCheckInAt;
+
+        if (isUncustomizedSeed) {
+          setHasSavedGoals(false);
+          setLastCheckInAt(undefined);
+          return;
+        }
+
         setHasSavedGoals(true);
         setLastCheckInAt(goals.lastCheckInAt);
         setTargetMode(goals.targetMode ?? 'calculator');
@@ -159,7 +163,6 @@ export function GoalsCalculatorForm() {
           fatG: goals.fatG,
           fiberG: goals.fiberG,
         };
-        setActiveTargets(loadedActive);
 
         if (goals.profile) {
           const p = goals.profile;
@@ -175,10 +178,18 @@ export function GoalsCalculatorForm() {
           goals.goalDeltaKcal ?? goals.profile?.goalDeltaKcal ?? 0;
         setGoalDeltaKcal(resolvedDelta);
 
-        setWeeklyCyclingEnabled(Boolean(goals.weeklyCyclingEnabled));
-        setWeeklySchedule(
-          goals.weeklySchedule ?? buildCyclingPreset(loadedActive, 'even')
-        );
+        const cyclingEnabled = Boolean(goals.weeklyCyclingEnabled);
+        const loadedSchedule =
+          goals.weeklySchedule ??
+          (cyclingEnabled ? buildCyclingPreset(loadedActive, 'even') : null);
+        const syncedActive =
+          cyclingEnabled && loadedSchedule
+            ? computeWeeklyScheduleAverage(loadedSchedule)
+            : loadedActive;
+
+        setActiveTargets(syncedActive);
+        setWeeklyCyclingEnabled(cyclingEnabled);
+        setWeeklySchedule(loadedSchedule);
         setMicroTargets({
           ...buildDefaultMicroTargets(),
           ...(goals.micronutrientTargets ?? {}),
@@ -202,41 +213,53 @@ export function GoalsCalculatorForm() {
     });
   }, [sex, age, weightKg, heightCm, activityMultiplier, goalDeltaKcal, proteinPerKg]);
 
-  const effectiveTargets: DailyMacroTargets = useMemo(() => {
+  const baseTargets: DailyMacroTargets = useMemo(() => {
     if (targetMode === 'custom' || hasSavedGoals) {
       return activeTargets;
     }
     return toDailyMacroTargets(calculatedTargets);
   }, [targetMode, hasSavedGoals, activeTargets, calculatedTargets]);
 
-  const weeklyAverage = useMemo(
-    () => computeWeeklyScheduleAverage(weeklySchedule),
-    [weeklySchedule]
+  const resolvedWeeklySchedule = useMemo(
+    () => weeklySchedule ?? buildCyclingPreset(baseTargets, 'even'),
+    [weeklySchedule, baseTargets]
   );
+
+  const weeklyAverage = useMemo(
+    () => computeWeeklyScheduleAverage(resolvedWeeklySchedule),
+    [resolvedWeeklySchedule]
+  );
+
+  const effectiveTargets: DailyMacroTargets = useMemo(() => {
+    if (weeklyCyclingEnabled) {
+      return weeklyAverage;
+    }
+    return baseTargets;
+  }, [weeklyCyclingEnabled, weeklyAverage, baseTargets]);
 
   const macroEnergySum = useMemo(
     () =>
       Math.round(
-        activeTargets.proteinG * 4 +
-          activeTargets.carbsG * 4 +
-          activeTargets.fatG * 9
+        effectiveTargets.proteinG * 4 +
+          effectiveTargets.carbsG * 4 +
+          effectiveTargets.fatG * 9
       ),
-    [activeTargets]
+    [effectiveTargets]
   );
 
   const formulaDiffersFromActive =
-    hasSavedGoals &&
+    (hasSavedGoals || weeklyCyclingEnabled) &&
     targetMode === 'calculator' &&
-    (calculatedTargets.dailyCalories !== activeTargets.calories ||
-      calculatedTargets.proteinG !== activeTargets.proteinG ||
-      calculatedTargets.carbsG !== activeTargets.carbsG ||
-      calculatedTargets.fatG !== activeTargets.fatG ||
-      calculatedTargets.fiberG !== activeTargets.fiberG);
+    (calculatedTargets.dailyCalories !== effectiveTargets.calories ||
+      calculatedTargets.proteinG !== effectiveTargets.proteinG ||
+      calculatedTargets.carbsG !== effectiveTargets.carbsG ||
+      calculatedTargets.fatG !== effectiveTargets.fatG ||
+      calculatedTargets.fiberG !== effectiveTargets.fiberG);
 
   const handleModeSwitch = (nextMode: 'calculator' | 'custom') => {
     if (nextMode === targetMode) return;
     if (nextMode === 'custom' && !hasSavedGoals) {
-      setActiveTargets(toDailyMacroTargets(calculatedTargets));
+      setActiveTargets(effectiveTargets);
     }
     setTargetMode(nextMode);
     triggerHaptic(6);
@@ -245,6 +268,9 @@ export function GoalsCalculatorForm() {
   const handleRecalculateFromFormula = () => {
     const next = toDailyMacroTargets(calculatedTargets);
     setActiveTargets(next);
+    if (weeklyCyclingEnabled) {
+      setWeeklySchedule(buildCyclingPreset(next, 'even'));
+    }
     setRecalcNotice(true);
     triggerHaptic(8);
     setTimeout(() => setRecalcNotice(false), 2500);
@@ -252,8 +278,11 @@ export function GoalsCalculatorForm() {
 
   const handleToggleCycling = (enabled: boolean) => {
     setWeeklyCyclingEnabled(enabled);
-    if (enabled && !hasSavedGoals) {
-      setWeeklySchedule(buildCyclingPreset(effectiveTargets, 'even'));
+    if (enabled) {
+      const nextSchedule =
+        weeklySchedule ?? buildCyclingPreset(baseTargets, 'even');
+      setWeeklySchedule(nextSchedule);
+      setActiveTargets(computeWeeklyScheduleAverage(nextSchedule));
     }
     triggerHaptic(6);
   };
@@ -261,8 +290,10 @@ export function GoalsCalculatorForm() {
   const handleApplyCyclingPreset = (
     preset: 'even' | 'weekend_plus_250' | 'training_split'
   ) => {
-    setWeeklySchedule(buildCyclingPreset(effectiveTargets, preset));
+    const nextSchedule = buildCyclingPreset(effectiveTargets, preset);
+    setWeeklySchedule(nextSchedule);
     setWeeklyCyclingEnabled(true);
+    setActiveTargets(computeWeeklyScheduleAverage(nextSchedule));
     triggerHaptic(8);
   };
 
@@ -272,13 +303,35 @@ export function GoalsCalculatorForm() {
     rawValue: string
   ) => {
     const parsed = Math.max(0, Math.round(parseFloat(rawValue) || 0));
-    setWeeklySchedule((prev) => ({
-      ...prev,
+    const baseSchedule = weeklySchedule ?? buildCyclingPreset(baseTargets, 'even');
+    const nextSchedule = {
+      ...baseSchedule,
       [day]: {
-        ...prev[day],
+        ...baseSchedule[day],
         [field]: parsed,
       },
-    }));
+    };
+    setWeeklySchedule(nextSchedule);
+    if (weeklyCyclingEnabled) {
+      setActiveTargets(computeWeeklyScheduleAverage(nextSchedule));
+    }
+  };
+
+  const handleUpdateCustomTargetField = (
+    field: keyof DailyMacroTargets,
+    rawValue: string
+  ) => {
+    const parsed = Math.max(0, parseInt(rawValue, 10) || 0);
+    const nextTargets: DailyMacroTargets = {
+      ...effectiveTargets,
+      [field]: parsed,
+    };
+    setActiveTargets(nextTargets);
+    if (weeklyCyclingEnabled) {
+      setWeeklySchedule(buildCyclingPreset(nextTargets, 'even'));
+    } else {
+      setWeeklySchedule(null);
+    }
   };
 
   const handleUpdateMicroTarget = (key: string, rawValue: string) => {
@@ -312,7 +365,10 @@ export function GoalsCalculatorForm() {
         proteinPerKg,
       };
 
-      const targetsToSave = effectiveTargets;
+      const targetsToSave = weeklyCyclingEnabled ? weeklyAverage : effectiveTargets;
+      const scheduleToSave = weeklyCyclingEnabled
+        ? resolvedWeeklySchedule
+        : existing?.weeklySchedule;
 
       const updatedGoals: UserGoals = {
         ...(existing ?? {}),
@@ -328,9 +384,7 @@ export function GoalsCalculatorForm() {
         goalDeltaKcal,
         weightUnit,
         weeklyCyclingEnabled,
-        weeklySchedule: weeklyCyclingEnabled
-          ? weeklySchedule
-          : existing?.weeklySchedule,
+        weeklySchedule: scheduleToSave,
         profile,
         updatedAt: Date.now(),
       };
@@ -425,7 +479,10 @@ export function GoalsCalculatorForm() {
               </span>
             )}
           </div>
-          <span className="inline-flex items-center gap-1 text-sm font-bold text-foreground tabular-nums">
+          <span
+            data-testid="active-targets-calories"
+            className="inline-flex items-center gap-1 text-sm font-bold text-foreground tabular-nums"
+          >
             <Flame
               className="w-3.5 h-3.5 text-[var(--macro-calories)]"
               aria-hidden="true"
@@ -799,12 +856,9 @@ export function GoalsCalculatorForm() {
                   type="number"
                   min={500}
                   max={10000}
-                  value={activeTargets.calories || ''}
+                  value={effectiveTargets.calories || ''}
                   onChange={(e) =>
-                    setActiveTargets((prev) => ({
-                      ...prev,
-                      calories: Math.max(0, parseInt(e.target.value, 10) || 0),
-                    }))
+                    handleUpdateCustomTargetField('calories', e.target.value)
                   }
                   className="w-full h-10 px-3.5 text-base sm:text-sm tabular-nums rounded-xl bg-surface-sub focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
                 />
@@ -823,12 +877,9 @@ export function GoalsCalculatorForm() {
                   type="number"
                   min={0}
                   max={600}
-                  value={activeTargets.proteinG || ''}
+                  value={effectiveTargets.proteinG || ''}
                   onChange={(e) =>
-                    setActiveTargets((prev) => ({
-                      ...prev,
-                      proteinG: Math.max(0, parseInt(e.target.value, 10) || 0),
-                    }))
+                    handleUpdateCustomTargetField('proteinG', e.target.value)
                   }
                   className="w-full h-10 px-3.5 text-base sm:text-sm tabular-nums rounded-xl bg-surface-sub focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
                 />
@@ -847,12 +898,9 @@ export function GoalsCalculatorForm() {
                   type="number"
                   min={0}
                   max={1200}
-                  value={activeTargets.carbsG || ''}
+                  value={effectiveTargets.carbsG || ''}
                   onChange={(e) =>
-                    setActiveTargets((prev) => ({
-                      ...prev,
-                      carbsG: Math.max(0, parseInt(e.target.value, 10) || 0),
-                    }))
+                    handleUpdateCustomTargetField('carbsG', e.target.value)
                   }
                   className="w-full h-10 px-3.5 text-base sm:text-sm tabular-nums rounded-xl bg-surface-sub focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
                 />
@@ -871,12 +919,9 @@ export function GoalsCalculatorForm() {
                   type="number"
                   min={0}
                   max={400}
-                  value={activeTargets.fatG || ''}
+                  value={effectiveTargets.fatG || ''}
                   onChange={(e) =>
-                    setActiveTargets((prev) => ({
-                      ...prev,
-                      fatG: Math.max(0, parseInt(e.target.value, 10) || 0),
-                    }))
+                    handleUpdateCustomTargetField('fatG', e.target.value)
                   }
                   className="w-full h-10 px-3.5 text-base sm:text-sm tabular-nums rounded-xl bg-surface-sub focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
                 />
@@ -895,12 +940,9 @@ export function GoalsCalculatorForm() {
                   type="number"
                   min={0}
                   max={150}
-                  value={activeTargets.fiberG || ''}
+                  value={effectiveTargets.fiberG || ''}
                   onChange={(e) =>
-                    setActiveTargets((prev) => ({
-                      ...prev,
-                      fiberG: Math.max(0, parseInt(e.target.value, 10) || 0),
-                    }))
+                    handleUpdateCustomTargetField('fiberG', e.target.value)
                   }
                   className="w-full h-10 px-3.5 text-base sm:text-sm tabular-nums rounded-xl bg-surface-sub focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
                 />
@@ -912,10 +954,10 @@ export function GoalsCalculatorForm() {
               <span>4-4-9 Macro Energy Sum</span>
               <span className="font-semibold text-foreground">
                 {macroEnergySum.toLocaleString()} kcal
-                {macroEnergySum !== activeTargets.calories && (
+                {macroEnergySum !== effectiveTargets.calories && (
                   <span className="text-[var(--neutral-over)] font-normal ml-1.5">
-                    ({macroEnergySum - activeTargets.calories > 0 ? '+' : ''}
-                    {macroEnergySum - activeTargets.calories} vs target)
+                    ({macroEnergySum - effectiveTargets.calories > 0 ? '+' : ''}
+                    {macroEnergySum - effectiveTargets.calories} vs target)
                   </span>
                 )}
               </span>
@@ -1029,7 +1071,7 @@ export function GoalsCalculatorForm() {
                   <span>Fib (g)</span>
                 </div>
                 {WEEKDAY_KEYS.map((day) => {
-                  const row = weeklySchedule[day];
+                  const row = resolvedWeeklySchedule[day];
                   const label = WEEKDAY_LABELS[day];
                   return (
                     <div

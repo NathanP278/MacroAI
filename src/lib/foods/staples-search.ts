@@ -64,6 +64,39 @@ export const TRACKED_MICRONUTRIENT_KEYS = [
 
 const round2 = (val: number): number => Math.round((val + Number.EPSILON) * 100) / 100;
 
+function getPerServingWeightGrams(item: FoodItem): number | undefined {
+  if (item.basis !== 'perServing') return undefined;
+  if (
+    typeof item.servingWeightGrams === 'number' &&
+    Number.isFinite(item.servingWeightGrams) &&
+    item.servingWeightGrams > 0
+  ) {
+    return item.servingWeightGrams;
+  }
+  const unitLower = (item.servingUnit ?? '').trim().toLowerCase();
+  if (
+    (unitLower === 'g' || unitLower === 'ml') &&
+    typeof item.servingSize === 'number' &&
+    Number.isFinite(item.servingSize) &&
+    item.servingSize > 0
+  ) {
+    return item.servingSize;
+  }
+  const matchingOption = item.servingOptions?.find(
+    (opt) => opt.unit === item.servingUnit && opt.grams > 0
+  );
+  if (matchingOption) {
+    const count =
+      typeof item.servingSize === 'number' &&
+      Number.isFinite(item.servingSize) &&
+      item.servingSize > 0
+        ? item.servingSize
+        : 1;
+    return matchingOption.grams * count;
+  }
+  return undefined;
+}
+
 /**
  * Deterministically estimates missing extended nutrients (sugarG, addedSugarG, saturatedFatG,
  * cholesterolMg, caffeineMg, alcoholG) for offline staples and PH foods when not explicitly stored,
@@ -74,6 +107,11 @@ export function estimateMissingStapleMicros(item: FoodItem): Micronutrients {
   const { protein = 0, carbs = 0, fat = 0, fiber = 0 } = item.nutrientsPerBasis ?? {};
   const netCarbs = Math.max(0, carbs - fiber);
   const text = `${item.brand ?? ''} ${item.name ?? ''}`.toLowerCase();
+  const servingWeight = getPerServingWeightGrams(item);
+  const densityScale =
+    item.basis === 'perServing' && servingWeight && servingWeight > 0
+      ? servingWeight / 100
+      : 1;
 
   if (typeof existing.sugarG !== 'number') {
     if (netCarbs <= 0) {
@@ -127,52 +165,52 @@ export function estimateMissingStapleMicros(item: FoodItem): Micronutrients {
 
   if (typeof existing.cholesterolMg !== 'number') {
     if (/\b(egg|mcmuffin|kwek|balut)\b/.test(text)) {
-      existing.cholesterolMg = round2(Math.max(120, protein * 14));
+      existing.cholesterolMg = round2(Math.max(120 * densityScale, protein * 14));
     } else if (
       /\b(liver|giblet|kidney|heart|shrimp|prawn|squid|calamari|crab|oyster|clam)\b/.test(
         text
       )
     ) {
-      existing.cholesterolMg = round2(Math.max(140, protein * 7.5));
+      existing.cholesterolMg = round2(Math.max(140 * densityScale, protein * 7.5));
     } else if (
       /\b(chicken|turkey|duck|beef|steak|veal|pork|ham|bacon|sausage|lamb|goat|venison|fish|salmon|tuna|cod|tilapia|bangus|galunggong|sardine|mackerel|trout|halibut|milk|cheese|butter|cream|yogurt|ice cream|mcdo|jollibee|kfc|chowking|burger|chickenjoy|adobo|sinigang|sisig|lechon|tapa|tocino|longganisa)\b/.test(
         text
       )
     ) {
-      existing.cholesterolMg = round2(Math.max(10, protein * 3.2 + fat * 1.1));
+      existing.cholesterolMg = round2(Math.max(10 * densityScale, protein * 3.2 + fat * 1.1));
     } else {
       existing.cholesterolMg = 0;
     }
   }
 
   if (typeof existing.caffeineMg !== 'number') {
+    let caffeinePer100g = 0;
     if (/\bespresso\b/.test(text)) {
-      existing.caffeineMg = 212;
+      caffeinePer100g = 212;
     } else if (/\b(coffee|mocha|latte|cappuccino|americano|macchiato|brew)\b/.test(text)) {
-      existing.caffeineMg = 45;
+      caffeinePer100g = 45;
     } else if (/\b(energy drink|red bull|monster|cobra|sting)\b/.test(text)) {
-      existing.caffeineMg = 32;
+      caffeinePer100g = 32;
     } else if (/\b(tea|matcha|chai)\b/.test(text)) {
-      existing.caffeineMg = 20;
+      caffeinePer100g = 20;
     } else if (/\b(cola|coke|pepsi|mountain dew)\b/.test(text)) {
-      existing.caffeineMg = 10;
+      caffeinePer100g = 10;
     } else if (/\b(chocolate|cocoa|cacao|milo|ovaltine)\b/.test(text)) {
-      existing.caffeineMg = 12;
-    } else {
-      existing.caffeineMg = 0;
+      caffeinePer100g = 12;
     }
+    existing.caffeineMg = caffeinePer100g > 0 ? round2(caffeinePer100g * densityScale) : 0;
   }
 
   if (typeof existing.alcoholG !== 'number') {
+    let alcoholPer100g = 0;
     if (/\b(gin|rum|vodka|whiskey|whisky|tequila|brandy|liquor)\b/.test(text)) {
-      existing.alcoholG = 33;
+      alcoholPer100g = 33;
     } else if (/\b(wine|sangria|sake|champagne|prosecco)\b/.test(text)) {
-      existing.alcoholG = 10;
+      alcoholPer100g = 10;
     } else if (/\b(beer|ale|lager|stout|cider|san miguel|red horse)\b/.test(text)) {
-      existing.alcoholG = 4;
-    } else {
-      existing.alcoholG = 0;
+      alcoholPer100g = 4;
     }
+    existing.alcoholG = alcoholPer100g > 0 ? round2(alcoholPer100g * densityScale) : 0;
   }
 
   return existing;
@@ -791,14 +829,24 @@ export async function enrichMealItemsWithStaples<
       return item;
     }
 
+    let scaleTo100g = 1;
+    if (bestStaple.basis === 'perServing') {
+      const grams = getPerServingWeightGrams(bestStaple);
+      if (!grams || grams <= 0) {
+        return item;
+      }
+      scaleTo100g = 100 / grams;
+    }
+
     const stapleMicros = estimateMissingStapleMicros(bestStaple);
     const mergedMicros: Micronutrients = { ...(item.microsPer100g ?? {}) };
     let changed = false;
     for (const key of TRACKED_MICRONUTRIENT_KEYS) {
       const existingVal = mergedMicros[key];
-      const stapleVal = stapleMicros[key];
-      if (typeof existingVal !== 'number' && typeof stapleVal === 'number') {
-        mergedMicros[key] = stapleVal;
+      const rawStapleVal = stapleMicros[key];
+      if (typeof existingVal !== 'number' && typeof rawStapleVal === 'number') {
+        mergedMicros[key] =
+          scaleTo100g === 1 ? rawStapleVal : round2(rawStapleVal * scaleTo100g);
         changed = true;
       }
     }

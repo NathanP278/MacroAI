@@ -317,4 +317,34 @@ describe('buildWeeklyCheckInProposal / applyWeeklyCheckInToGoals', () => {
     )!;
     expect(old.eligible).toBe(true);
   });
+
+  it('syncs top-level dailyCalories and macros to computeWeeklyScheduleAverage(proposedSchedule) even when initial top-level targets drifted', () => {
+    const base = cyclingGoals();
+    const drifted: UserGoals = {
+      ...base,
+      goalDeltaKcal: 0,
+      dailyCalories: 1650,
+      proteinG: 120,
+      carbsG: 140,
+      fatG: 50,
+      fiberG: 18,
+    };
+
+    const scheduleAvg = computeWeeklyScheduleAverage(drifted.weeklySchedule!);
+    const proposal = buildWeeklyCheckInProposal(
+      drifted,
+      readyResult(scheduleAvg.calories + 120),
+      now,
+    )!;
+    expect(proposal.preservesCycling).toBe(true);
+    expect(proposal.proposedSchedule).toBeDefined();
+
+    const next = applyWeeklyCheckInToGoals(drifted, proposal, now);
+    const expectedTop = computeWeeklyScheduleAverage(next.weeklySchedule!);
+    expect(next.dailyCalories).toBe(expectedTop.calories);
+    expect(next.proteinG).toBe(expectedTop.proteinG);
+    expect(next.carbsG).toBe(expectedTop.carbsG);
+    expect(next.fatG).toBe(expectedTop.fatG);
+    expect(next.fiberG).toBe(expectedTop.fiberG);
+  });
 });

@@ -380,22 +380,6 @@ export function applyWeeklyCheckInToGoals(
   now: number,
 ): UserGoals {
   const delta = proposal.deltaCalories;
-  let top: DailyMacroTargets;
-  if (proposal.preservesCycling) {
-    top = rebaseTargets(
-      {
-        calories: goals.dailyCalories,
-        proteinG: goals.proteinG,
-        carbsG: goals.carbsG,
-        fatG: goals.fatG,
-        fiberG: goals.fiberG,
-      },
-      delta,
-      proposal.proposedMacros.proteinG,
-    );
-  } else {
-    top = proposal.proposedMacros;
-  }
 
   let weeklySchedule = goals.weeklySchedule;
   if (goals.weeklySchedule) {
@@ -405,6 +389,15 @@ export function applyWeeklyCheckInToGoals(
       if (row) next[key] = proposal.proposedSchedule?.[key] ?? rebaseTargets(row, delta);
     }
     weeklySchedule = next;
+  }
+
+  let top: DailyMacroTargets;
+  if (proposal.preservesCycling && proposal.proposedSchedule) {
+    top = computeWeeklyScheduleAverage(proposal.proposedSchedule);
+  } else if (proposal.preservesCycling && weeklySchedule) {
+    top = computeWeeklyScheduleAverage(weeklySchedule);
+  } else {
+    top = proposal.proposedMacros;
   }
 
   return {

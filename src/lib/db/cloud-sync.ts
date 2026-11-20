@@ -40,6 +40,7 @@ const SYNC_TABLES = new Set<CentralTableName>([
 
 const MIGRATED_KEY = 'macroai_central_migrated_v1';
 const DIRTY_SYNC_KEY = 'macroai_dirty_sync';
+export const PENDING_REPLACE_SYNC_KEY = 'macroai_pending_replace_sync';
 
 let forceEnableInTests = false;
 let isHydratingFromServer = false;
@@ -313,11 +314,23 @@ async function runSyncWithCentralDb(
   dbInstance: MacroAIDB,
   options?: { forcePushMode?: 'merge' | 'replace' }
 ): Promise<CentralSyncResult> {
+  if (options?.forcePushMode === 'replace') {
+    safeSetLocalStorage(PENDING_REPLACE_SYNC_KEY, '1');
+  }
+
   await tombstoneQueue;
   await mutationQueue;
 
+  const hasPendingReplace =
+    safeGetLocalStorage(PENDING_REPLACE_SYNC_KEY) === '1';
+  const effectivePushMode: 'merge' | 'replace' =
+    options?.forcePushMode === 'replace' || hasPendingReplace
+      ? 'replace'
+      : 'merge';
+
   const needsPush =
     Boolean(options?.forcePushMode) ||
+    hasPendingReplace ||
     safeGetLocalStorage(MIGRATED_KEY) !== '1' ||
     safeGetLocalStorage(DIRTY_SYNC_KEY) === '1';
 
@@ -347,7 +360,7 @@ async function runSyncWithCentralDb(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'sync',
-        mode: options?.forcePushMode ?? 'merge',
+        mode: effectivePushMode,
         tables: {
           foodLogs,
           foodsCache,
@@ -361,21 +374,27 @@ async function runSyncWithCentralDb(
     });
 
     if (res.status === 401) {
+      safeSetLocalStorage(DIRTY_SYNC_KEY, '1');
       useLoggerStore.getState().setSyncAuthLocked(true);
       throw new SyncAuthError('Sync authentication required');
     }
 
     if (!res.ok) {
+      safeSetLocalStorage(DIRTY_SYNC_KEY, '1');
       throw new Error(`Central DB sync failed (${res.status})`);
     }
 
     data = (await res.json()) as SyncApiResponse;
     if (!data.ok) {
+      safeSetLocalStorage(DIRTY_SYNC_KEY, '1');
       throw new Error(data.error || 'Central DB sync returned an error');
     }
 
     safeSetLocalStorage(MIGRATED_KEY, '1');
     safeRemoveLocalStorage(DIRTY_SYNC_KEY);
+    if (effectivePushMode === 'replace') {
+      safeRemoveLocalStorage(PENDING_REPLACE_SYNC_KEY);
+    }
   } else {
     const res = await fetch('/api/db/sync', {
       method: 'GET',
@@ -483,6 +502,10 @@ export async function syncWithCentralDb(
   dbInstance: MacroAIDB,
   options?: { forcePushMode?: 'merge' | 'replace' }
 ): Promise<CentralSyncResult> {
+  if (options?.forcePushMode === 'replace') {
+    safeSetLocalStorage(PENDING_REPLACE_SYNC_KEY, '1');
+  }
+
   if (inFlightSync && !options?.forcePushMode) {
     return inFlightSync;
   }

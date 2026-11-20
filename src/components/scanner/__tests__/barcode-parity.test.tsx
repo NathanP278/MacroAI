@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import { db } from '@/lib/db/macroai-db';
 import { BarcodeScannerDrawer } from '../barcode-scanner-drawer';
 import { CustomFoodModal } from '@/components/recipes/custom-food-modal';
+import { scaleFoodByOption } from '@/lib/nutrition/scaling';
 import { useLoggerStore } from '@/stores/logger-store';
 
 const originalCreateElement = document.createElement.bind(document);
@@ -338,5 +339,154 @@ describe('Task 8: Barcode Countable Servings Parity & Standalone CustomFoodModal
     });
     expect(screen.getByTestId('sync-unlock-card')).toBeInTheDocument();
     expect(screen.getByLabelText(/food name/i)).toHaveValue('Draft Custom Food');
+  });
+
+  it('creates per100g food with countable unit (pack 25g) without undercounting 1 pack and blocks missing weight', async () => {
+    render(<CustomFoodModal open onClose={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText(/food name/i), {
+      target: { value: 'Crackers Pack' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /per 100g/i }));
+
+    // Unambiguous per-100g labeling
+    expect(screen.getByText(/nutrition values \(per 100g\)/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/serving size/i), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText(/serving unit/i), { target: { value: 'pack' } });
+
+    // Missing countable serving weight in per100g mode must be blocked cleanly
+    fireEvent.change(screen.getByLabelText(/^calories$/i), { target: { value: '480' } });
+    fireEvent.click(screen.getByRole('button', { name: /save food/i }));
+    expect(await db.foodsCache.count()).toBe(0);
+    expect(screen.getByText(/weight.*countable/i)).toBeInTheDocument();
+
+    // Provide 25g per pack and save per-100g nutrition
+    fireEvent.change(screen.getByLabelText(/serving weight/i), { target: { value: '25' } });
+    fireEvent.change(screen.getByLabelText(/^protein$/i), { target: { value: '8' } });
+    fireEvent.change(screen.getByLabelText(/^carbs$/i), { target: { value: '72' } });
+    fireEvent.change(screen.getByLabelText(/^fat$/i), { target: { value: '16' } });
+    fireEvent.change(screen.getByLabelText(/^fiber$/i), { target: { value: '4' } });
+    fireEvent.change(screen.getByLabelText(/^sodium$/i), { target: { value: '600' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /save food/i }));
+
+    await waitFor(async () => expect(await db.foodsCache.count()).toBe(1));
+    const [saved] = await db.foodsCache.toArray();
+    expect(saved.basis).toBe('per100g');
+    expect(saved.servingSize).toBe(100);
+    expect(saved.servingUnit).toBe('g');
+    expect(saved.servingWeightGrams).toBe(25);
+    expect(saved.nutrientsPerBasis.calories).toBe(480);
+    expect(saved.micronutrientsPerBasis.sodiumMg).toBe(600);
+    expect(saved.servingOptions).toEqual([
+      { id: 'pack', label: 'pack (25g)', unit: 'pack', grams: 25, defaultAmount: 1 },
+      { id: 'g', label: 'g', unit: 'g', grams: 1, defaultAmount: 100 },
+    ]);
+
+    const packOpt = saved.servingOptions![0];
+    const scaledPack = scaleFoodByOption(saved, 1, packOpt);
+    expect(scaledPack.macros.calories).toBe(120);
+    expect(scaledPack.macros.protein).toBe(2);
+    expect(scaledPack.micros.sodiumMg).toBe(150);
+  });
+
+  it('round-trips per100g food with countable servingOptions and per100g custom servingSize in edit mode without macro drift', async () => {
+    const existingPackFood = {
+      id: 'custom_food:skyflakes-1',
+      source: 'custom_food' as const,
+      name: 'SkyFlakes Crackers',
+      basis: 'per100g' as const,
+      servingSize: 100,
+      servingUnit: 'g',
+      servingWeightGrams: 25,
+      servingOptions: [
+        { id: 'pack', label: 'pack (25g)', unit: 'pack', grams: 25, defaultAmount: 1 },
+        { id: 'g', label: 'g', unit: 'g', grams: 1, defaultAmount: 100 },
+      ],
+      nutrientsPerBasis: { calories: 480, protein: 8, carbs: 72, fat: 16, fiber: 4 },
+      micronutrientsPerBasis: { sodiumMg: 600 },
+      updatedAt: 1000,
+    };
+    const existing50gFood = {
+      id: 'custom_food:oats-50',
+      source: 'custom_food' as const,
+      name: 'Rolled Oats',
+      basis: 'per100g' as const,
+      servingSize: 50,
+      servingUnit: 'g',
+      nutrientsPerBasis: { calories: 380, protein: 14, carbs: 66, fat: 7, fiber: 10 },
+      micronutrientsPerBasis: {},
+      updatedAt: 1000,
+    };
+    await db.foodsCache.bulkPut([existingPackFood, existing50gFood]);
+
+    const { unmount } = render(
+      <CustomFoodModal open initialFood={existingPackFood} onClose={vi.fn()} />
+    );
+
+    expect(screen.getByText(/nutrition values \(per 100g\)/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^calories$/i)).toHaveValue(480);
+    expect(screen.getByLabelText(/serving unit/i)).toHaveValue('pack');
+    expect(screen.getByLabelText(/serving weight/i)).toHaveValue(25);
+
+    fireEvent.click(screen.getByRole('button', { name: /save food/i }));
+
+    await waitFor(async () => {
+      const updated = await db.foodsCache.get('custom_food:skyflakes-1');
+      expect(updated?.updatedAt).toBeGreaterThan(1000);
+      expect(updated?.nutrientsPerBasis).toEqual({
+        calories: 480,
+        protein: 8,
+        carbs: 72,
+        fat: 16,
+        fiber: 4,
+      });
+      expect(updated?.micronutrientsPerBasis.sodiumMg).toBe(600);
+      expect(updated?.servingOptions?.[0]).toMatchObject({ unit: 'pack', grams: 25 });
+    });
+    unmount();
+
+    render(<CustomFoodModal open initialFood={existing50gFood} onClose={vi.fn()} />);
+    expect(screen.getByLabelText(/^calories$/i)).toHaveValue(380);
+    fireEvent.click(screen.getByRole('button', { name: /save food/i }));
+
+    await waitFor(async () => {
+      const updated50 = await db.foodsCache.get('custom_food:oats-50');
+      expect(updated50?.updatedAt).toBeGreaterThan(1000);
+      expect(updated50?.nutrientsPerBasis.calories).toBe(380);
+    });
+  });
+
+  it('canonicalizes id to custom_barcode:<barcode> and removes superseded custom_food:<id> when adding a barcode', async () => {
+    const existing = {
+      id: 'custom_food:legacy-uuid-123',
+      source: 'custom_food' as const,
+      name: 'Protein Pudding',
+      basis: 'perServing' as const,
+      servingSize: 1,
+      servingUnit: 'cup',
+      servingWeightGrams: 150,
+      nutrientsPerBasis: { calories: 160, protein: 20, carbs: 10, fat: 4, fiber: 1 },
+      micronutrientsPerBasis: {},
+      updatedAt: 1000,
+    };
+    await db.foodsCache.put(existing);
+
+    render(<CustomFoodModal open initialFood={existing} onClose={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText(/^barcode$/i), {
+      target: { value: '480555999' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /save food/i }));
+
+    await waitFor(async () => {
+      expect(await db.foodsCache.get('custom_barcode:480555999')).toBeDefined();
+    });
+
+    expect(await db.foodsCache.get('custom_food:legacy-uuid-123')).toBeUndefined();
+    const canonical = await db.foodsCache.get('custom_barcode:480555999');
+    expect(canonical?.source).toBe('custom_barcode');
+    expect(canonical?.barcode).toBe('480555999');
   });
 });

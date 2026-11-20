@@ -157,6 +157,7 @@ export function CustomFoodModal({
   const [brand, setBrand] = useState('');
   const [barcode, setBarcode] = useState('');
   const [basis, setBasis] = useState<'perServing' | 'per100g'>('perServing');
+  const [per100Unit, setPer100Unit] = useState<'g' | 'ml'>('g');
   const [servingSize, setServingSize] = useState('1');
   const [servingUnit, setServingUnit] = useState('serving');
   const [servingWeightGrams, setServingWeightGrams] = useState('');
@@ -236,6 +237,12 @@ export function CustomFoodModal({
         setBrand(initialFood.brand || '');
         setBarcode(initialFood.barcode ?? defaultBarcode ?? '');
         setBasis(initBasis);
+        setPer100Unit(
+          initialFood.basis === 'per100ml' ||
+            initialFood.servingUnit?.toLowerCase() === 'ml'
+            ? 'ml'
+            : 'g'
+        );
         setServingSize(String(initSize));
         setServingUnit(initUnit);
         setServingWeightGrams(initWeight ? String(initWeight) : '');
@@ -265,6 +272,7 @@ export function CustomFoodModal({
         setBrand('');
         setBarcode(defaultBarcode ?? '');
         setBasis('perServing');
+        setPer100Unit('g');
         setServingSize('1');
         setServingUnit('serving');
         setServingWeightGrams('');
@@ -306,19 +314,46 @@ export function CustomFoodModal({
 
   if (!open) return null;
 
+  const trimmedUnitLower = servingUnit.trim().toLowerCase();
+  const effectiveMetricUnit: 'g' | 'ml' =
+    trimmedUnitLower === 'ml'
+      ? 'ml'
+      : trimmedUnitLower === 'g'
+        ? 'g'
+        : per100Unit;
+
+  const parsedPreviewSize = parseFloat(servingSize);
+  const parsedPreviewWeight = parseFloat(servingWeightGrams);
+  const parsedPreviewCal = parseFloat(calories);
+  const countablePreview =
+    basis === 'per100g' &&
+    trimmedUnitLower.length > 0 &&
+    trimmedUnitLower !== 'g' &&
+    trimmedUnitLower !== 'ml' &&
+    Number.isFinite(parsedPreviewSize) &&
+    parsedPreviewSize > 0 &&
+    Number.isFinite(parsedPreviewWeight) &&
+    parsedPreviewWeight > 0 &&
+    Number.isFinite(parsedPreviewCal) &&
+    parsedPreviewCal >= 0
+      ? `1 ${servingUnit.trim()} (${round2(parsedPreviewWeight / parsedPreviewSize)}${effectiveMetricUnit}) = ${round2((parsedPreviewCal * (parsedPreviewWeight / parsedPreviewSize)) / 100)} kcal`
+      : null;
+
   const handleBasisChange = (nextBasis: 'perServing' | 'per100g') => {
     setBasis(nextBasis);
+    setServingError(null);
     if (
       nextBasis === 'per100g' &&
       servingSize === '1' &&
       servingUnit.trim().toLowerCase() === 'serving'
     ) {
       setServingSize('100');
-      setServingUnit('g');
+      setServingUnit(per100Unit);
     } else if (
       nextBasis === 'perServing' &&
       servingSize === '100' &&
-      servingUnit.trim().toLowerCase() === 'g'
+      (servingUnit.trim().toLowerCase() === 'g' ||
+        servingUnit.trim().toLowerCase() === 'ml')
     ) {
       setServingSize('1');
       setServingUnit('serving');
@@ -430,39 +465,48 @@ export function CustomFoodModal({
       );
       return;
     }
+
+    const cleanUnit =
+      servingUnit.trim() ||
+      (basis === 'perServing' ? 'serving' : effectiveMetricUnit);
+    const unitLower = cleanUnit.toLowerCase();
+
+    const rawWeight =
+      servingWeightGrams.trim() !== ''
+        ? parseFloat(servingWeightGrams)
+        : undefined;
+    const validWeight =
+      rawWeight !== undefined && Number.isFinite(rawWeight) && rawWeight > 0
+        ? round2(rawWeight)
+        : undefined;
+
+    if (
+      basis === 'per100g' &&
+      unitLower !== 'g' &&
+      unitLower !== 'ml' &&
+      validWeight === undefined
+    ) {
+      setServingError(
+        `Enter the ${effectiveMetricUnit} weight for this countable serving (e.g. 25${effectiveMetricUnit} per ${cleanUnit}), or set Serving Unit to ${effectiveMetricUnit}.`
+      );
+      return;
+    }
+
     setServingError(null);
     setIsSaving(true);
 
     try {
       const cleanBarcode = barcode.trim();
-      const cleanUnit =
-        servingUnit.trim() || (basis === 'perServing' ? 'serving' : 'g');
-      const unitLower = cleanUnit.toLowerCase();
-
-      const rawWeight =
-        servingWeightGrams.trim() !== ''
-          ? parseFloat(servingWeightGrams)
-          : undefined;
-      const validWeight =
-        rawWeight !== undefined && Number.isFinite(rawWeight) && rawWeight > 0
-          ? round2(rawWeight)
-          : undefined;
 
       const effectiveBasis: NutritionBasis =
         basis === 'perServing'
           ? 'perServing'
-          : unitLower === 'ml'
+          : effectiveMetricUnit === 'ml'
             ? 'per100ml'
             : 'per100g';
 
-      const factor =
-        effectiveBasis === 'perServing'
-          ? 1
-          : unitLower === 'g' || unitLower === 'ml'
-            ? rawServingSize > 0
-              ? 100 / rawServingSize
-              : 1
-            : 1;
+      // Nutrition inputs in per100g/per100ml mode are always per 100g/100ml, and in perServing mode per servingSize.
+      const factor = 1;
 
       const parseNutrient = (raw: string): number =>
         Math.max(0, parseFloat(raw) || 0);
@@ -514,9 +558,15 @@ export function CustomFoodModal({
       if (initialFood) {
         if (
           cleanBarcode.length > 0 &&
-          initialFood.id.startsWith('custom_barcode:')
+          (initialFood.id.startsWith('custom_barcode:') ||
+            initialFood.id.startsWith('custom_food:'))
         ) {
           itemId = `custom_barcode:${cleanBarcode}`;
+        } else if (
+          cleanBarcode.length === 0 &&
+          initialFood.id.startsWith('custom_barcode:')
+        ) {
+          itemId = `custom_food:${generateId()}`;
         } else {
           itemId = initialFood.id;
         }
@@ -534,6 +584,11 @@ export function CustomFoodModal({
         servingWeightGrams: validWeight,
       });
 
+      const storedServingSize =
+        effectiveBasis === 'perServing' ? rawServingSize : 100;
+      const storedServingUnit =
+        effectiveBasis === 'perServing' ? cleanUnit : effectiveMetricUnit;
+
       const foodItem: FoodItem = {
         id: itemId,
         ...(cleanBarcode ? { barcode: cleanBarcode } : {}),
@@ -541,8 +596,8 @@ export function CustomFoodModal({
         name: name.trim(),
         ...(brand.trim() ? { brand: brand.trim() } : {}),
         basis: effectiveBasis,
-        servingSize: rawServingSize,
-        servingUnit: cleanUnit,
+        servingSize: storedServingSize,
+        servingUnit: storedServingUnit,
         ...(validWeight !== undefined ? { servingWeightGrams: validWeight } : {}),
         ...(servingOptions ? { servingOptions } : {}),
         nutrientsPerBasis: {
@@ -807,90 +862,114 @@ export function CustomFoodModal({
           </div>
 
           {/* Serving Size, Unit & Optional Gram Weight */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="space-y-1">
-              <label
-                htmlFor="custom-food-serving-size"
-                className="text-xs font-semibold text-foreground"
-              >
-                Serving Size *
-              </label>
-              <input
-                id="custom-food-serving-size"
-                aria-label="Serving Size"
-                type="number"
-                step="any"
-                min="0.001"
-                required
-                value={servingSize}
-                onChange={(e) => {
-                  setServingSize(e.target.value);
-                  setServingError(null);
-                }}
-                onBlur={() => {
-                  const parsed = parseFloat(servingSize);
-                  if (!Number.isFinite(parsed) || parsed <= 0) {
-                    setServingError(
-                      'Serving size must be a positive number. Enter a value above 0 matching the package label.'
-                    );
-                  }
-                }}
-                className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
-              />
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-1">
+              <span className="text-xs font-semibold text-foreground">
+                {basis === 'perServing'
+                  ? 'Serving Definition'
+                  : `Optional Countable Serving (${effectiveMetricUnit})`}
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                {basis === 'perServing'
+                  ? 'Nutrition values below are per this serving'
+                  : `Optional shortcut e.g. 1 pack = 25${effectiveMetricUnit}`}
+              </span>
             </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1">
+                <label
+                  htmlFor="custom-food-serving-size"
+                  className="text-xs font-semibold text-foreground"
+                >
+                  Serving Size *
+                </label>
+                <input
+                  id="custom-food-serving-size"
+                  aria-label="Serving Size"
+                  type="number"
+                  step="any"
+                  min="0.001"
+                  required
+                  value={servingSize}
+                  onChange={(e) => {
+                    setServingSize(e.target.value);
+                    setServingError(null);
+                  }}
+                  onBlur={() => {
+                    const parsed = parseFloat(servingSize);
+                    if (!Number.isFinite(parsed) || parsed <= 0) {
+                      setServingError(
+                        'Serving size must be a positive number. Enter a value above 0 matching the package label.'
+                      );
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
+                />
+              </div>
 
-            <div className="space-y-1">
-              <label
-                htmlFor="custom-food-serving-unit"
-                className="text-xs font-semibold text-foreground"
-              >
-                Serving Unit *
-              </label>
-              <input
-                id="custom-food-serving-unit"
-                aria-label="Serving Unit"
-                type="text"
-                list="custom-food-unit-options"
-                value={servingUnit}
-                onChange={(e) => setServingUnit(e.target.value)}
-                placeholder="e.g. pack, scoop, g"
-                className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground"
-              />
-              <datalist id="custom-food-unit-options">
-                <option value="serving" />
-                <option value="pack" />
-                <option value="scoop" />
-                <option value="piece" />
-                <option value="pc" />
-                <option value="slice" />
-                <option value="cup" />
-                <option value="bar" />
-                <option value="bottle" />
-                <option value="can" />
-                <option value="sachet" />
-                <option value="g" />
-                <option value="ml" />
-              </datalist>
-            </div>
+              <div className="space-y-1">
+                <label
+                  htmlFor="custom-food-serving-unit"
+                  className="text-xs font-semibold text-foreground"
+                >
+                  Serving Unit *
+                </label>
+                <input
+                  id="custom-food-serving-unit"
+                  aria-label="Serving Unit"
+                  type="text"
+                  list="custom-food-unit-options"
+                  value={servingUnit}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setServingUnit(val);
+                    setServingError(null);
+                    const low = val.trim().toLowerCase();
+                    if (low === 'ml') setPer100Unit('ml');
+                    else if (low === 'g') setPer100Unit('g');
+                  }}
+                  placeholder="e.g. pack, scoop, g"
+                  className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground"
+                />
+                <datalist id="custom-food-unit-options">
+                  <option value="serving" />
+                  <option value="pack" />
+                  <option value="scoop" />
+                  <option value="piece" />
+                  <option value="pc" />
+                  <option value="slice" />
+                  <option value="cup" />
+                  <option value="bar" />
+                  <option value="bottle" />
+                  <option value="can" />
+                  <option value="sachet" />
+                  <option value="g" />
+                  <option value="ml" />
+                </datalist>
+              </div>
 
-            <div className="space-y-1">
-              <label
-                htmlFor="custom-food-serving-weight"
-                className="text-xs font-semibold text-foreground"
-              >
-                Serving Weight (g)
-              </label>
-              <input
-                id="custom-food-serving-weight"
-                aria-label="Serving Weight (g)"
-                type="number"
-                step="any"
-                min="0"
-                value={servingWeightGrams}
-                onChange={(e) => setServingWeightGrams(e.target.value)}
-                placeholder="e.g. 25"
-                className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums placeholder:text-muted-foreground/50"
-              />
+              <div className="space-y-1">
+                <label
+                  htmlFor="custom-food-serving-weight"
+                  className="text-xs font-semibold text-foreground"
+                >
+                  Serving Weight ({basis === 'per100g' ? effectiveMetricUnit : 'g'})
+                </label>
+                <input
+                  id="custom-food-serving-weight"
+                  aria-label="Serving Weight (g)"
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={servingWeightGrams}
+                  onChange={(e) => {
+                    setServingWeightGrams(e.target.value);
+                    setServingError(null);
+                  }}
+                  placeholder="e.g. 25"
+                  className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums placeholder:text-muted-foreground/50"
+                />
+              </div>
             </div>
           </div>
           {servingError && (
@@ -898,6 +977,20 @@ export function CustomFoodModal({
               {servingError}
             </p>
           )}
+
+          {/* Unambiguous Nutrition Values Header */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <span className="text-xs font-semibold text-foreground">
+              {basis === 'perServing'
+                ? `Nutrition Values (per ${servingSize || '1'} ${servingUnit.trim() || 'serving'})`
+                : `Nutrition Values (per 100${effectiveMetricUnit})`}
+            </span>
+            {countablePreview && (
+              <span className="text-[11px] text-muted-foreground tabular-nums">
+                {countablePreview}
+              </span>
+            )}
+          </div>
 
           {/* Macros: Calories & Protein */}
           <div className="grid grid-cols-2 gap-2">

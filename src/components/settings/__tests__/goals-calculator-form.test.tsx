@@ -6,6 +6,8 @@ import { GoalsCalculatorForm } from '../goals-calculator-form';
 import {
   DEFAULT_RDA_MICROS,
   calculateMifflinStJeorTargets,
+  computeWeeklyScheduleAverage,
+  ensureDefaultUserGoals,
 } from '@/lib/nutrition/goals';
 
 describe('GoalsCalculatorForm', () => {
@@ -233,12 +235,14 @@ describe('GoalsCalculatorForm', () => {
 
     await waitFor(async () => {
       const saved = await db.userGoals.get('active');
+      const expectedAvg = computeWeeklyScheduleAverage(saved!.weeklySchedule!);
       expect(saved?.targetMode).toBe('custom');
-      expect(saved?.dailyCalories).toBe(2150);
-      expect(saved?.proteinG).toBe(165);
-      expect(saved?.carbsG).toBe(220);
-      expect(saved?.fatG).toBe(65);
-      expect(saved?.fiberG).toBe(32);
+      expect(saved?.dailyCalories).toBe(expectedAvg.calories);
+      expect(saved?.dailyCalories).toBe(2157);
+      expect(saved?.proteinG).toBe(expectedAvg.proteinG);
+      expect(saved?.carbsG).toBe(expectedAvg.carbsG);
+      expect(saved?.fatG).toBe(expectedAvg.fatG);
+      expect(saved?.fiberG).toBe(expectedAvg.fiberG);
       expect(saved?.goalDeltaKcal).toBe(-250);
       expect(saved?.weeklyCyclingEnabled).toBe(true);
       expect(saved?.weeklySchedule?.fri?.calories).toBe(2450);
@@ -277,5 +281,114 @@ describe('GoalsCalculatorForm', () => {
 
     expect(screen.getByLabelText(/sodium \(mg\)/i)).toHaveValue(2300);
     expect(screen.getByLabelText(/caffeine \(mg\)/i)).toHaveValue(400);
+  });
+
+  it('does not lock onto 2000 kcal seed from ensureDefaultUserGoals and saves computed Mifflin-St Jeor targets', async () => {
+    await ensureDefaultUserGoals();
+
+    const defaultExpected = calculateMifflinStJeorTargets({
+      sex: 'male',
+      age: 30,
+      weightKg: 75,
+      heightCm: 175,
+      activityMultiplier: 1.55,
+      goalDeltaKcal: -300,
+      proteinPerKg: 2.0,
+    });
+
+    const editedExpected = calculateMifflinStJeorTargets({
+      sex: 'female',
+      age: 28,
+      weightKg: 60,
+      heightCm: 165,
+      activityMultiplier: 1.55,
+      goalDeltaKcal: -250,
+      proteinPerKg: 2.0,
+    });
+
+    render(<GoalsCalculatorForm />);
+
+    // Flush async loadGoals() effect and verify Active Daily Targets does NOT lock onto 2,000 kcal seed
+    await waitFor(async () => {
+      const seed = await db.userGoals.get('active');
+      expect(seed?.updatedAt).toBe(0);
+      expect(screen.getByTestId('active-targets-calories')).toHaveTextContent(
+        new RegExp(`${defaultExpected.dailyCalories.toLocaleString()} kcal`, 'i')
+      );
+    });
+
+    fireEvent.change(screen.getByLabelText(/biological sex/i), { target: { value: 'female' } });
+    fireEvent.change(screen.getByLabelText(/age/i), { target: { value: '28' } });
+    fireEvent.change(screen.getByLabelText(/weight/i), { target: { value: '60' } });
+    fireEvent.change(screen.getByLabelText(/height/i), { target: { value: '165' } });
+    fireEvent.change(screen.getByLabelText(/goal rate/i), { target: { value: '-250' } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('active-targets-calories')).toHaveTextContent(
+        new RegExp(`${editedExpected.dailyCalories.toLocaleString()} kcal`, 'i')
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /save nutrition goals/i }));
+
+    await waitFor(async () => {
+      const saved = await db.userGoals.get('active');
+      expect(saved?.dailyCalories).toBe(editedExpected.dailyCalories);
+      expect(saved?.dailyCalories).not.toBe(2000);
+      expect(saved?.proteinG).toBe(editedExpected.proteinG);
+      expect(saved?.carbsG).toBe(editedExpected.carbsG);
+      expect(saved?.fatG).toBe(editedExpected.fatG);
+      expect(saved?.fiberG).toBe(editedExpected.fiberG);
+      expect(saved?.updatedAt).toBeGreaterThan(0);
+    });
+  });
+
+  it('syncs weekly cycling average to Active Daily Targets and saved top-level dailyCalories when toggling and editing weekday rows', async () => {
+    await db.userGoals.put({
+      id: 'active',
+      dailyCalories: 2350,
+      proteinG: 175,
+      carbsG: 255,
+      fatG: 70,
+      fiberG: 33,
+      micronutrientTargets: { ...DEFAULT_RDA_MICROS },
+      mealSlots: [],
+      targetMode: 'custom',
+      goalDeltaKcal: 0,
+      weightUnit: 'kg',
+      updatedAt: Date.now(),
+    });
+
+    render(<GoalsCalculatorForm />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('active-targets-calories')).toHaveTextContent(/2,350 kcal/i);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /weekly calorie cycling/i }));
+    fireEvent.click(screen.getByLabelText(/enable weekly calorie cycling/i));
+
+    // Initializes from active 2350 kcal (not 2000 kcal placeholder) even when hasSavedGoals is true
+    expect(screen.getByLabelText(/mon calories/i)).toHaveValue(2350);
+
+    // Edit Mon to 2700 -> 7-day average becomes (2350 * 6 + 2700) / 7 = 2400 kcal
+    fireEvent.change(screen.getByLabelText(/mon calories/i), { target: { value: '2700' } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('active-targets-calories')).toHaveTextContent(/2,400 kcal/i);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /save nutrition goals/i }));
+
+    await waitFor(async () => {
+      const saved = await db.userGoals.get('active');
+      const expectedAvg = computeWeeklyScheduleAverage(saved!.weeklySchedule!);
+      expect(expectedAvg.calories).toBe(2400);
+      expect(saved?.dailyCalories).toBe(2400);
+      expect(saved?.proteinG).toBe(expectedAvg.proteinG);
+      expect(saved?.carbsG).toBe(expectedAvg.carbsG);
+      expect(saved?.fatG).toBe(expectedAvg.fatG);
+      expect(saved?.fiberG).toBe(expectedAvg.fiberG);
+    });
   });
 });

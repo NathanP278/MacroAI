@@ -243,6 +243,7 @@ export interface ImportBackupResult {
     pinnedFoods: number;
     [key: string]: number;
   };
+  syncPending?: boolean;
 }
 
 /**
@@ -408,9 +409,14 @@ export async function importBackupJson(
     }
   );
 
+  let syncPending = false;
   if (isCloudSyncEnabled()) {
-    await syncWithCentralDb(db, { forcePushMode: mode }).catch(() => {});
+    try {
+      await syncWithCentralDb(db, { forcePushMode: mode });
+    } catch {
+      syncPending = true;
+    }
   }
 
-  return { importedCounts };
+  return syncPending ? { importedCounts, syncPending } : { importedCounts };
 }
