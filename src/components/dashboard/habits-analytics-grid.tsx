@@ -244,7 +244,7 @@ export function HabitsAnalyticsGrid({
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           {/* Food Logging 30-Day Interactive Heatmap Grid */}
           <div className="min-w-0 rounded-2xl bg-card border border-border/50 p-3.5 sm:p-4 flex flex-col justify-between gap-3">
             <div className="flex items-start justify-between gap-1">
@@ -265,7 +265,7 @@ export function HabitsAnalyticsGrid({
 
             <div
               role="group"
-              className="grid grid-cols-10 gap-1"
+              className="grid grid-cols-10 gap-1.5 sm:gap-1"
               aria-label={`Food logging 30-day heatmap: ${loggedCount} of ${thirtyDayDots.length} days logged`}
             >
               {thirtyDayDots.map((dot, idx) => {
@@ -321,7 +321,7 @@ export function HabitsAnalyticsGrid({
               <div className="min-w-0">
                 <div className="text-[11px] font-medium text-muted-foreground">Calories</div>
                 <div
-                  className="text-[13px] sm:text-sm font-bold whitespace-nowrap truncate"
+                  className="text-xs sm:text-sm font-bold whitespace-nowrap truncate"
                   style={{ color: 'var(--macro-calories)' }}
                 >
                   {calParts.numText}
@@ -333,7 +333,7 @@ export function HabitsAnalyticsGrid({
               <div className="min-w-0">
                 <div className="text-[11px] font-medium text-muted-foreground">Protein</div>
                 <div
-                  className="text-[13px] sm:text-sm font-bold whitespace-nowrap truncate"
+                  className="text-xs sm:text-sm font-bold whitespace-nowrap truncate"
                   style={{ color: 'var(--macro-protein)' }}
                 >
                   {proParts.numText}
@@ -345,7 +345,7 @@ export function HabitsAnalyticsGrid({
               <div className="min-w-0">
                 <div className="text-[11px] font-medium text-muted-foreground">Fat</div>
                 <div
-                  className="text-[13px] sm:text-sm font-bold whitespace-nowrap truncate"
+                  className="text-xs sm:text-sm font-bold whitespace-nowrap truncate"
                   style={{ color: 'var(--macro-fat)' }}
                 >
                   {fatParts.numText}
@@ -357,7 +357,7 @@ export function HabitsAnalyticsGrid({
               <div className="min-w-0">
                 <div className="text-[11px] font-medium text-muted-foreground">Carbs</div>
                 <div
-                  className="text-[13px] sm:text-sm font-bold whitespace-nowrap truncate"
+                  className="text-xs sm:text-sm font-bold whitespace-nowrap truncate"
                   style={{ color: 'var(--macro-carbs)' }}
                 >
                   {carbParts.numText}

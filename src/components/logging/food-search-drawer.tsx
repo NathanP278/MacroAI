@@ -20,6 +20,7 @@ import {
   scaleFoodByOption,
 } from '@/lib/nutrition/scaling';
 import { useLoggerStore } from '@/stores/logger-store';
+import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { loadStaples, filterStaples } from '@/lib/foods/staples-search';
 import {
   computeRecentEntries,
@@ -185,7 +186,10 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
     return Boolean(initKey && !onlineQueryCache.has(initKey));
   });
   const [onlineError, setOnlineError] = useState<string | null>(null);
+  const [onlineRetryNonce, setOnlineRetryNonce] = useState(0);
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  useFocusTrap(sheetRef, true);
 
   // Portion selection state
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
@@ -307,6 +311,9 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
           const finalList = Array.from(mergedMap.values()).slice(0, 40);
           if (failureCount === providers.length) {
             setOnlineError('Online search unavailable. Showing local & cached matches.');
+          } else if (failureCount > 0) {
+            setOnlineError('Some online food sources unavailable.');
+            onlineQueryCache.set(normKey, finalList);
           } else {
             onlineQueryCache.set(normKey, finalList);
           }
@@ -348,7 +355,7 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
       clearTimeout(timer);
       abortController.abort();
     };
-  }, [query]);
+  }, [query, onlineRetryNonce]);
 
   // Unified pool combining local Dexie cache, offline staples + PH foods, and streamed online results
   const combinedPool = React.useMemo(() => {
@@ -851,6 +858,7 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
       onClick={onClose}
     >
       <div
+        ref={sheetRef}
         className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 animate-sheet-in sm:animate-modal-in max-h-[90dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
@@ -1178,7 +1186,7 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
               <input
                 type="text"
                 aria-label="Search foods"
-                placeholder="Search foods, brands, PH staples & online databases..."
+                placeholder="Search foods, brands, or staples..."
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
                 autoFocus
@@ -1248,9 +1256,24 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
                     </span>
                   </>
                 ) : (
-                  <span className="text-[var(--neutral-over)]">
-                    {onlineError}
-                  </span>
+                  <div className="flex items-center justify-between gap-2 w-full">
+                    <span className="text-[var(--neutral-over)]">
+                      {onlineError}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const normKey = query.trim().toLowerCase();
+                        if (normKey) onlineQueryCache.delete(normKey);
+                        setOnlineError(null);
+                        setIsOnlineLoading(true);
+                        setOnlineRetryNonce((n) => n + 1);
+                      }}
+                      className="tactile-press shrink-0 px-2 py-0.5 rounded-full bg-surface-sub border border-border text-[11px] font-semibold text-foreground hover:bg-surface-elevated"
+                    >
+                      Retry
+                    </button>
+                  </div>
                 )}
               </div>
             )}

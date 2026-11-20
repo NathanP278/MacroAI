@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { db } from '@/lib/db/macroai-db';
 import { triggerHaptic } from '@/lib/motion';
+import { useFocusTrap } from '@/hooks/use-focus-trap';
 
 export interface DatePickerPopoverProps {
   activeDate: string;
@@ -42,9 +43,28 @@ export function DatePickerPopover({
   className = '',
 }: DatePickerPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [shiftX, setShiftX] = useState(0);
   const [viewMonth, setViewMonth] = useState<{ year: number; month: number }>(() =>
     parseIsoMonth(activeDate)
   );
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+  useFocusTrap(popoverRef, isOpen);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !popoverRef.current || typeof window === 'undefined') {
+      setShiftX(0);
+      return;
+    }
+    const rect = popoverRef.current.getBoundingClientRect();
+    const margin = 16;
+    let delta = 0;
+    if (rect.right > window.innerWidth - margin) {
+      delta = window.innerWidth - margin - rect.right;
+    } else if (rect.left < margin) {
+      delta = margin - rect.left;
+    }
+    setShiftX(Math.round(delta));
+  }, [isOpen, align]);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const daysInMonth = new Date(viewMonth.year, viewMonth.month + 1, 0).getDate();
@@ -199,11 +219,13 @@ export function DatePickerPopover({
           />
 
           <div
+            ref={popoverRef}
             role="dialog"
             aria-modal="true"
             aria-label="Choose date"
             data-testid="date-picker-popover"
             onClick={(e) => e.stopPropagation()}
+            style={shiftX !== 0 ? { marginLeft: `${shiftX}px` } : undefined}
             className={`fixed inset-x-4 top-[max(4.5rem,env(safe-area-inset-top))] sm:inset-x-auto sm:absolute sm:top-full sm:mt-2 ${alignClasses} z-50 w-auto sm:w-80 surface-elevated-sheet rounded-2xl p-3.5 sm:p-4 animate-modal-in`}
           >
             {/* Month Navigation Header */}

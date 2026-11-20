@@ -81,10 +81,10 @@ export function CentralDbStatusCard() {
           </div>
           <div className="min-w-0">
             <h2 className="text-base font-bold text-foreground tracking-tight">
-              Central Database Sync
+              Cloud Sync &amp; Storage
             </h2>
             <p className="text-xs text-muted-foreground">
-              Cross-device Turso (libSQL) &amp; local IndexedDB cache
+              Optional cross-device sync &amp; instant offline storage
             </p>
           </div>
         </div>
@@ -179,15 +179,22 @@ export function CentralDbStatusCard() {
         </div>
       )}
 
-      {/* Vercel / Turso Setup Hint */}
-      <div className="flex items-start gap-2 pt-1 text-[11px] text-muted-foreground leading-relaxed">
-        <ShieldCheck
-          className="w-4 h-4 text-[var(--macro-carbs)] shrink-0 mt-0.5"
-          aria-hidden="true"
-        />
-        <p>
+      {/* Developer / Self-Hosting Setup Disclosure */}
+      <details className="group rounded-xl bg-surface-sub/60 border border-border/50 px-3 py-2 text-[11px] text-muted-foreground">
+        <summary className="cursor-pointer font-semibold text-foreground select-none list-none flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5">
+            <ShieldCheck
+              className="w-3.5 h-3.5 text-[var(--macro-carbs)] shrink-0"
+              aria-hidden="true"
+            />
+            <span>Developer / Self-Hosting Setup</span>
+          </span>
+          <span className="text-[10px] text-muted-foreground group-open:hidden">Show</span>
+          <span className="text-[10px] text-muted-foreground hidden group-open:inline">Hide</span>
+        </summary>
+        <p className="pt-2 leading-relaxed">
           For persistent Vercel hosting, add free-tier Turso env vars in Vercel or{' '}
-          <code className="text-[10px] bg-surface-sub px-1.5 py-0.5 rounded font-mono">
+          <code className="text-[10px] bg-card px-1.5 py-0.5 rounded font-mono">
             .env.local
           </code>
           :{' '}
@@ -204,7 +211,7 @@ export function CentralDbStatusCard() {
           </span>
           .
         </p>
-      </div>
+      </details>
     </section>
   );
 }

@@ -79,7 +79,7 @@ describe('FoodSearchDrawer component', () => {
     render(<FoodSearchDrawer open date="2026-11-14" mealSlot="lunch" onClose={() => {}} />);
 
     expect(screen.getByTestId('food-search-drawer')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/search foods, brands, ph staples & online databases/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/search foods, brands, or staples/i)).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText('Chicken breast, raw')).toBeInTheDocument();

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, generateId } from '@/lib/db/macroai-db';
@@ -32,9 +32,11 @@ import {
   Plus,
   RotateCcw,
   Scale,
+  SlidersHorizontal,
   Sparkles,
   StickyNote,
   Trash2,
+  X,
 } from 'lucide-react';
 
 function getTodayIsoDate(): string {
@@ -140,6 +142,21 @@ export default function HomePage() {
 
   const userGoals = useLiveQuery(() => db.userGoals.get('active'), []);
   const weightLogs = useLiveQuery(() => db.weightLogs.toArray(), []);
+  const [targetsPromptDismissed, setTargetsPromptDismissed] = useState(true);
+
+  useEffect(() => {
+    try {
+      const dismissed = window.localStorage?.getItem('macroai-onboard-targets-dismissed') === '1';
+      setTargetsPromptDismissed(dismissed);
+    } catch {
+      setTargetsPromptDismissed(false);
+    }
+  }, []);
+
+  const showFirstRunTargetsCard =
+    !targetsPromptDismissed &&
+    userGoals !== undefined &&
+    (!userGoals || !userGoals.updatedAt || userGoals.updatedAt === 0);
 
   const fallbackGoals: UserGoals = useMemo(
     () => ({
@@ -413,7 +430,9 @@ export default function HomePage() {
                     className="w-3 h-3 text-[var(--macro-calories)] shrink-0"
                     aria-hidden="true"
                   />
-                  <span className="truncate">{dateInfo.kicker}</span>
+                  <span className="truncate" suppressHydrationWarning>
+                    {dateInfo.kicker}
+                  </span>
                 </button>
               }
             />
@@ -427,12 +446,12 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             {!dateInfo.isToday && (
               <button
                 type="button"
                 onClick={handleToday}
-                className="touch-target tactile-press px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-surface-sub border border-border/50 text-foreground hover:bg-surface-elevated flex items-center gap-1 mr-1"
+                className="touch-target tactile-press px-3 min-h-[44px] sm:min-h-[36px] py-2 sm:py-1.5 rounded-full text-xs sm:text-[11px] font-semibold bg-surface-sub border border-border/50 text-foreground hover:bg-surface-elevated flex items-center gap-1 mr-0.5"
               >
                 <RotateCcw className="w-3 h-3" aria-hidden="true" />
                 Today
@@ -442,7 +461,7 @@ export default function HomePage() {
               type="button"
               onClick={handlePrevDay}
               aria-label="Previous day"
-              className="touch-target tactile-press w-9 h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground"
+              className="touch-target tactile-press w-11 h-11 sm:w-9 sm:h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -450,13 +469,60 @@ export default function HomePage() {
               type="button"
               onClick={handleNextDay}
               aria-label="Next day"
-              className="touch-target tactile-press w-9 h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground"
+              className="touch-target tactile-press w-11 h-11 sm:w-9 sm:h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
             <SettingsHeaderLink />
           </div>
         </header>
+
+        {/* First-Run Target Calibration Banner (dismissible, non-blocking) */}
+        {showFirstRunTargetsCard && (
+          <div
+            data-testid="first-run-targets-banner"
+            className="bg-card border border-border rounded-2xl px-4 py-3.5 flex flex-wrap items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="w-9 h-9 rounded-xl bg-[var(--macro-calories)]/15 border border-[var(--macro-calories)]/25 flex items-center justify-center text-[var(--macro-calories)] shrink-0">
+                <SlidersHorizontal className="w-4 h-4" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-foreground">
+                  Calibrate your daily targets
+                </p>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  You&apos;re starting on the 2,000 kcal default. Personalize your calories &amp; macros in 10 seconds.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Link
+                href="/settings"
+                onClick={() => triggerHaptic(8)}
+                className="touch-target tactile-press px-3.5 py-2 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90"
+              >
+                Set My Targets
+              </Link>
+              <button
+                type="button"
+                aria-label="Dismiss target calibration prompt"
+                onClick={() => {
+                  triggerHaptic(6);
+                  setTargetsPromptDismissed(true);
+                  try {
+                    window.localStorage?.setItem('macroai-onboard-targets-dismissed', '1');
+                  } catch {
+                    // Ignore storage errors
+                  }
+                }}
+                className="touch-target tactile-press w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+              >
+                <X className="w-4 h-4" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Sleek Adherence-Neutral Quick Triggers: AI Meal Ideas & Latest Weight Trend */}
         <div className="flex flex-wrap items-center gap-2 -mt-2 sm:-mt-3">
@@ -466,7 +532,7 @@ export default function HomePage() {
               triggerHaptic(8);
               openSheet('meal-ideas');
             }}
-            className="touch-target tactile-press inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border/50 hover:bg-surface-sub text-xs font-semibold text-foreground transition-colors"
+            className="touch-target tactile-press inline-flex items-center gap-1.5 px-3.5 min-h-[44px] sm:min-h-[36px] py-2 sm:py-1.5 rounded-full bg-card border border-border/50 hover:bg-surface-sub text-xs font-semibold text-foreground transition-colors"
           >
             <Sparkles className="w-3.5 h-3.5 text-[var(--macro-calories)] shrink-0" aria-hidden="true" />
             <span>AI Meal Ideas</span>
@@ -480,7 +546,7 @@ export default function HomePage() {
                   ? `7D avg ${Math.round(rolling7d.avgCalories).toLocaleString('en-US')} kcal — Open Trends`
                   : 'Open Trends'
               }
-              className="touch-target tactile-press inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-surface-sub transition-colors tabular-nums"
+              className="touch-target tactile-press inline-flex items-center gap-1.5 px-3.5 min-h-[44px] sm:min-h-[36px] py-2 sm:py-1.5 text-xs font-semibold text-foreground hover:bg-surface-sub transition-colors tabular-nums"
             >
               <Scale className="w-3.5 h-3.5 text-[var(--macro-fiber)] shrink-0" aria-hidden="true" />
               <span>
@@ -504,7 +570,7 @@ export default function HomePage() {
               }}
               aria-label="Log weigh-in"
               title="Log weigh-in"
-              className="touch-target tactile-press px-2.5 py-1.5 text-muted-foreground hover:text-foreground hover:bg-surface-sub transition-colors inline-flex items-center justify-center"
+              className="touch-target tactile-press min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] px-2.5 py-2 sm:py-1.5 text-muted-foreground hover:text-foreground hover:bg-surface-sub transition-colors inline-flex items-center justify-center"
             >
               <Plus className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
@@ -633,19 +699,19 @@ export default function HomePage() {
                                 className="text-sm font-bold"
                                 style={{ color: 'var(--macro-calories)' }}
                               >
-                                {Math.round(log.nutritionSnapshot?.calories ?? 0)} kcal
+                                {Math.round(log.nutritionSnapshot?.calories ?? 0).toLocaleString()} kcal
                               </div>
                               <div className="text-[11px] text-muted-foreground">
                                 <span className="text-[var(--macro-protein)]">
-                                  {Math.round(log.nutritionSnapshot?.protein ?? 0)}P
+                                  {Math.round(log.nutritionSnapshot?.protein ?? 0).toLocaleString()}P
                                 </span>{' '}
                                 ·{' '}
                                 <span className="text-[var(--macro-carbs)]">
-                                  {Math.round(log.nutritionSnapshot?.carbs ?? 0)}C
+                                  {Math.round(log.nutritionSnapshot?.carbs ?? 0).toLocaleString()}C
                                 </span>{' '}
                                 ·{' '}
                                 <span className="text-[var(--macro-fat)]">
-                                  {Math.round(log.nutritionSnapshot?.fat ?? 0)}F
+                                  {Math.round(log.nutritionSnapshot?.fat ?? 0).toLocaleString()}F
                                 </span>
                               </div>
                             </div>

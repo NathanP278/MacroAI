@@ -16,6 +16,7 @@ import { computeRangeAnalytics, type RangeDays } from '@/lib/nutrition/analytics
 import { AppShell } from '@/components/shell/app-shell';
 import { SettingsHeaderLink } from '@/components/shell/settings-header-link';
 import { SegmentedControl } from '@/components/ui/segmented-control';
+import { InfoPopover } from '@/components/ui/info-popover';
 import { WeightTrendChart } from '@/components/trends/weight-trend-chart';
 import { TdeeChart } from '@/components/trends/tdee-chart';
 import { IntakeTrendChart } from '@/components/trends/intake-trend-chart';
@@ -23,7 +24,7 @@ import { WeeklyCheckInCard } from '@/components/trends/weekly-checkin-card';
 import { WeightHistoryList } from '@/components/trends/weight-history-list';
 import { formatInt, formatWeight } from '@/components/trends/chart-utils';
 import { MicronutrientPanel } from '@/components/dashboard/micronutrient-panel';
-import { WeighInDrawer } from '@/components/weight/weigh-in-drawer';
+import { useLoggerStore } from '@/stores/logger-store';
 import { triggerHaptic } from '@/lib/motion';
 import type { FoodLogEntry, UserGoals, WeightLogEntry } from '@/types/nutrition';
 
@@ -88,14 +89,21 @@ function formatSignedKcal(val: number): string {
 }
 
 export default function TrendsPage() {
-  const [nowMs] = useState(() => Date.now());
-  const today = useMemo(() => toLocalIsoDate(nowMs), [nowMs]);
+  const [today, setToday] = useState<string>(() => toLocalIsoDate(Date.now()));
+  const [nowMs, setNowMs] = useState<number>(0);
+
+  React.useEffect(() => {
+    const current = Date.now();
+    setNowMs(current);
+    setToday(toLocalIsoDate(current));
+  }, []);
+
   const queryStartDate = useMemo(() => offsetIsoDate(today, -89), [today]);
 
   const [rangeStr, setRangeStr] = useState<'7' | '14' | '30' | '90'>('30');
   const [intakeMode, setIntakeMode] = useState<'calories' | 'macros'>('calories');
-  const [isWeighInOpen, setIsWeighInOpen] = useState(false);
-  const [editingWeight, setEditingWeight] = useState<WeightLogEntry | null>(null);
+  const openSheet = useLoggerStore((s) => s.openSheet);
+  const setEditingWeight = useLoggerStore((s) => s.setEditingWeight);
 
   const rangeDays = Number(rangeStr) as RangeDays;
   const rangeStartDate = useMemo(
@@ -208,12 +216,13 @@ export default function TrendsPage() {
   const openNewWeighIn = () => {
     triggerHaptic(8);
     setEditingWeight(null);
-    setIsWeighInOpen(true);
+    openSheet('weight');
   };
 
   const openEditWeighIn = (entry: WeightLogEntry) => {
+    triggerHaptic(8);
     setEditingWeight(entry);
-    setIsWeighInOpen(true);
+    openSheet('weight');
   };
 
   return (
@@ -225,7 +234,7 @@ export default function TrendsPage() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Trends
             </h1>
-            <p className="text-xs sm:text-[13px] text-muted-foreground mt-0.5">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
               Weight trend, observed expenditure &amp; multi-day nutrition
             </p>
           </div>
@@ -240,14 +249,14 @@ export default function TrendsPage() {
                 setRangeStr(next);
               }}
               className="bg-card border border-border/50 p-0.5"
-              buttonClassName="px-2.5 py-1 text-xs"
+              buttonClassName="px-3 py-2 sm:py-1 text-xs"
               options={RANGE_OPTIONS}
             />
 
             <button
               type="button"
               onClick={openNewWeighIn}
-              className="touch-target tactile-press inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90 shrink-0"
+              className="touch-target tactile-press inline-flex items-center gap-1 px-3.5 min-h-[44px] sm:min-h-[36px] py-2 sm:py-1.5 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90 shrink-0"
             >
               <Plus className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Weigh In</span>
@@ -274,8 +283,12 @@ export default function TrendsPage() {
           <div className="md:col-span-12 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* Weekly Calorie Bank */}
             <div className="bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 space-y-1">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Weekly Calorie Bank
+              <div className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <span>Weekly Calorie Bank</span>
+                <InfoPopover
+                  label="Weekly Calorie Bank"
+                  description="Tracks your cumulative calorie balance across the week so higher- and lower-intake days average out naturally."
+                />
               </div>
               <div className="text-lg sm:text-xl font-bold tabular-nums text-foreground">
                 {formatSignedKcal(analytics.weeklyNetBalance)}{' '}
@@ -350,9 +363,15 @@ export default function TrendsPage() {
                   <Scale className="w-4 h-4" aria-hidden="true" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-base font-bold text-foreground tracking-tight">
-                    Weight &amp; EMA Trend
-                  </h2>
+                  <div className="flex items-center gap-1.5">
+                    <h2 className="text-base font-bold text-foreground tracking-tight">
+                      Weight &amp; EMA Trend
+                    </h2>
+                    <InfoPopover
+                      label="EMA Trend"
+                      description="Exponential Moving Average smooths daily water-weight swings to reveal your true body-weight trajectory."
+                    />
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Smoothed trend line &amp; scale weigh-ins ({rangeDays}D)
                   </p>
@@ -382,9 +401,16 @@ export default function TrendsPage() {
                   <Activity className="w-4 h-4" aria-hidden="true" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-base font-bold text-foreground tracking-tight">
-                    Observed TDEE
-                  </h2>
+                  <div className="flex items-center gap-1.5">
+                    <h2 className="text-base font-bold text-foreground tracking-tight">
+                      Observed TDEE
+                    </h2>
+                    <InfoPopover
+                      label="Observed TDEE"
+                      description="Your real-world daily calorie burn calculated from your logged intake and body-weight trend over time."
+                      align="right"
+                    />
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Rolling 21-day expenditure estimate
                   </p>
@@ -464,17 +490,6 @@ export default function TrendsPage() {
           </div>
         </div>
       </div>
-
-      {/* Local Weigh-In Drawer supporting both create and edit modes */}
-      <WeighInDrawer
-        open={isWeighInOpen}
-        initialEntry={editingWeight}
-        defaultDate={today}
-        onClose={() => {
-          setIsWeighInOpen(false);
-          setEditingWeight(null);
-        }}
-      />
     </AppShell>
   );
 }

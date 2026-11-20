@@ -17,7 +17,7 @@ import {
   scaleFoodByOption,
 } from '@/lib/nutrition/scaling';
 import { SyncUnlockCard } from '@/components/auth/sync-unlock-modal';
-import { useLoggerStore } from '@/stores/logger-store';
+import { useLoggerStore, getTodayIsoDate } from '@/stores/logger-store';
 import { triggerHaptic } from '@/lib/motion';
 import type {
   FoodItem,
@@ -150,7 +150,7 @@ export function CustomFoodModal({
   const storeMealSlot = useLoggerStore((s) => s.activeMealSlot);
   const syncAuthLocked = useLoggerStore((s) => s.syncAuthLocked);
 
-  const effectiveDate = date ?? storeDate ?? '2026-11-20';
+  const effectiveDate = date ?? storeDate ?? getTodayIsoDate();
   const effectiveMealSlot = storeMealSlot ?? 'log';
 
   const [name, setName] = useState('');

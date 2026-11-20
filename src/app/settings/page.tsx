@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { AppShell } from "@/components/shell/app-shell";
 import { ThemeSwitcher } from "@/components/theme/theme-switcher";
 import { BackupPanel } from "@/components/settings/backup-panel";
@@ -8,20 +9,42 @@ import { GoalsCalculatorForm } from "@/components/settings/goals-calculator-form
 import { AiHealthStatusCard } from "@/components/settings/ai-health-status-card";
 import { CentralDbStatusCard } from "@/components/settings/central-db-status-card";
 import { AppleHealthShortcutCard } from "@/components/settings/apple-health-shortcut-card";
-import { Moon, ShieldCheck, Database } from "lucide-react";
+import { triggerHaptic } from "@/lib/motion";
+import { ArrowLeft, Moon, ShieldCheck, Database } from "lucide-react";
 
 export default function SettingsPage() {
+  const handleBack = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    triggerHaptic(8);
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      e.preventDefault();
+      window.history.back();
+    }
+  };
+
   return (
     <AppShell>
       <div className="flex flex-col gap-5 sm:gap-6 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
         {/* Header matching Dashboard Obsidian Aesthetic */}
-        <header>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            Settings & Preferences
-          </h1>
-          <p className="text-xs sm:text-[13px] text-muted-foreground mt-0.5">
-            Targets, appearance, AI vision health & local database backups
-          </p>
+        <header className="space-y-2.5">
+          <div>
+            <Link
+              href="/"
+              onClick={handleBack}
+              aria-label="Back to previous page"
+              className="touch-target tactile-press inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border hover:border-border-focus text-xs font-semibold text-foreground"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Back</span>
+            </Link>
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Settings & Preferences
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+              Targets, appearance, AI vision health & local database backups
+            </p>
+          </div>
         </header>
 
         {/* Responsive 12-Column Obsidian Bento Layout */}
@@ -62,12 +85,12 @@ export default function SettingsPage() {
                       Offline Storage & Privacy
                     </h2>
                     <p className="text-xs text-[var(--macro-calories)] font-medium">
-                      Hybrid IndexedDB + Turso DB
+                      On-Device First · Optional Cloud Sync
                     </p>
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Entries cache locally in browser IndexedDB for instant offline use and automatically sync to your central Turso (libSQL) database across devices.
+                  Entries save instantly on this device for 100% offline logging and optionally sync across your devices when cloud sync is connected.
                 </p>
               </section>
             </div>

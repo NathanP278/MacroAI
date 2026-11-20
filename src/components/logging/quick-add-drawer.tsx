@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, RefreshCw, Zap, AlertCircle, RotateCcw } from 'lucide-react';
 import { db, generateId } from '@/lib/db/macroai-db';
 import { computeMacroCalories } from '@/lib/nutrition/scaling';
-import { useLoggerStore } from '@/stores/logger-store';
+import { useLoggerStore, formatHumanDate } from '@/stores/logger-store';
 import { triggerHaptic } from '@/lib/motion';
+import { useFocusTrap } from '@/hooks/use-focus-trap';
 import type { FoodLogEntry } from '@/types/nutrition';
 
 const QUICK_ADD_DRAFT_KEY = 'macro_quick_add_draft_v1';
@@ -71,6 +72,9 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
   }>({});
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [confirmHighCalories, setConfirmHighCalories] = useState(false);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  useFocusTrap(sheetRef, true);
 
   const isDirty =
     name !== 'Quick Add' ||
@@ -137,6 +141,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
   };
 
   const handleMacroChange = (macro: 'p' | 'c' | 'f', val: string) => {
+    setConfirmHighCalories(false);
     const newP = macro === 'p' ? val : protein;
     const newC = macro === 'c' ? val : carbs;
     const newF = macro === 'f' ? val : fat;
@@ -154,11 +159,13 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
   };
 
   const handleCaloriesChange = (val: string) => {
+    setConfirmHighCalories(false);
     setIsCalorieOverridden(true);
     setCalories(val);
   };
 
   const handleSyncToMacros = () => {
+    setConfirmHighCalories(false);
     setIsCalorieOverridden(false);
     const p = parseSafe(protein);
     const c = parseSafe(carbs);
@@ -169,15 +176,26 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSaving) return;
+
+    const safeP = parseSafe(protein);
+    const safeC = parseSafe(carbs);
+    const safeF = parseSafe(fat);
+    const safeFiber = parseSafe(fiber);
+    const safeCal = parseSafe(calories);
+
+    if (safeCal > 10000 && !confirmHighCalories) {
+      setConfirmHighCalories(true);
+      setErrorMessage(
+        `Double-check ${Math.round(safeCal).toLocaleString()} kcal — tap "Confirm & Log" if this entry is intentional.`
+      );
+      return;
+    }
+
     setIsSaving(true);
     setErrorMessage(null);
+    setConfirmHighCalories(false);
 
     try {
-      const safeP = parseSafe(protein);
-      const safeC = parseSafe(carbs);
-      const safeF = parseSafe(fat);
-      const safeFiber = parseSafe(fiber);
-      const safeCal = parseSafe(calories);
 
       const entry: FoodLogEntry = {
         id: generateId(),
@@ -225,6 +243,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
       onClick={onClose}
     >
       <div
+        ref={sheetRef}
         className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 animate-sheet-in sm:animate-modal-in max-h-[90dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
@@ -238,7 +257,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
             <div>
               <h2 className="text-sm font-semibold text-foreground">Quick Add Macros</h2>
               <p className="text-[11px] text-muted-foreground">
-                Logging for {effectiveDate}
+                Logging for {formatHumanDate(effectiveDate)}
               </p>
             </div>
           </div>
@@ -431,7 +450,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
             className="tactile-press w-full py-2.5 px-4 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
           >
             <Zap className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Log Quick Add</span>
+            <span>{confirmHighCalories ? 'Confirm & Log' : 'Log Quick Add'}</span>
           </button>
         </form>
       </div>

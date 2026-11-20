@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Download,
   Upload,
@@ -9,6 +9,7 @@ import {
   Database,
   ShieldAlert,
   FileSpreadsheet,
+  X,
 } from "lucide-react";
 import { exportBackupJson, importBackupJson } from "@/lib/db/backup";
 import {
@@ -107,8 +108,28 @@ export function BackupPanel({ className }: BackupPanelProps) {
   const [isImporting, setIsImporting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusType, setStatusType] = useState<"success" | "error" | null>(null);
+  const [pendingReplaceFile, setPendingReplaceFile] = useState<File | null>(null);
+  const [localRecordCounts, setLocalRecordCounts] = useState<{
+    foodLogs: number;
+    customRecipes: number;
+    weightLogs: number;
+    foodsCache: number;
+  } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!pendingReplaceFile) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setPendingReplaceFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [pendingReplaceFile]);
 
   const readFileAsText = (file: File): Promise<string> => {
     if (typeof file.text === "function") {
@@ -171,27 +192,14 @@ export function BackupPanel({ className }: BackupPanelProps) {
     }
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (importMode === "replace") {
-      const confirmed = window.confirm(
-        "Are you sure you want to replace all existing data? This will wipe your current local records."
-      );
-      if (!confirmed) {
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        return;
-      }
-    }
-
+  const executeImportFile = async (file: File, mode: "merge" | "replace") => {
     try {
       setIsImporting(true);
       setStatusMessage(null);
       setStatusType(null);
 
       const text = await readFileAsText(file);
-      const result = await importBackupJson(text, importMode);
+      const result = await importBackupJson(text, mode);
 
       const counts = result.importedCounts;
       const parts = [
@@ -221,6 +229,41 @@ export function BackupPanel({ className }: BackupPanelProps) {
         fileInputRef.current.value = "";
       }
     }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (importMode === "replace") {
+      try {
+        const [foodLogs, customRecipes, weightLogs, foodsCache] = await Promise.all([
+          db.foodLogs.count(),
+          db.customRecipes.count(),
+          db.weightLogs.count(),
+          db.foodsCache.count(),
+        ]);
+        setLocalRecordCounts({ foodLogs, customRecipes, weightLogs, foodsCache });
+      } catch {
+        setLocalRecordCounts(null);
+      }
+      setPendingReplaceFile(file);
+      return;
+    }
+
+    await executeImportFile(file, "merge");
+  };
+
+  const handleCancelReplace = () => {
+    setPendingReplaceFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleConfirmReplace = async () => {
+    const file = pendingReplaceFile;
+    setPendingReplaceFile(null);
+    if (!file) return;
+    await executeImportFile(file, "replace");
   };
 
   const triggerFileInput = () => {
@@ -368,6 +411,88 @@ export function BackupPanel({ className }: BackupPanelProps) {
             <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
           )}
           <span className="leading-snug">{statusMessage}</span>
+        </div>
+      )}
+      {/* Replace Confirmation Modal */}
+      {pendingReplaceFile && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm replace backup import"
+          data-testid="replace-confirm-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-backdrop-in"
+          onClick={handleCancelReplace}
+        >
+          <div
+            className="w-full max-w-md surface-elevated-sheet rounded-3xl p-5 space-y-4 animate-modal-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-[var(--neutral-over)]/15 flex items-center justify-center text-[var(--neutral-over)] shrink-0">
+                  <ShieldAlert className="w-4 h-4" aria-hidden="true" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-foreground">
+                    Replace all local data?
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground truncate max-w-[240px]">
+                    {pendingReplaceFile.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCancelReplace}
+                aria-label="Cancel replace import"
+                className="touch-target tactile-press p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+              >
+                <X className="w-4 h-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              This will permanently wipe your current local records before restoring from the selected backup file.
+            </p>
+
+            {localRecordCounts && (
+              <div className="grid grid-cols-2 gap-2 p-3 rounded-2xl bg-surface-sub border border-border/50 text-xs tabular-nums">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Food logs</span>
+                  <strong className="text-foreground">{localRecordCounts.foodLogs.toLocaleString()}</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Weigh-ins</span>
+                  <strong className="text-foreground">{localRecordCounts.weightLogs.toLocaleString()}</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Recipes</span>
+                  <strong className="text-foreground">{localRecordCounts.customRecipes.toLocaleString()}</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Saved foods</span>
+                  <strong className="text-foreground">{localRecordCounts.foodsCache.toLocaleString()}</strong>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleCancelReplace}
+                className="touch-target tactile-press px-4 py-2 rounded-full bg-surface-sub border border-border text-xs font-semibold text-foreground hover:bg-surface-elevated"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleConfirmReplace()}
+                className="touch-target tactile-press px-4 py-2 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90"
+              >
+                Replace All Data
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </section>

@@ -31,12 +31,12 @@ type HeroView = 'daily' | 'weekly';
 
 function formatMacroReadout(metric: MacroMetric, mode: DisplayMode): string {
   if (mode === 'consumed') {
-    return `${metric.consumed} / ${metric.target}g`;
+    return `${metric.consumed.toLocaleString()} / ${metric.target.toLocaleString()}g`;
   }
   if (metric.overTarget) {
-    return `+${metric.delta} / ${metric.target}g`;
+    return `+${metric.delta.toLocaleString()} / ${metric.target.toLocaleString()}g`;
   }
-  return `${metric.remaining} / ${metric.target}g`;
+  return `${metric.remaining.toLocaleString()} / ${metric.target.toLocaleString()}g`;
 }
 
 function MacroColumnBar({
@@ -108,12 +108,12 @@ export function MacroBentoGrid({
   const clampedPercent = Math.min(100, Math.max(0, calories.percent));
   const activeSpan = arcSpan * (clampedPercent / 100);
 
-  const centerPrimaryValue =
+  const centerPrimaryText =
     mode === 'consumed'
-      ? calories.consumed
+      ? calories.consumed.toLocaleString()
       : calories.overTarget
-      ? `+${calories.delta}`
-      : calories.remaining;
+      ? `+${calories.delta.toLocaleString()}`
+      : calories.remaining.toLocaleString();
 
   const centerSubLabel =
     mode === 'consumed'
@@ -122,7 +122,9 @@ export function MacroBentoGrid({
       ? 'Surplus'
       : 'Remaining';
 
-  const leftFlankValue = calories.overTarget ? `+${calories.delta}` : calories.remaining;
+  const leftFlankText = calories.overTarget
+    ? `+${calories.delta.toLocaleString()}`
+    : calories.remaining.toLocaleString();
   const leftFlankLabel = calories.overTarget ? 'Surplus' : 'Remaining';
 
   return (
@@ -153,7 +155,7 @@ export function MacroBentoGrid({
           value={heroView}
           onChange={switchHeroView}
           className="bg-surface-sub/90 p-1 shrink-0"
-          buttonClassName="px-2.5 py-0.5 text-[11px]"
+          buttonClassName="px-3 py-1.5 sm:py-1 text-xs sm:text-[11px]"
           options={[
             { value: 'daily', id: 'hero-daily-tab', label: 'Today' },
             { value: 'weekly', id: 'hero-weekly-tab', label: '7-Day' },
@@ -180,7 +182,7 @@ export function MacroBentoGrid({
             {/* Left Flanking Metric */}
             <div className="text-center min-w-0">
               <div className="hero-flank-value font-bold tabular-nums text-foreground truncate">
-                {leftFlankValue.toLocaleString()}
+                {leftFlankText}
               </div>
               <div className="text-xs font-medium text-muted-foreground mt-0.5">
                 {leftFlankLabel}
@@ -224,11 +226,12 @@ export function MacroBentoGrid({
                 )}
               </svg>
 
-              <div className="absolute inset-0 flex flex-col items-center justify-center pt-2 text-center pointer-events-none">
-                <span className="hero-center-value font-bold tracking-tight tabular-nums text-foreground">
-                  {typeof centerPrimaryValue === 'number'
-                    ? centerPrimaryValue.toLocaleString()
-                    : centerPrimaryValue}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pt-2 px-4 text-center pointer-events-none">
+                <span
+                  data-digits={centerPrimaryText.length >= 6 ? 'long' : undefined}
+                  className="hero-center-value font-bold tracking-tight tabular-nums text-foreground"
+                >
+                  {centerPrimaryText}
                 </span>
                 <span className="text-xs font-medium text-muted-foreground mt-0.5">
                   {centerSubLabel}
@@ -275,12 +278,12 @@ export function MacroBentoGrid({
               Fiber:{' '}
               <strong className="text-foreground font-semibold">
                 {mode === 'consumed'
-                  ? fiber.consumed
+                  ? fiber.consumed.toLocaleString()
                   : fiber.overTarget
-                  ? `+${fiber.delta}`
-                  : fiber.remaining}
+                  ? `+${fiber.delta.toLocaleString()}`
+                  : fiber.remaining.toLocaleString()}
               </strong>{' '}
-              / {fiber.target}g
+              / {fiber.target.toLocaleString()}g
             </span>
           </div>
         </div>
@@ -380,48 +383,48 @@ export function MacroBentoGrid({
               <div>
                 <div className="text-xs font-bold text-foreground">
                   {mode === 'consumed'
-                    ? calories.consumed
+                    ? calories.consumed.toLocaleString()
                     : calories.overTarget
-                    ? `+${calories.delta}`
-                    : calories.remaining}{' '}
+                    ? `+${calories.delta.toLocaleString()}`
+                    : calories.remaining.toLocaleString()}{' '}
                   <span className="text-[11px] font-normal text-muted-foreground">kcal</span>
                 </div>
                 <div className="text-[11px] text-muted-foreground">
-                  of {calories.target}
+                  of {calories.target.toLocaleString()}
                 </div>
               </div>
               <div>
                 <div className="text-xs font-bold text-foreground">
                   {mode === 'consumed'
-                    ? protein.consumed
+                    ? protein.consumed.toLocaleString()
                     : protein.overTarget
-                    ? `+${protein.delta}`
-                    : protein.remaining}{' '}
+                    ? `+${protein.delta.toLocaleString()}`
+                    : protein.remaining.toLocaleString()}{' '}
                   <span className="text-[11px] font-semibold text-[var(--macro-protein)]">P</span>
                 </div>
-                <div className="text-[11px] text-muted-foreground">of {protein.target}g</div>
+                <div className="text-[11px] text-muted-foreground">of {protein.target.toLocaleString()}g</div>
               </div>
               <div>
                 <div className="text-xs font-bold text-foreground">
                   {mode === 'consumed'
-                    ? fat.consumed
+                    ? fat.consumed.toLocaleString()
                     : fat.overTarget
-                    ? `+${fat.delta}`
-                    : fat.remaining}{' '}
+                    ? `+${fat.delta.toLocaleString()}`
+                    : fat.remaining.toLocaleString()}{' '}
                   <span className="text-[11px] font-semibold text-[var(--macro-fat)]">F</span>
                 </div>
-                <div className="text-[11px] text-muted-foreground">of {fat.target}g</div>
+                <div className="text-[11px] text-muted-foreground">of {fat.target.toLocaleString()}g</div>
               </div>
               <div>
                 <div className="text-xs font-bold text-foreground">
                   {mode === 'consumed'
-                    ? carbs.consumed
+                    ? carbs.consumed.toLocaleString()
                     : carbs.overTarget
-                    ? `+${carbs.delta}`
-                    : carbs.remaining}{' '}
+                    ? `+${carbs.delta.toLocaleString()}`
+                    : carbs.remaining.toLocaleString()}{' '}
                   <span className="text-[11px] font-semibold text-[var(--macro-carbs)]">C</span>
                 </div>
-                <div className="text-[11px] text-muted-foreground">of {carbs.target}g</div>
+                <div className="text-[11px] text-muted-foreground">of {carbs.target.toLocaleString()}g</div>
               </div>
             </div>
           </div>
@@ -439,7 +442,7 @@ export function MacroBentoGrid({
             setMode(next);
           }}
           className="bg-surface-sub p-1"
-          buttonClassName="px-4 py-1.5 text-xs"
+          buttonClassName="px-4 py-2 sm:py-1.5 text-xs"
           options={[
             { value: 'consumed', label: 'Consumed' },
             { value: 'remaining', label: 'Remaining' },

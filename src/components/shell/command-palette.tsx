@@ -22,8 +22,9 @@ import {
   Zap,
   Apple,
 } from "lucide-react";
-import { useLoggerStore } from "@/stores/logger-store";
+import { useLoggerStore, formatHumanDate } from "@/stores/logger-store";
 import { useOptionalTheme } from "@/components/theme/theme-provider";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { db } from "@/lib/db/macroai-db";
 import { copyLogsFromDate, offsetIsoDate } from "@/lib/recipes/recipe-builder";
 import { searchStaples } from "@/lib/foods/staples-search";
@@ -93,7 +94,9 @@ function CommandPaletteDialog() {
     items: FoodItem[];
   }>({ query: "", items: [] });
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<Array<HTMLElement | null>>([]);
+  useFocusTrap(dialogRef, true);
 
   // Autofocus search input on mount
   useEffect(() => {
@@ -200,7 +203,7 @@ function CommandPaletteDialog() {
         id: "action-copy-yesterday",
         section: "Log & Actions",
         label: "Copy Yesterday's Logs",
-        hint: `Duplicate previous day into ${activeDate}`,
+        hint: `Duplicate previous day into ${formatHumanDate(activeDate)}`,
         icon: RotateCcw,
         onSelect: closeAnd(async () => {
           try {
@@ -321,6 +324,20 @@ function CommandPaletteDialog() {
       },
     ];
 
+    const PRIMARY_UNFILTERED_IDS = new Set([
+      "action-search-food",
+      "action-quick-add",
+      "action-barcode",
+      "action-ai-scan",
+      "action-meal-ideas",
+      "action-log-weight",
+      "action-copy-yesterday",
+      "nav-dashboard",
+      "nav-log",
+      "nav-trends",
+      "nav-recipes",
+    ]);
+
     const q = query.trim().toLowerCase();
     const filteredStatic = q
       ? staticActions.filter(
@@ -329,7 +346,7 @@ function CommandPaletteDialog() {
             a.hint.toLowerCase().includes(q) ||
             a.section.toLowerCase().includes(q)
         )
-      : staticActions;
+      : staticActions.filter((a) => PRIMARY_UNFILTERED_IDS.has(a.id));
 
     const foodActions: CommandAction[] = foodMatches.map((food) => ({
       id: `food-${food.id}`,
@@ -393,6 +410,7 @@ function CommandPaletteDialog() {
       onClick={() => setOpen(false)}
     >
       <div
+        ref={dialogRef}
         className="w-full max-w-lg surface-elevated-sheet concentric-outer overflow-hidden animate-modal-in"
         onClick={(e) => e.stopPropagation()}
       >
@@ -408,6 +426,11 @@ function CommandPaletteDialog() {
             role="combobox"
             aria-expanded="true"
             aria-controls="command-palette-list"
+            aria-activedescendant={
+              actions[safeActiveIndex]
+                ? `cmd-opt-${actions[safeActiveIndex].id}`
+                : undefined
+            }
             aria-label="Search commands or staple foods"
             placeholder="Type a command, route, or food..."
             value={query}
@@ -479,6 +502,7 @@ function CommandPaletteDialog() {
                   )}
                   {action.href ? (
                     <Link
+                      id={`cmd-opt-${action.id}`}
                       ref={(el) => {
                         itemRefs.current[idx] = el;
                       }}
@@ -495,6 +519,7 @@ function CommandPaletteDialog() {
                     </Link>
                   ) : (
                     <button
+                      id={`cmd-opt-${action.id}`}
                       ref={(el) => {
                         itemRefs.current[idx] = el;
                       }}

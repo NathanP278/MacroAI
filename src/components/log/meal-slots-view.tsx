@@ -366,7 +366,7 @@ export function MealSlotsView() {
           <div className="flex items-start justify-between gap-2">
             <div>
               <span className="text-xs text-muted-foreground font-medium">Daily Consumed</span>
-              <div className="text-2xl sm:text-[26px] font-bold tabular-nums text-foreground mt-0.5">
+              <div className="text-2xl sm:text-3xl font-bold tabular-nums text-foreground mt-0.5">
                 {Math.round(totalCalories).toLocaleString()}{' '}
                 <span className="text-xs font-normal text-muted-foreground">
                   / {activeGoals.dailyCalories.toLocaleString()} kcal
@@ -514,7 +514,7 @@ export function MealSlotsView() {
                 )}
               </button>
             )}
-            {!isSelectMode && (
+            {!isSelectMode && sortedLogs.length > 0 && (
               <button
                 type="button"
                 onClick={() => {
@@ -528,7 +528,7 @@ export function MealSlotsView() {
                 <span>Copy From Date</span>
               </button>
             )}
-            {!isSelectMode && yesterdayEntries.length > 0 && (
+            {!isSelectMode && sortedLogs.length > 0 && yesterdayEntries.length > 0 && (
               <button
                 type="button"
                 onClick={handleCopyYesterday}
@@ -542,7 +542,7 @@ export function MealSlotsView() {
                 </span>
               </button>
             )}
-            {!isSelectMode && (
+            {!isSelectMode && sortedLogs.length > 0 && (
               <button
                 type="button"
                 onClick={() => openSheet('search')}
@@ -803,6 +803,7 @@ export function MealSlotsView() {
                 <button
                   type="button"
                   onClick={handleCopyYesterday}
+                  aria-label="Copy Yesterday"
                   className="touch-target tactile-press inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-surface-sub hover:bg-surface-elevated text-xs font-semibold text-foreground"
                 >
                   <RotateCcw className="w-3.5 h-3.5 text-[var(--macro-calories)]" aria-hidden="true" />

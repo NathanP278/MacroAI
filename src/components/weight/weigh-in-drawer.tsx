@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Check, Scale, X } from 'lucide-react';
 import { db, generateId } from '@/lib/db/macroai-db';
 import { useLoggerStore } from '@/stores/logger-store';
 import { triggerHaptic } from '@/lib/motion';
+import { useFocusTrap } from '@/hooks/use-focus-trap';
 import type { WeightLogEntry } from '@/types/nutrition';
 
 export const KG_TO_LB = 2.20462;
@@ -61,6 +62,8 @@ function WeighInContent({
   const [hasUserEditedWeight, setHasUserEditedWeight] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  useFocusTrap(sheetRef, true);
 
   // Initialize preferred weightUnit from active userGoals (and prefill latest weight if creating new)
   useEffect(() => {
@@ -156,18 +159,36 @@ function WeighInContent({
       return;
     }
 
+    const weightKg =
+      unit === 'lb'
+        ? Math.round((rawWeight / KG_TO_LB) * 100) / 100
+        : Math.round(rawWeight * 100) / 100;
+
+    if (weightKg > 500) {
+      setErrorMessage(
+        unit === 'lb'
+          ? 'Enter a realistic body weight under 1,100 lb.'
+          : 'Enter a realistic body weight under 500 kg.'
+      );
+      return;
+    }
+
+    const trimmedBf = bodyFatStr.trim();
+    const parsedBf = parseFloat(trimmedBf);
+    if (
+      trimmedBf !== '' &&
+      (!Number.isFinite(parsedBf) || parsedBf <= 0 || parsedBf >= 100)
+    ) {
+      setErrorMessage('Body fat % must be between 0.1 and 99.9.');
+      return;
+    }
+
     setIsSaving(true);
     setErrorMessage(null);
 
     try {
-      const weightKg =
-        unit === 'lb'
-          ? Math.round((rawWeight / KG_TO_LB) * 100) / 100
-          : Math.round(rawWeight * 100) / 100;
-
-      const parsedBf = parseFloat(bodyFatStr);
       const hasValidBf =
-        bodyFatStr.trim() !== '' &&
+        trimmedBf !== '' &&
         Number.isFinite(parsedBf) &&
         parsedBf > 0 &&
         parsedBf < 100;
@@ -244,6 +265,7 @@ function WeighInContent({
       onClick={onClose}
     >
       <div
+        ref={sheetRef}
         className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 animate-sheet-in sm:animate-modal-in max-h-[90dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >

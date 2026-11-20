@@ -8,16 +8,16 @@ colors:
   mint-emerald-carbs: "#4caf79"
   lavender-fiber: "#9f85ff"
   neutral-surplus: "#94a3b8"
-  obsidian-canvas: "#141416"
-  obsidian-card: "#1c1c1f"
-  obsidian-well: "#2a2a30"
-  obsidian-elevated: "#222226"
-  obsidian-hairline: "rgba(255, 255, 255, 0.07)"
+  obsidian-canvas: "#0d0d11"
+  obsidian-card: "rgba(22, 22, 28, 0.72)"
+  obsidian-well: "rgba(34, 34, 42, 0.56)"
+  obsidian-elevated: "rgba(20, 20, 26, 0.84)"
+  obsidian-hairline: "rgba(255, 255, 255, 0.14)"
   ink-primary: "#f5f5f7"
-  ink-muted: "#9a9aa2"
-  light-canvas: "#f4f4f6"
-  light-card: "#ffffff"
-  light-well: "#ebebf0"
+  ink-muted: "#a1a1aa"
+  light-canvas: "#eef0f5"
+  light-card: "rgba(255, 255, 255, 0.74)"
+  light-well: "rgba(232, 234, 242, 0.66)"
   light-ink: "#141416"
 typography:
   display:
@@ -107,12 +107,12 @@ Rules:
 - Adherence Neutrality: fixed nutrient hues; neutral `+N`/`Surplus` in `#94a3b8`, no red alarms.
 - Monochrome Chrome: `#f5f5f7`/`#141416` UI inversion; reserve chroma for telemetry.
 - Tabular Lock: `tabular-nums` on every numeric readout.
-- Tonal Slab: flat `#1c1c1f` cards on `#141416`; blur/shadows only on bars & modals.
-Elevation: `.surface-floating-bar` (`--shadow-ambient`); `.surface-elevated-sheet` (`--shadow-floating`).
+- Smoked Liquid Glass: 3-tier darker obsidian glass everywhere (`.bg-card` blurred smoked glass + specular rim; `.bg-surface-sub` recessed beveled glass; `.surface-floating-bar` & `.surface-elevated-sheet` deeper refractive chrome) with frosted-porcelain light-mode equivalents.
+Elevation: `.surface-glass-card` (`--shadow-glass-card`); `.surface-floating-bar` (`--shadow-ambient`); `.surface-elevated-sheet` (`--shadow-floating`).
 Don't:
 - No red (`#ef4444`) over-target alerts.
 - No 430px desktop phone box; use `max-w-6xl` bento grids.
-- No gradients, glow halos, or eyebrow kickers on flat cards.
+- No washed-out milky glass that hurts telemetry contrast; keep dark glass smoked (`>=72%` opacity on cards/sheets) and reserve chroma for nutrient telemetry.
 - No floating search strip on `/settings` or `/recipes`.
 Map: src/app/globals.css
 Full: .impeccable/design-full.md (read a section when you need its detail)

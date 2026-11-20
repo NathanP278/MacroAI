@@ -60,8 +60,9 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
     >
       {/* Persistent Quick Search Strip on Dashboard & Food Log */}
       {showQuickSearchBar && onDirectAction && (
-        <div className="max-w-2xl mx-auto pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:px-6 pb-2.5 pointer-events-auto">
-          <div className="surface-floating-bar hover:border-border-focus transition-colors rounded-2xl h-12 px-3 flex items-center gap-1.5">
+        <div className="bg-gradient-to-t from-background/90 via-background/55 to-transparent pt-5">
+          <div className="max-w-2xl mx-auto pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:px-6 pb-2.5 pointer-events-auto">
+            <div className="surface-floating-bar hover:border-border-focus transition-colors rounded-2xl h-12 px-3 flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => {
@@ -75,7 +76,7 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                 className="w-4 h-4 shrink-0 transition-transform duration-150 group-hover:scale-105"
                 aria-hidden="true"
               />
-              <span className="text-[13px] font-medium truncate">
+              <span className="text-sm font-medium truncate">
                 Search for a food
               </span>
             </button>
@@ -123,16 +124,18 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
               </button>
             </div>
           </div>
+          </div>
         </div>
       )}
 
-      {/* Docked Navigation Bar */}
-      <nav
-        data-testid="bottom-nav"
-        aria-label="Bottom Navigation"
-        className="pointer-events-auto bg-surface-card/90 backdrop-blur-md border-t border-border shadow-[0_-8px_28px_-12px_rgba(0,0,0,0.32)] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
-      >
-        <div className="max-w-2xl mx-auto h-16 px-2 sm:px-6 flex items-center justify-between gap-1">
+      {/* Floating Smoked Liquid Glass Navigation Capsule */}
+      <div className="bg-gradient-to-t from-background/90 via-background/45 to-transparent pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-1 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:px-6">
+        <nav
+          data-testid="bottom-nav"
+          aria-label="Bottom Navigation"
+          className="pointer-events-auto max-w-2xl mx-auto bg-surface-card border border-border surface-floating-bar rounded-[28px]"
+        >
+          <div className="h-[62px] px-2 sm:px-4 flex items-center justify-between gap-1">
           {/* Left Nav items */}
           <div className="flex items-center gap-0.5 flex-1 justify-around min-w-0">
             {NAV_ITEMS_LEFT.map((item) => {
@@ -151,8 +154,10 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                   aria-current={active ? "page" : undefined}
                 >
                   <span
-                    className={`flex items-center justify-center w-10 h-6 rounded-full mb-0.5 transition-colors duration-200 ${
-                      active ? "bg-foreground/10" : "bg-transparent"
+                    className={`flex items-center justify-center w-11 h-7 rounded-full mb-0.5 transition-all duration-200 ${
+                      active
+                        ? "bg-foreground/12 border border-border-focus shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]"
+                        : "bg-transparent border border-transparent"
                     }`}
                   >
                     <Icon
@@ -203,8 +208,10 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                   aria-current={active ? "page" : undefined}
                 >
                   <span
-                    className={`flex items-center justify-center w-10 h-6 rounded-full mb-0.5 transition-colors duration-200 ${
-                      active ? "bg-foreground/10" : "bg-transparent"
+                    className={`flex items-center justify-center w-11 h-7 rounded-full mb-0.5 transition-all duration-200 ${
+                      active
+                        ? "bg-foreground/12 border border-border-focus shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]"
+                        : "bg-transparent border border-transparent"
                     }`}
                   >
                     <Icon
@@ -221,8 +228,9 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
               );
             })}
           </div>
-        </div>
-      </nav>
+          </div>
+        </nav>
+      </div>
     </div>
   );
 }

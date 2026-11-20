@@ -1172,7 +1172,7 @@ describe('Task 9: AiHealthStatusCard Component', () => {
 
     render(React.createElement(AiHealthStatusCard));
 
-    expect(screen.getByText(/ai vision & ocr service/i)).toBeInTheDocument();
+    expect(screen.getByText(/ai meal & label scanning/i)).toBeInTheDocument();
     expect(screen.getByText(/\.env\.local/i)).toBeInTheDocument();
 
     // Wait for initial health check to complete

@@ -11,6 +11,7 @@ import {
   Smartphone,
 } from 'lucide-react';
 import { db } from '@/lib/db/macroai-db';
+import { getTodayIsoDate } from '@/stores/logger-store';
 import { KG_TO_LB } from '@/components/weight/weigh-in-drawer';
 import { triggerHaptic } from '@/lib/motion';
 
@@ -20,11 +21,14 @@ export function AppleHealthShortcutCard() {
   const [copiedField, setCopiedField] = useState<'url' | 'header' | 'steps' | null>(
     null
   );
+  const [origin, setOrigin] = useState('https://your-macroai.vercel.app');
 
-  const origin =
-    typeof window !== 'undefined' && window.location?.origin
-      ? window.location.origin
-      : 'https://your-macroai.vercel.app';
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      setOrigin(window.location.origin);
+    }
+  }, []);
+
   const endpointUrl = `${origin}/api/weight/latest`;
   const authHeaderSnippet = 'Authorization: Bearer YOUR_SHORTCUT_API_KEY';
 
@@ -84,6 +88,7 @@ export function AppleHealthShortcutCard() {
     }, 1800);
   };
 
+  const fallbackDate = getTodayIsoDate();
   const previewPayload = latestEntry
     ? {
         id: latestEntry.id,
@@ -94,10 +99,10 @@ export function AppleHealthShortcutCard() {
       }
     : {
         id: 'w_example_01',
-        date: '2026-11-20',
+        date: fallbackDate,
         weight_kg: 76.5,
         weight_lb: 168.65,
-        recorded_at: '2026-11-20T08:00:00.000Z',
+        recorded_at: `${fallbackDate}T08:00:00.000Z`,
       };
 
   const shortcutStepsText = [
@@ -123,7 +128,7 @@ export function AppleHealthShortcutCard() {
               Apple Health iOS Shortcut
             </h2>
             <p className="text-xs text-muted-foreground">
-              Zero-native weigh-in bridge via iOS Personal Automation
+              Optional weigh-in sync to Apple Health via iOS Shortcuts
             </p>
           </div>
         </div>
@@ -143,24 +148,35 @@ export function AppleHealthShortcutCard() {
         </button>
       </div>
 
-      {/* Server Key Status & Endpoint Details */}
-      <div className="bg-surface-sub rounded-xl p-3 space-y-2.5 text-xs">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-muted-foreground">SHORTCUT_API_KEY Status:</span>
-          {configured === true ? (
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--macro-carbs)]">
-              <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>Configured</span>
-            </span>
-          ) : configured === false ? (
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--neutral-over)] text-right">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              <span>Not Configured — set SHORTCUT_API_KEY in Vercel/env</span>
-            </span>
-          ) : (
-            <span className="text-[11px] text-muted-foreground">Checking...</span>
-          )}
-        </div>
+      {/* Server Key Status & Collapsible Setup Guide */}
+      <details className="group rounded-xl bg-surface-sub/60 border border-border/50 p-3 space-y-2.5 text-xs">
+        <summary className="cursor-pointer select-none list-none flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-semibold text-foreground">Setup Guide &amp; Endpoint Details</span>
+            {configured === true ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--macro-carbs)]">
+                <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Configured</span>
+              </span>
+            ) : configured === false ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--neutral-over)]">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>Not Configured</span>
+              </span>
+            ) : (
+              <span className="text-[11px] text-muted-foreground">Checking...</span>
+            )}
+          </div>
+          <span className="text-[10px] text-muted-foreground group-open:hidden shrink-0">Show</span>
+          <span className="text-[10px] text-muted-foreground hidden group-open:inline shrink-0">Hide</span>
+        </summary>
+
+      <div className="bg-surface-sub rounded-xl p-3 space-y-2.5 text-xs mt-2.5">
+        {configured === false && (
+          <p className="text-[11px] text-[var(--neutral-over)]">
+            Set <code className="font-mono text-[10px]">SHORTCUT_API_KEY</code> in your server environment variables to enable this endpoint.
+          </p>
+        )}
 
         {/* Endpoint URL */}
         <div className="space-y-1">
@@ -286,6 +302,7 @@ export function AppleHealthShortcutCard() {
           </li>
         </ol>
       </div>
+      </details>
     </section>
   );
 }

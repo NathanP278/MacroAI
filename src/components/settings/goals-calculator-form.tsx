@@ -464,10 +464,17 @@ export function GoalsCalculatorForm() {
       {/* Active Targets Summary Banner */}
       <div className="bg-surface-sub rounded-2xl p-3.5 sm:p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium text-muted-foreground">
-              Active Daily Targets
+              {!hasSavedGoals && targetMode === 'calculator'
+                ? 'Calculator Preview'
+                : 'Active Daily Targets'}
             </span>
+            {!hasSavedGoals && targetMode === 'calculator' && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-card text-muted-foreground border border-border/60">
+                Unsaved · Dashboard is on {activeTargets.calories.toLocaleString()} kcal default
+              </span>
+            )}
             {hasSavedGoals && lastCheckInAt && (
               <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--macro-calories)]/15 text-[var(--macro-calories)]">
                 Coached
@@ -1252,7 +1259,7 @@ export function GoalsCalculatorForm() {
         <button
           type="submit"
           disabled={isSaving}
-          className="tactile-press w-full h-11 px-4 rounded-full bg-foreground text-background font-semibold text-[13px] hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
+          className="tactile-press w-full h-11 px-4 rounded-full bg-foreground text-background font-semibold text-sm hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-xs"
         >
           {savedSuccess ? (
             <span className="animate-check-pop inline-flex items-center gap-1.5">

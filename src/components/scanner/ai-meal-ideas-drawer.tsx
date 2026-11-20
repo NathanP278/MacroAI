@@ -12,7 +12,7 @@ import {
   UtensilsCrossed,
 } from 'lucide-react';
 import { db, generateId } from '@/lib/db/macroai-db';
-import { useLoggerStore, type AiDraftItem } from '@/stores/logger-store';
+import { useLoggerStore, formatHumanDate, type AiDraftItem } from '@/stores/logger-store';
 import { DEFAULT_RDA_MICROS, resolveGoalsForDate } from '@/lib/nutrition/goals';
 import { aggregateDailySummary } from '@/lib/nutrition/daily-summary';
 import { scaleNutrition } from '@/lib/nutrition/scaling';
@@ -246,7 +246,7 @@ export function AiMealIdeasDrawer({ open, date, onClose }: AiMealIdeasDrawerProp
                 AI Meal Ideas
               </h2>
               <p className="text-[11px] text-muted-foreground">
-                Fill remaining macros for {effectiveDate}
+                Fill remaining macros for {formatHumanDate(effectiveDate)}
               </p>
             </div>
           </div>

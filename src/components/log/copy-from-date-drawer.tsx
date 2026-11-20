@@ -5,7 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { AlertCircle, Calendar, Check, CopyPlus, X } from 'lucide-react';
 import { db } from '@/lib/db/macroai-db';
 import { copyLogsFromDate, offsetIsoDate } from '@/lib/recipes/recipe-builder';
-import { useLoggerStore } from '@/stores/logger-store';
+import { useLoggerStore, formatHumanDate } from '@/stores/logger-store';
 import { triggerHaptic } from '@/lib/motion';
 
 export interface CopyFromDateDrawerProps {
@@ -164,7 +164,7 @@ function CopyFromDateContent({
                 Copy From Date
               </h2>
               <p className="text-[11px] text-muted-foreground tabular-nums truncate">
-                Copy logged meals into {targetDate}
+                Copy logged meals into {formatHumanDate(targetDate)}
               </p>
             </div>
           </div>

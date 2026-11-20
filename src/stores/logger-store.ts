@@ -4,6 +4,7 @@ import type {
   FoodLogEntry,
   MacroNutrients,
   Micronutrients,
+  WeightLogEntry,
 } from '@/types/nutrition';
 import type { TransitionDirection } from '@/lib/motion';
 
@@ -45,6 +46,7 @@ export interface LoggerState {
   searchInitialQuery: string;
   aiDraft: AiDraft | null;
   editingEntry: FoodLogEntry | null;
+  editingWeight: WeightLogEntry | null;
   recipeSeedIngredients: CustomRecipeIngredient[] | null;
   undoToast: UndoToastItem | null;
   isCommandPaletteOpen: boolean;
@@ -57,6 +59,7 @@ export interface LoggerState {
   setAiDraft: (draft: AiDraft | null) => void;
   resetDraft: () => void;
   setEditingEntry: (entry: FoodLogEntry | null) => void;
+  setEditingWeight: (entry: WeightLogEntry | null) => void;
   setRecipeSeedIngredients: (ingredients: CustomRecipeIngredient[] | null) => void;
   openRecipeBuilderWithIngredients: (ingredients: CustomRecipeIngredient[]) => void;
   showUndoToast: (item: Omit<UndoToastItem, 'id'>) => void;
@@ -65,12 +68,32 @@ export interface LoggerState {
   setSyncAuthLocked: (locked: boolean) => void;
 }
 
-function getTodayIsoDate(): string {
+export function getTodayIsoDate(): string {
   const d = new Date();
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+export function formatHumanDate(iso: string): string {
+  const parts = (iso || '').split('-').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return iso;
+  const [y, m, day] = parts;
+  const dateObj = new Date(y, m - 1, day);
+  const monthName = dateObj.toLocaleDateString('en-US', { month: 'short' });
+  const todayIso = getTodayIsoDate();
+  if (iso === todayIso) {
+    return `Today, ${monthName} ${day}`;
+  }
+  const yest = new Date();
+  yest.setDate(yest.getDate() - 1);
+  const yestIso = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}-${String(yest.getDate()).padStart(2, '0')}`;
+  if (iso === yestIso) {
+    return `Yesterday, ${monthName} ${day}`;
+  }
+  const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+  return `${dayName}, ${monthName} ${day}`;
 }
 
 export const useLoggerStore = create<LoggerState>((set) => ({
@@ -81,6 +104,7 @@ export const useLoggerStore = create<LoggerState>((set) => ({
   searchInitialQuery: '',
   aiDraft: null,
   editingEntry: null,
+  editingWeight: null,
   recipeSeedIngredients: null,
   undoToast: null,
   isCommandPaletteOpen: false,
@@ -95,6 +119,7 @@ export const useLoggerStore = create<LoggerState>((set) => ({
       activeSheet: null,
       searchInitialQuery: '',
       activeMealSlot: 'log',
+      editingWeight: null,
     }),
   setSearchInitialQuery: (query) => set({ searchInitialQuery: query }),
   setActiveDate: (date) =>
@@ -111,6 +136,7 @@ export const useLoggerStore = create<LoggerState>((set) => ({
   setAiDraft: (draft) => set({ aiDraft: draft }),
   resetDraft: () => set({ aiDraft: null }),
   setEditingEntry: (entry) => set({ editingEntry: entry }),
+  setEditingWeight: (entry) => set({ editingWeight: entry }),
   setRecipeSeedIngredients: (ingredients) =>
     set({ recipeSeedIngredients: ingredients }),
   openRecipeBuilderWithIngredients: (ingredients) =>

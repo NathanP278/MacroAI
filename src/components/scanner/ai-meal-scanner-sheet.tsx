@@ -17,7 +17,7 @@ import {
   ChefHat,
   FileText,
 } from 'lucide-react';
-import { useLoggerStore, AiDraftItem } from '@/stores/logger-store';
+import { useLoggerStore, getTodayIsoDate, AiDraftItem } from '@/stores/logger-store';
 import { db, generateId } from '@/lib/db/macroai-db';
 import { scaleNutrition } from '@/lib/nutrition/scaling';
 import { RDA_MICRONUTRIENT_METADATA } from '@/lib/nutrition/daily-summary';
@@ -163,7 +163,7 @@ export function AiMealScannerSheet({
 }: AiMealScannerSheetProps) {
   const storeDate = useLoggerStore((s) => s.activeDate);
   const storeMealSlot = useLoggerStore((s) => s.activeMealSlot);
-  const effectiveDate = date ?? storeDate ?? '2026-11-14';
+  const effectiveDate = date ?? storeDate ?? getTodayIsoDate();
   const effectiveMealSlot = mealSlot ?? storeMealSlot ?? 'log';
 
   const aiDraft = useLoggerStore((s) => s.aiDraft);

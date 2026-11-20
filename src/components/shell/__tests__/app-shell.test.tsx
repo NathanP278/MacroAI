@@ -266,7 +266,7 @@ describe('AppShell', () => {
     expect(useLoggerStore.getState().recipeSeedIngredients).toBeNull();
   });
 
-  it('renders non-blocking dismissible syncAuthLocked banner with inline SyncUnlockCard and reappears on re-lock', async () => {
+  it('renders non-blocking Liquid Glass Cloud Sync login modal when syncAuthLocked is true and supports Local Mode + passphrase unlock', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ authenticated: true }),
@@ -279,23 +279,24 @@ describe('AppShell', () => {
       </AppShell>
     );
 
-    expect(screen.queryByTestId('sync-auth-banner')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sync-auth-modal')).not.toBeInTheDocument();
 
     act(() => {
       useLoggerStore.getState().setSyncAuthLocked(true);
     });
 
-    const banner = await screen.findByTestId('sync-auth-banner');
-    expect(banner).toBeInTheDocument();
+    const modal = await screen.findByTestId('sync-auth-modal');
+    expect(modal).toBeInTheDocument();
     expect(screen.getByText('Offline Workspace Content')).toBeInTheDocument();
-    expect(banner.innerHTML).not.toMatch(/#ef4444|text-red|bg-red|border-red/i);
+    expect(modal.innerHTML).not.toMatch(/#ef4444|text-red|bg-red|border-red/i);
+    expect(screen.getByTestId('sync-unlock-card')).toBeInTheDocument();
 
-    // Dismissing hides banner while keeping workspace accessible
-    fireEvent.click(screen.getByRole('button', { name: /dismiss cloud sync notice/i }));
-    expect(screen.queryByTestId('sync-auth-banner')).not.toBeInTheDocument();
+    // Continuing in Local Mode dismisses modal while keeping workspace accessible
+    fireEvent.click(screen.getByRole('button', { name: /continue in local mode/i }));
+    expect(screen.queryByTestId('sync-auth-modal')).not.toBeInTheDocument();
     expect(screen.getByText('Offline Workspace Content')).toBeInTheDocument();
 
-    // Cycling false -> true resurfaces banner
+    // Cycling false -> true resurfaces modal
     act(() => {
       useLoggerStore.getState().setSyncAuthLocked(false);
     });
@@ -303,12 +304,9 @@ describe('AppShell', () => {
       useLoggerStore.getState().setSyncAuthLocked(true);
     });
 
-    expect(await screen.findByTestId('sync-auth-banner')).toBeInTheDocument();
+    expect(await screen.findByTestId('sync-auth-modal')).toBeInTheDocument();
 
-    // 1-tap Unlock Cloud Sync expands SyncUnlockCard inline and unlocks on valid passphrase
-    fireEvent.click(screen.getByRole('button', { name: /unlock cloud sync/i }));
-    expect(screen.getByTestId('sync-unlock-card')).toBeInTheDocument();
-
+    // Entering valid passphrase unlocks Cloud Sync and closes modal
     fireEvent.change(screen.getByLabelText(/sync access passphrase/i), {
       target: { value: 'secret-key' },
     });
@@ -316,7 +314,7 @@ describe('AppShell', () => {
 
     await waitFor(() => {
       expect(useLoggerStore.getState().syncAuthLocked).toBe(false);
-      expect(screen.queryByTestId('sync-auth-banner')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('sync-auth-modal')).not.toBeInTheDocument();
     });
   });
 

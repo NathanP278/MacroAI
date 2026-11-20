@@ -20,10 +20,23 @@ export const metadata: Metadata = {
   title: "MacroAI - Adherence-Neutral Macro & Calorie Tracker",
   description: "100% free, offline-first calorie and macro tracking with AI meal scanning and adherence-neutral analytics.",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "MacroAI",
+  },
+  formatDetection: {
+    telephone: false,
+    date: false,
+    email: false,
+    address: false,
   },
 };
 
@@ -32,8 +45,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#141416" },
-    { media: "(prefers-color-scheme: light)", color: "#f4f4f6" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d0d11" },
+    { media: "(prefers-color-scheme: light)", color: "#eef0f5" },
   ],
 };
 

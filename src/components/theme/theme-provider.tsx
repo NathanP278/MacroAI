@@ -46,30 +46,34 @@ export function ThemeProvider({
   defaultTheme?: Theme;
   storageKey?: string;
 }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem(storageKey) as Theme | null;
-        if (saved && (saved === "dark" || saved === "light" || saved === "system")) {
-          return saved;
-        }
-      } catch {
-        // localStorage unavailable
+  const [theme, setThemeState] = useState<Theme>(defaultTheme);
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
+    defaultTheme === "light" ? "light" : "dark"
+  );
+
+  // Sync saved localStorage theme after mount to prevent SSR/client hydration mismatch
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem(storageKey) as Theme | null;
+      if (saved && (saved === "dark" || saved === "light" || saved === "system")) {
+        setThemeState(saved);
+        const resolved = resolveTheme(saved);
+        setResolvedTheme(resolved);
+        applyThemeClass(resolved);
+        return;
       }
+    } catch {
+      // localStorage unavailable
     }
-    return defaultTheme;
-  });
-
-  const [prevTheme, setPrevTheme] = useState<Theme>(theme);
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(theme));
-
-  if (theme !== prevTheme) {
-    setPrevTheme(theme);
-    setResolvedTheme(resolveTheme(theme));
-  }
+    const resolved = resolveTheme(defaultTheme);
+    setResolvedTheme(resolved);
+    applyThemeClass(resolved);
+  }, [defaultTheme, storageKey]);
 
   useEffect(() => {
     const resolved = resolveTheme(theme);
+    setResolvedTheme(resolved);
     applyThemeClass(resolved);
 
     if (theme === "system" && typeof window !== "undefined" && window.matchMedia) {
@@ -96,7 +100,10 @@ export function ThemeProvider({
     } catch {
       // localStorage unavailable
     }
+    const resolved = resolveTheme(newTheme);
     setThemeState(newTheme);
+    setResolvedTheme(resolved);
+    applyThemeClass(resolved);
   };
 
   return (

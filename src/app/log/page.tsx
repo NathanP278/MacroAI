@@ -110,17 +110,17 @@ export default function LogPage() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
               Food Log
             </h1>
-            <p className="text-xs sm:text-[13px] text-muted-foreground mt-0.5">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
               Adherence-neutral chronological diary
             </p>
           </div>
 
-          <div className="order-3 sm:order-2 sm:ml-auto flex items-center justify-between sm:justify-end gap-1.5 w-full sm:w-auto shrink-0">
+          <div className="order-3 sm:order-2 sm:ml-auto flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto shrink-0">
             {!isToday && (
               <button
                 type="button"
                 onClick={handleToday}
-                className="touch-target tactile-press px-2.5 min-h-[36px] py-1.5 rounded-full text-[11px] font-semibold bg-surface-sub border border-border/50 text-foreground hover:bg-surface-elevated flex items-center gap-1 mr-0.5 sm:mr-1"
+                className="touch-target tactile-press px-3 min-h-[44px] sm:min-h-[36px] py-2 sm:py-1.5 rounded-full text-xs sm:text-[11px] font-semibold bg-surface-sub border border-border/50 text-foreground hover:bg-surface-elevated flex items-center gap-1 mr-0.5 sm:mr-1"
               >
                 <RotateCcw className="w-3 h-3" aria-hidden="true" />
                 Today
@@ -130,23 +130,23 @@ export default function LogPage() {
               type="button"
               onClick={handlePrevDay}
               aria-label="Previous day"
-              className="touch-target tactile-press w-9 h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground shrink-0"
+              className="touch-target tactile-press w-11 h-11 sm:w-9 sm:h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground shrink-0"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <DatePickerPopover
               activeDate={activeDate}
               onSelectDate={handleSelectDate}
-              align="center"
+              align="right"
               className="flex-1 sm:flex-initial"
               trigger={
                 <button
                   type="button"
                   title="Choose date"
-                  className="w-full touch-target tactile-press justify-center text-xs font-semibold px-3.5 min-h-[36px] py-1.5 rounded-full bg-card border border-border/50 hover:bg-surface-sub text-foreground flex items-center gap-1.5 tabular-nums whitespace-nowrap"
+                  className="w-full touch-target tactile-press justify-center text-xs font-semibold px-3.5 min-h-[44px] sm:min-h-[36px] py-2 sm:py-1.5 rounded-full bg-card border border-border/50 hover:bg-surface-sub text-foreground flex items-center gap-1.5 tabular-nums whitespace-nowrap"
                 >
                   <Calendar className="w-3.5 h-3.5 text-[var(--macro-calories)] shrink-0" aria-hidden="true" />
-                  <span>{label}</span>
+                  <span suppressHydrationWarning>{label}</span>
                 </button>
               }
             />
@@ -154,7 +154,7 @@ export default function LogPage() {
               type="button"
               onClick={handleNextDay}
               aria-label="Next day"
-              className="touch-target tactile-press w-9 h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground shrink-0"
+              className="touch-target tactile-press w-11 h-11 sm:w-9 sm:h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground shrink-0"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

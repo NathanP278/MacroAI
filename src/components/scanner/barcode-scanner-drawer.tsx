@@ -23,7 +23,7 @@ import {
   BarcodeLookupResult,
 } from '@/hooks/use-barcode-lookup';
 import { startBarcodeVideoScan } from '@/lib/scanner/barcode-decoder';
-import { useLoggerStore } from '@/stores/logger-store';
+import { useLoggerStore, getTodayIsoDate, formatHumanDate } from '@/stores/logger-store';
 import { CustomFoodModal } from '@/components/recipes/custom-food-modal';
 import { AddBarcodeProductModal } from './add-barcode-product-modal';
 import type { FoodItem, FoodLogEntry, FoodServingOption } from '@/types/nutrition';
@@ -62,7 +62,7 @@ function BarcodeScannerContent({
   const storeDate = useLoggerStore((s) => s.activeDate);
   const storeMealSlot = useLoggerStore((s) => s.activeMealSlot);
 
-  const effectiveDate = date ?? storeDate ?? '2026-11-14';
+  const effectiveDate = date ?? storeDate ?? getTodayIsoDate();
   const effectiveMealSlot = mealSlot ?? storeMealSlot ?? 'log';
 
   const [manualBarcode, setManualBarcode] = useState('');
@@ -317,7 +317,7 @@ function BarcodeScannerContent({
                     : 'Scan Food Barcode'}
                 </h2>
                 <p className="text-[11px] text-muted-foreground">
-                  Logging for {effectiveDate}
+                  Logging for {formatHumanDate(effectiveDate)}
                 </p>
               </div>
             </div>

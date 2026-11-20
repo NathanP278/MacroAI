@@ -44,7 +44,7 @@ export function SegmentedControl<T extends string>({
   ariaLabel,
   dataTestId,
   className = "p-1 bg-surface-sub",
-  buttonClassName = "px-3 py-1.5 text-xs",
+  buttonClassName = "px-3 py-2 sm:py-1.5 text-xs",
   activeClassName = "text-background font-semibold",
   inactiveClassName = "text-muted-foreground hover:text-foreground font-medium",
   thumbClassName = "bg-foreground",
@@ -118,12 +118,12 @@ export function SegmentedControl<T extends string>({
       role={role}
       aria-label={ariaLabel}
       data-testid={dataTestId}
-      className={`relative inline-flex items-center rounded-full ${className}`}
+      className={`relative inline-flex items-center rounded-full border border-border/80 shadow-[var(--shadow-glass-pill)] backdrop-blur-md ${className}`}
     >
       {hasMeasuredThumb && thumbRect && (
         <span
           aria-hidden="true"
-          className={`motion-reduce:hidden pointer-events-none absolute left-0 top-0 rounded-full shadow-xs ${
+          className={`motion-reduce:hidden pointer-events-none absolute left-0 top-0 rounded-full liquid-glass-active-pill ${
             animateThumb ? "segmented-thumb" : ""
           } ${resolvedThumbClass}`}
           style={{
@@ -153,7 +153,7 @@ export function SegmentedControl<T extends string>({
             aria-label={opt.ariaLabel}
             onClick={() => onChange(opt.value)}
             {...a11yProps}
-            className={`relative z-10 tactile-press inline-flex items-center justify-center gap-1.5 rounded-full whitespace-nowrap transition-colors duration-150 ${buttonClassName} ${
+            className={`relative z-10 touch-target tactile-press inline-flex items-center justify-center gap-1.5 rounded-full whitespace-nowrap min-h-[36px] sm:min-h-0 transition-colors duration-150 ${buttonClassName} ${
               isSelected
                 ? `${activeClassName} ${
                     !hasMeasuredThumb ? `${resolvedThumbClass} shadow-xs` : ""

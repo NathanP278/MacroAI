@@ -160,7 +160,7 @@ describe('BackupPanel', () => {
     });
   });
 
-  it('handles replace mode with confirmation prompt', async () => {
+  it('handles replace mode with branded confirmation modal', async () => {
     const importSpy = vi.spyOn(backupModule, 'importBackupJson').mockResolvedValue({
       importedCounts: {
         foodLogs: 1,
@@ -171,8 +171,6 @@ describe('BackupPanel', () => {
         pinnedFoods: 0,
       },
     });
-
-    const confirmSpy = vi.spyOn(window, 'confirm');
 
     render(<BackupPanel />);
 
@@ -185,14 +183,21 @@ describe('BackupPanel', () => {
     const file = new File(['{"version": 1}'], 'replace.json', { type: 'application/json' });
     const fileInput = screen.getByTestId('backup-file-input');
 
-    // 1. User cancels confirmation
-    confirmSpy.mockReturnValueOnce(false);
+    // 1. User cancels confirmation modal
     fireEvent.change(fileInput, { target: { files: [file] } });
+    await waitFor(() => {
+      expect(screen.getByTestId('replace-confirm-modal')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+    expect(screen.queryByTestId('replace-confirm-modal')).not.toBeInTheDocument();
     expect(importSpy).not.toHaveBeenCalled();
 
-    // 2. User accepts confirmation
-    confirmSpy.mockReturnValueOnce(true);
+    // 2. User confirms replace in modal
     fireEvent.change(fileInput, { target: { files: [file] } });
+    await waitFor(() => {
+      expect(screen.getByTestId('replace-confirm-modal')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /replace all data/i }));
 
     await waitFor(() => {
       expect(importSpy).toHaveBeenCalledWith(expect.any(String), 'replace');
@@ -212,7 +217,6 @@ describe('BackupPanel', () => {
       },
       syncPending: true,
     });
-    vi.spyOn(window, 'confirm').mockReturnValueOnce(true);
 
     render(<BackupPanel />);
     fireEvent.click(screen.getByRole('button', { name: /^replace$/i }));
@@ -221,6 +225,11 @@ describe('BackupPanel', () => {
     fireEvent.change(screen.getByTestId('backup-file-input'), {
       target: { files: [file] },
     });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('replace-confirm-modal')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /replace all data/i }));
 
     await waitFor(() => {
       expect(

@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { triggerHaptic } from "@/lib/motion";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 
 export type QuickActionType =
   | "ai-scan"
@@ -69,6 +70,8 @@ const ACTION_ITEMS: ActionItem[] = [
 
 export function QuickActionDock({ onAction, onClose }: QuickActionDockProps) {
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  useFocusTrap(sheetRef, true);
 
   useEffect(() => {
     const firstBtn = buttonRefs.current[0];
@@ -116,6 +119,7 @@ export function QuickActionDock({ onAction, onClose }: QuickActionDockProps) {
       onClick={onClose}
     >
       <div
+        ref={sheetRef}
         className="w-full max-w-lg mx-auto bg-surface-elevated border-t border-x sm:border border-border surface-elevated-sheet border-b-0 sm:border-b rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 animate-sheet-in sm:animate-modal-in"
         onClick={(e) => e.stopPropagation()}
       >

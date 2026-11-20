@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { Lock, X } from "lucide-react";
+import { Lock, ShieldCheck, X } from "lucide-react";
 import { BottomNav } from "./bottom-nav";
+import { BootSplashOverlay } from "./boot-splash-overlay";
 import { QuickActionDock, QuickActionType } from "./quick-action-dock";
 import { UndoToast } from "./undo-toast";
 import { CommandPalette } from "./command-palette";
@@ -20,6 +21,7 @@ import { ensureDefaultUserGoals } from "@/lib/nutrition/goals";
 import { db } from "@/lib/db/macroai-db";
 import { isCloudSyncEnabled, syncWithCentralDb } from "@/lib/db/cloud-sync";
 import { triggerHaptic } from "@/lib/motion";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 
 export { QuickActionDock };
 export type { QuickActionType };
@@ -29,74 +31,96 @@ export interface AppShellProps {
   onQuickAction?: (action: QuickActionType) => void;
 }
 
-function SyncAuthBanner() {
+function SyncAuthModal() {
   const [isDismissed, setIsDismissed] = useState(false);
-  const [isUnlockExpanded, setIsUnlockExpanded] = useState(false);
+  const modalRef = useRef<HTMLDivElement | null>(null);
+  useFocusTrap(modalRef, !isDismissed);
+
+  useEffect(() => {
+    if (isDismissed) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setIsDismissed(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isDismissed]);
 
   if (isDismissed) {
     return null;
   }
 
+  const handleContinueLocal = () => {
+    triggerHaptic(8);
+    setIsDismissed(true);
+  };
+
   return (
-    <div className="px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Sign in to Cloud Sync & AI"
+      data-testid="sync-auth-modal"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 sm:p-6 bg-black/72 backdrop-blur-md animate-backdrop-in"
+      onClick={handleContinueLocal}
+    >
       <div
-        role="region"
-        aria-label="Cloud sync locked"
-        data-testid="sync-auth-banner"
-        className="bg-card border border-border/60 rounded-2xl px-4 py-3 space-y-3"
+        ref={modalRef}
+        className="w-full max-w-md surface-elevated-sheet rounded-3xl p-5 sm:p-6 space-y-4 animate-sheet-in sm:animate-modal-in"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="w-8 h-8 rounded-xl bg-surface-sub border border-border/50 flex items-center justify-center text-[var(--neutral-over)] shrink-0">
-              <Lock className="w-4 h-4" aria-hidden="true" />
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-[var(--macro-calories)]/15 border border-[var(--macro-calories)]/30 flex items-center justify-center text-[var(--macro-calories)] shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
+              <Lock className="w-4.5 h-4.5" aria-hidden="true" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-foreground">
-                Cloud sync &amp; AI locked
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                Local offline logging remains active.
+              <h2 className="text-base font-bold tracking-tight text-foreground">
+                Sign in to Cloud Sync
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Optional cross-device sync &amp; AI meal scanning
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              aria-expanded={isUnlockExpanded}
-              onClick={() => {
-                triggerHaptic(8);
-                setIsUnlockExpanded((prev) => !prev);
-              }}
-              className="touch-target tactile-press px-3.5 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90"
-            >
-              Unlock Cloud Sync
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic(8);
-                setIsDismissed(true);
-              }}
-              aria-label="Dismiss cloud sync notice"
-              className="touch-target tactile-press w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub"
-            >
-              <X className="w-4 h-4" aria-hidden="true" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleContinueLocal}
+            aria-label="Close cloud sync sign in"
+            className="touch-target tactile-press w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub shrink-0"
+          >
+            <X className="w-4 h-4" aria-hidden="true" />
+          </button>
         </div>
 
-        {isUnlockExpanded && (
-          <SyncUnlockCard
-            compact
-            onUnlocked={() => {
-              setIsUnlockExpanded(false);
-              if (isCloudSyncEnabled()) {
-                void syncWithCentralDb(db).catch(() => {});
-              }
-            }}
-          />
-        )}
+        {/* Passphrase Unlock Form */}
+        <SyncUnlockCard
+          compact
+          onUnlocked={() => {
+            if (isCloudSyncEnabled()) {
+              void syncWithCentralDb(db).catch(() => {});
+            }
+          }}
+        />
+
+        {/* Local-first zero-guilt exit */}
+        <div className="pt-1 flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={handleContinueLocal}
+            className="touch-target tactile-press w-full py-2.5 px-4 rounded-full bg-surface-sub border border-border hover:border-border-focus text-xs font-semibold text-foreground flex items-center justify-center gap-1.5"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-[var(--macro-carbs)]" aria-hidden="true" />
+            <span>Continue in Local Mode</span>
+          </button>
+          <p className="text-[11px] text-center text-muted-foreground">
+            Your meals, recipes, and weigh-ins stay 100% stored offline on this device. You can unlock anytime in Settings.
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -104,6 +128,9 @@ function SyncAuthBanner() {
 
 export function AppShell({ children, onQuickAction }: AppShellProps) {
   const [isDockOpen, setIsDockOpen] = useState(false);
+  const [bootVisible, setBootVisible] = useState(false);
+  const [bootExiting, setBootExiting] = useState(false);
+  const [bootStatus, setBootStatus] = useState("Calibrating cockpit...");
   const pathname = usePathname() ?? "/";
   const hasQuickSearchBar = pathname === "/" || pathname.startsWith("/log");
   const activeSheet = useLoggerStore((s) => s.activeSheet);
@@ -113,6 +140,7 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
   const activeMealSlot = useLoggerStore((s) => s.activeMealSlot);
   const editingEntry = useLoggerStore((s) => s.editingEntry);
   const setEditingEntry = useLoggerStore((s) => s.setEditingEntry);
+  const editingWeight = useLoggerStore((s) => s.editingWeight);
   const syncAuthLocked = useLoggerStore((s) => s.syncAuthLocked);
 
   // Restore & persist per-route scroll position
@@ -149,9 +177,33 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
 
   useEffect(() => {
     let cancelled = false;
+    let exitTimer: ReturnType<typeof setTimeout> | null = null;
+    let hideTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const isJsdom =
+      typeof navigator !== "undefined" && /jsdom/i.test(navigator.userAgent);
+    let shouldShowBoot = false;
+    if (!isJsdom && typeof window !== "undefined") {
+      try {
+        shouldShowBoot =
+          window.sessionStorage?.getItem("macroai-boot-seen") !== "1";
+      } catch {
+        shouldShowBoot = false;
+      }
+    }
+
+    const bootStartedAt = Date.now();
+    if (shouldShowBoot) {
+      setBootVisible(true);
+      setBootExiting(false);
+      setBootStatus("Calibrating cockpit...");
+    }
 
     async function initData() {
       if (isCloudSyncEnabled()) {
+        if (shouldShowBoot && !cancelled) {
+          setBootStatus("Checking Cloud Sync...");
+        }
         await syncWithCentralDb(db).catch((err) => {
           console.error("Central DB sync warning:", err);
         });
@@ -161,6 +213,33 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
           console.error("Failed to seed default user goals:", err);
         });
       }
+
+      if (shouldShowBoot && !cancelled) {
+        try {
+          window.sessionStorage?.setItem("macroai-boot-seen", "1");
+        } catch {
+          // Ignore storage errors
+        }
+        const locked = useLoggerStore.getState().syncAuthLocked;
+        setBootStatus(locked ? "Sign in to Cloud Sync" : "Ready");
+
+        const prefersReduced =
+          typeof window !== "undefined" &&
+          window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+        const minHoldMs = prefersReduced ? 120 : 680;
+        const remaining = Math.max(0, minHoldMs - (Date.now() - bootStartedAt));
+
+        exitTimer = setTimeout(() => {
+          if (cancelled) return;
+          setBootExiting(true);
+          hideTimer = setTimeout(() => {
+            if (!cancelled) {
+              setBootVisible(false);
+              setBootExiting(false);
+            }
+          }, prefersReduced ? 130 : 340);
+        }, remaining);
+      }
     }
 
     initData();
@@ -168,6 +247,8 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
     if (!isCloudSyncEnabled()) {
       return () => {
         cancelled = true;
+        if (exitTimer) clearTimeout(exitTimer);
+        if (hideTimer) clearTimeout(hideTimer);
       };
     }
 
@@ -181,6 +262,8 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       cancelled = true;
+      if (exitTimer) clearTimeout(exitTimer);
+      if (hideTimer) clearTimeout(hideTimer);
       window.removeEventListener("focus", handleVisibility);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
@@ -210,7 +293,13 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
             : "pb-[calc(5.25rem+env(safe-area-inset-bottom))] sm:pb-[calc(5.75rem+env(safe-area-inset-bottom))]"
         }`}
       >
-        {syncAuthLocked && <SyncAuthBanner />}
+        <BootSplashOverlay
+          visible={bootVisible}
+          exiting={bootExiting}
+          statusLabel={bootStatus}
+        />
+
+        {!bootVisible && syncAuthLocked && <SyncAuthModal />}
 
         <main className="flex-1 flex flex-col w-full animate-page-enter">
           {children}
@@ -281,6 +370,7 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
         {/* Weigh-In Drawer */}
         <WeighInDrawer
           open={activeSheet === "weight"}
+          initialEntry={editingWeight}
           defaultDate={activeDate}
           onClose={closeSheet}
         />

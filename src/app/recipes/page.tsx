@@ -290,7 +290,7 @@ export default function RecipesPage() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight">
               Recipes & Custom Foods
             </h1>
-            <p className="text-xs sm:text-[13px] text-muted-foreground mt-0.5">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
               Offline recipe book and custom ingredients
               {activeTab === 'recipes' && recipes && recipes.length > 0 && (
                 <span className="sm:hidden tabular-nums">
@@ -660,14 +660,6 @@ export default function RecipesPage() {
                   </button>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={handleOpenCreateCustomFood}
-                className="touch-target tactile-press shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-surface-sub border border-border/60 hover:bg-card text-foreground text-xs font-semibold"
-              >
-                <Plus className="w-4 h-4" aria-hidden="true" />
-                <span>Create Custom Food</span>
-              </button>
             </div>
 
             {customFoods === undefined ? (

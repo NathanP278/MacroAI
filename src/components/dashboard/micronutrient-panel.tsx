@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import type { MicroMetric } from '@/lib/nutrition/daily-summary';
 import type { FoodLogEntry } from '@/types/nutrition';
 import { SegmentedControl } from '@/components/ui/segmented-control';
+import { InfoPopover } from '@/components/ui/info-popover';
 import { NutrientContributorsSheet } from './nutrient-contributors-sheet';
 import { triggerHaptic } from '@/lib/motion';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -232,21 +233,30 @@ export function MicronutrientPanel({
       {showSummaryStrip && (
         <div className="grid grid-cols-2 gap-2.5">
           {activeNetCarbsG !== undefined && (
-            <div className="rounded-xl bg-surface-sub/65 border border-border/40 px-3 py-2 flex items-baseline justify-between gap-2">
+            <div className="rounded-xl bg-surface-sub/65 border border-border/40 px-3 py-2 flex items-center gap-1.5">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Net Carbs
               </span>
-              <span className="text-sm font-bold text-foreground tabular-nums">
+              <InfoPopover
+                label="Net Carbs"
+                description="Total carbohydrates minus dietary fiber — estimates digestible carbs."
+              />
+              <span className="ml-auto text-sm font-bold text-foreground tabular-nums">
                 {formatNetCarbs(activeNetCarbsG)}
               </span>
             </div>
           )}
           {activePotassiumSodiumRatio !== undefined && (
-            <div className="rounded-xl bg-surface-sub/65 border border-border/40 px-3 py-2 flex items-baseline justify-between gap-2">
+            <div className="rounded-xl bg-surface-sub/65 border border-border/40 px-3 py-2 flex items-center gap-1.5">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 K:Na Ratio
               </span>
-              <span className="text-sm font-bold text-foreground tabular-nums">
+              <InfoPopover
+                label="K:Na Ratio"
+                description="Potassium-to-sodium ratio. A higher ratio generally reflects more whole-food potassium relative to dietary sodium."
+                align="right"
+              />
+              <span className="ml-auto text-sm font-bold text-foreground tabular-nums">
                 {formatRatio(activePotassiumSodiumRatio)}
               </span>
             </div>
