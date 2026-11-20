@@ -208,7 +208,10 @@ export function BackupPanel({ className }: BackupPanelProps) {
       }
 
       setStatusType("success");
-      setStatusMessage(`Imported: ${parts.join(", ")}`);
+      const syncNote = result.syncPending
+        ? " (cloud replace queued until unlock/reconnect)"
+        : "";
+      setStatusMessage(`Imported: ${parts.join(", ")}${syncNote}`);
     } catch (err) {
       setStatusType("error");
       setStatusMessage(err instanceof Error ? err.message : "Failed to import backup");

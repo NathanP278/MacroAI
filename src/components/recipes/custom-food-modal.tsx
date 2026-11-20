@@ -225,8 +225,9 @@ export function CustomFoodModal({
             ? initialFood.servingSize || 1
             : countableOpt
               ? countableOpt.defaultAmount ?? 1
-              : initialFood.servingSize ||
-                (initBasis === 'perServing' ? 1 : 100);
+              : initBasis === 'per100g'
+                ? 100
+                : initialFood.servingSize || 1;
         const initWeight =
           initialFood.servingWeightGrams ??
           (countableOpt && countableOpt.grams > 0
@@ -315,6 +316,11 @@ export function CustomFoodModal({
   if (!open) return null;
 
   const trimmedUnitLower = servingUnit.trim().toLowerCase();
+  const isPer100MetricMode =
+    basis === 'per100g' &&
+    (trimmedUnitLower === '' ||
+      trimmedUnitLower === 'g' ||
+      trimmedUnitLower === 'ml');
   const effectiveMetricUnit: 'g' | 'ml' =
     trimmedUnitLower === 'ml'
       ? 'ml'
@@ -342,18 +348,21 @@ export function CustomFoodModal({
   const handleBasisChange = (nextBasis: 'perServing' | 'per100g') => {
     setBasis(nextBasis);
     setServingError(null);
-    if (
-      nextBasis === 'per100g' &&
-      servingSize === '1' &&
-      servingUnit.trim().toLowerCase() === 'serving'
-    ) {
-      setServingSize('100');
-      setServingUnit(per100Unit);
+    const unitLow = servingUnit.trim().toLowerCase();
+    if (nextBasis === 'per100g') {
+      if (unitLow === 'serving' && servingSize === '1') {
+        setServingSize('100');
+        setServingUnit(per100Unit);
+      } else if (unitLow === 'g' || unitLow === 'ml' || unitLow === '') {
+        setServingSize('100');
+        setServingUnit(
+          unitLow === 'ml' ? 'ml' : unitLow === 'g' ? 'g' : per100Unit
+        );
+      }
     } else if (
       nextBasis === 'perServing' &&
       servingSize === '100' &&
-      (servingUnit.trim().toLowerCase() === 'g' ||
-        servingUnit.trim().toLowerCase() === 'ml')
+      (unitLow === 'g' || unitLow === 'ml')
     ) {
       setServingSize('1');
       setServingUnit('serving');
@@ -388,57 +397,107 @@ export function CustomFoodModal({
       const data = await res.json();
       if (data.name) setName(String(data.name));
       if (data.brand) setBrand(String(data.brand));
-      if (data.servingSize !== undefined) {
-        setServingSize(String(data.servingSize));
-      }
-      if (data.servingUnit) {
-        const unitStr = String(data.servingUnit).trim();
-        if (unitStr) {
-          setServingUnit(unitStr);
-          if (unitStr === 'g' || unitStr === 'ml') {
-            setBasis('per100g');
-          } else {
-            setBasis('perServing');
-          }
+
+      const rawUnitStr =
+        typeof data.servingUnit === 'string' ? data.servingUnit.trim() : '';
+      const unitLower = rawUnitStr.toLowerCase();
+      const isMetricOcr = unitLower === 'g' || unitLower === 'ml';
+
+      const parsedOcrSize =
+        data.servingSize !== undefined
+          ? parseFloat(String(data.servingSize))
+          : NaN;
+      const validOcrSize =
+        Number.isFinite(parsedOcrSize) && parsedOcrSize > 0
+          ? parsedOcrSize
+          : undefined;
+      const ocrFactor = isMetricOcr && validOcrSize ? 100 / validOcrSize : 1;
+
+      if (isMetricOcr) {
+        const metricUnit: 'g' | 'ml' = unitLower === 'ml' ? 'ml' : 'g';
+        setBasis('per100g');
+        setPer100Unit(metricUnit);
+        setServingSize('100');
+        setServingUnit(metricUnit);
+        if (data.servingWeightGrams !== undefined) {
+          setServingWeightGrams(String(data.servingWeightGrams));
+        } else if (validOcrSize !== undefined && validOcrSize !== 100) {
+          setServingWeightGrams(String(round2(validOcrSize)));
+        } else {
+          setServingWeightGrams('');
+        }
+      } else {
+        if (validOcrSize !== undefined) {
+          setServingSize(String(validOcrSize));
+        } else if (data.servingSize !== undefined) {
+          setServingSize(String(data.servingSize));
+        }
+        if (rawUnitStr) {
+          setServingUnit(rawUnitStr);
+          setBasis('perServing');
+        }
+        if (data.servingWeightGrams !== undefined) {
+          setServingWeightGrams(String(data.servingWeightGrams));
         }
       }
-      if (data.servingWeightGrams !== undefined) {
-        setServingWeightGrams(String(data.servingWeightGrams));
-      }
-      if (data.calories !== undefined) setCalories(String(data.calories));
-      if (data.protein !== undefined) setProtein(String(data.protein));
-      if (data.carbs !== undefined) setCarbs(String(data.carbs));
-      if (data.fat !== undefined) setFat(String(data.fat));
-      if (data.fiber !== undefined) setFiber(String(data.fiber));
-      if (data.sodiumMg !== undefined) setSodiumMg(String(data.sodiumMg));
-      if (data.potassiumMg !== undefined) setPotassiumMg(String(data.potassiumMg));
-      if (data.calciumMg !== undefined) setCalciumMg(String(data.calciumMg));
-      if (data.ironMg !== undefined) setIronMg(String(data.ironMg));
-      if (data.vitaminCMg !== undefined) setVitaminCMg(String(data.vitaminCMg));
+
+      const scaleOcrNutrient = (raw: unknown): string | undefined => {
+        if (raw === undefined || raw === null || raw === '') return undefined;
+        const parsed = typeof raw === 'number' ? raw : parseFloat(String(raw));
+        if (!Number.isFinite(parsed)) return undefined;
+        return String(round2(parsed * ocrFactor));
+      };
+
+      const scaledCal = scaleOcrNutrient(data.calories);
+      if (scaledCal !== undefined) setCalories(scaledCal);
+      const scaledP = scaleOcrNutrient(data.protein);
+      if (scaledP !== undefined) setProtein(scaledP);
+      const scaledC = scaleOcrNutrient(data.carbs);
+      if (scaledC !== undefined) setCarbs(scaledC);
+      const scaledF = scaleOcrNutrient(data.fat);
+      if (scaledF !== undefined) setFat(scaledF);
+      const scaledFib = scaleOcrNutrient(data.fiber);
+      if (scaledFib !== undefined) setFiber(scaledFib);
+      const scaledSod = scaleOcrNutrient(data.sodiumMg);
+      if (scaledSod !== undefined) setSodiumMg(scaledSod);
+      const scaledPot = scaleOcrNutrient(data.potassiumMg);
+      if (scaledPot !== undefined) setPotassiumMg(scaledPot);
+      const scaledCa = scaleOcrNutrient(data.calciumMg);
+      if (scaledCa !== undefined) setCalciumMg(scaledCa);
+      const scaledFe = scaleOcrNutrient(data.ironMg);
+      if (scaledFe !== undefined) setIronMg(scaledFe);
+      const scaledVitC = scaleOcrNutrient(data.vitaminCMg);
+      if (scaledVitC !== undefined) setVitaminCMg(scaledVitC);
 
       let foundExtended = false;
-      if (data.sugarG !== undefined) {
-        setSugarG(String(data.sugarG));
+      const scaledSugar = scaleOcrNutrient(data.sugarG);
+      if (scaledSugar !== undefined) {
+        setSugarG(scaledSugar);
         foundExtended = true;
       }
-      if (data.addedSugarG !== undefined) {
-        setAddedSugarG(String(data.addedSugarG));
+      const scaledAddedSugar = scaleOcrNutrient(data.addedSugarG);
+      if (scaledAddedSugar !== undefined) {
+        setAddedSugarG(scaledAddedSugar);
         foundExtended = true;
       }
-      if (data.saturatedFatG !== undefined) {
-        setSaturatedFatG(String(data.saturatedFatG));
+      const scaledSatFat = scaleOcrNutrient(data.saturatedFatG);
+      if (scaledSatFat !== undefined) {
+        setSaturatedFatG(scaledSatFat);
         foundExtended = true;
       }
-      if (data.cholesterolMg !== undefined) {
-        setCholesterolMg(String(data.cholesterolMg));
+      const scaledChol = scaleOcrNutrient(data.cholesterolMg);
+      if (scaledChol !== undefined) {
+        setCholesterolMg(scaledChol);
         foundExtended = true;
       }
-      if (data.caffeineMg !== undefined) {
-        setCaffeineMg(String(data.caffeineMg));
+      const scaledCaf = scaleOcrNutrient(data.caffeineMg);
+      if (scaledCaf !== undefined) {
+        setCaffeineMg(scaledCaf);
         foundExtended = true;
       }
-      if (data.alcoholG !== undefined) {
-        setAlcoholG(String(data.alcoholG));
+      const scaledAlc = scaleOcrNutrient(data.alcoholG);
+      if (scaledAlc !== undefined) {
+        setAlcoholG(scaledAlc);
         foundExtended = true;
       }
       if (foundExtended) {
@@ -890,12 +949,15 @@ export function CustomFoodModal({
                   step="any"
                   min="0.001"
                   required
-                  value={servingSize}
+                  readOnly={isPer100MetricMode}
+                  value={isPer100MetricMode ? '100' : servingSize}
                   onChange={(e) => {
+                    if (isPer100MetricMode) return;
                     setServingSize(e.target.value);
                     setServingError(null);
                   }}
                   onBlur={() => {
+                    if (isPer100MetricMode) return;
                     const parsed = parseFloat(servingSize);
                     if (!Number.isFinite(parsed) || parsed <= 0) {
                       setServingError(
@@ -903,7 +965,9 @@ export function CustomFoodModal({
                       );
                     }
                   }}
-                  className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
+                  className={`w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums ${
+                    isPer100MetricMode ? 'opacity-70 cursor-not-allowed' : ''
+                  }`}
                 />
               </div>
 
@@ -922,11 +986,28 @@ export function CustomFoodModal({
                   value={servingUnit}
                   onChange={(e) => {
                     const val = e.target.value;
+                    const prevLow = servingUnit.trim().toLowerCase();
+                    const nextLow = val.trim().toLowerCase();
                     setServingUnit(val);
                     setServingError(null);
-                    const low = val.trim().toLowerCase();
-                    if (low === 'ml') setPer100Unit('ml');
-                    else if (low === 'g') setPer100Unit('g');
+                    if (nextLow === 'ml') setPer100Unit('ml');
+                    else if (nextLow === 'g') setPer100Unit('g');
+                    if (basis === 'per100g') {
+                      if (
+                        nextLow === 'g' ||
+                        nextLow === 'ml' ||
+                        nextLow === ''
+                      ) {
+                        setServingSize('100');
+                      } else if (
+                        (prevLow === 'g' ||
+                          prevLow === 'ml' ||
+                          prevLow === '') &&
+                        servingSize === '100'
+                      ) {
+                        setServingSize('1');
+                      }
+                    }
                   }}
                   placeholder="e.g. pack, scoop, g"
                   className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground"

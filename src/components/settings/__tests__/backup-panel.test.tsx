@@ -199,4 +199,33 @@ describe('BackupPanel', () => {
       expect(screen.getByText(/imported: 1 log, 0 foods, 0 recipes, 0 goals/i)).toBeInTheDocument();
     });
   });
+
+  it('shows neutral pending cloud sync note when importBackupJson reports syncPending', async () => {
+    vi.spyOn(backupModule, 'importBackupJson').mockResolvedValue({
+      importedCounts: {
+        foodLogs: 1,
+        foodsCache: 0,
+        customRecipes: 0,
+        userGoals: 0,
+        weightLogs: 0,
+        pinnedFoods: 0,
+      },
+      syncPending: true,
+    });
+    vi.spyOn(window, 'confirm').mockReturnValueOnce(true);
+
+    render(<BackupPanel />);
+    fireEvent.click(screen.getByRole('button', { name: /^replace$/i }));
+
+    const file = new File(['{"version": 2}'], 'replace.json', { type: 'application/json' });
+    fireEvent.change(screen.getByTestId('backup-file-input'), {
+      target: { files: [file] },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/imported: 1 log, 0 foods, 0 recipes, 0 goals.*cloud replace queued until unlock\/reconnect/i)
+      ).toBeInTheDocument();
+    });
+  });
 });

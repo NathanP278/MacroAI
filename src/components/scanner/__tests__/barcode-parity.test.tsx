@@ -4,7 +4,7 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import { db } from '@/lib/db/macroai-db';
 import { BarcodeScannerDrawer } from '../barcode-scanner-drawer';
 import { CustomFoodModal } from '@/components/recipes/custom-food-modal';
-import { scaleFoodByOption } from '@/lib/nutrition/scaling';
+import { getServingOptionsForFood, scaleFoodByOption } from '@/lib/nutrition/scaling';
 import { useLoggerStore } from '@/stores/logger-store';
 
 const originalCreateElement = document.createElement.bind(document);
@@ -349,11 +349,14 @@ describe('Task 8: Barcode Countable Servings Parity & Standalone CustomFoodModal
     });
     fireEvent.click(screen.getByRole('button', { name: /per 100g/i }));
 
-    // Unambiguous per-100g labeling
+    // Unambiguous per-100g labeling and metric Serving Size lock
     expect(screen.getByText(/nutrition values \(per 100g\)/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/serving size/i)).toHaveAttribute('readonly');
+    expect(screen.getByLabelText(/serving size/i)).toHaveValue(100);
 
-    fireEvent.change(screen.getByLabelText(/serving size/i), { target: { value: '1' } });
     fireEvent.change(screen.getByLabelText(/serving unit/i), { target: { value: 'pack' } });
+    expect(screen.getByLabelText(/serving size/i)).not.toHaveAttribute('readonly');
+    fireEvent.change(screen.getByLabelText(/serving size/i), { target: { value: '1' } });
 
     // Missing countable serving weight in per100g mode must be blocked cleanly
     fireEvent.change(screen.getByLabelText(/^calories$/i), { target: { value: '480' } });
@@ -488,5 +491,90 @@ describe('Task 8: Barcode Countable Servings Parity & Standalone CustomFoodModal
     const canonical = await db.foodsCache.get('custom_barcode:480555999');
     expect(canonical?.source).toBe('custom_barcode');
     expect(canonical?.barcode).toBe('480555999');
+  });
+
+  it('normalizes metric Label OCR response (servingSize: 30, servingUnit: g) to per-100g and preserves 30g serving option', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          name: 'Whey Isolate Blend',
+          brand: 'PureFit',
+          servingSize: 30,
+          servingUnit: 'g',
+          calories: 150,
+          protein: 12,
+          carbs: 18,
+          fat: 3,
+          fiber: 2,
+          sugarG: 4,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn().mockResolvedValue({
+        width: 200,
+        height: 200,
+        close: vi.fn(),
+      })
+    );
+    vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+      if (tagName === 'canvas') {
+        return {
+          width: 0,
+          height: 0,
+          getContext: () => ({ drawImage: vi.fn() }),
+          toDataURL: () => 'data:image/jpeg;base64,mockocrimage',
+        } as unknown as HTMLCanvasElement;
+      }
+      return originalCreateElement(tagName);
+    });
+
+    render(<CustomFoodModal open onClose={vi.fn()} />);
+
+    const file = new File(['label'], 'label.jpg', { type: 'image/jpeg' });
+    fireEvent.change(screen.getByTestId('ocr-file-input'), {
+      target: { files: [file] },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/food name/i)).toHaveValue('Whey Isolate Blend');
+    });
+
+    expect(screen.getByLabelText(/serving size/i)).toHaveValue(100);
+    expect(screen.getByLabelText(/serving size/i)).toHaveAttribute('readonly');
+    expect(screen.getByLabelText(/serving unit/i)).toHaveValue('g');
+    expect(screen.getByLabelText(/serving weight/i)).toHaveValue(30);
+    expect(screen.getByLabelText(/^calories$/i)).toHaveValue(500);
+    expect(screen.getByLabelText(/^protein$/i)).toHaveValue(40);
+    expect(screen.getByLabelText(/^carbs$/i)).toHaveValue(60);
+    expect(screen.getByLabelText(/^fat$/i)).toHaveValue(10);
+
+    fireEvent.click(screen.getByRole('button', { name: /save food/i }));
+
+    await waitFor(async () => expect(await db.foodsCache.count()).toBe(1));
+    const [saved] = await db.foodsCache.toArray();
+    expect(saved.basis).toBe('per100g');
+    expect(saved.servingSize).toBe(100);
+    expect(saved.servingUnit).toBe('g');
+    expect(saved.servingWeightGrams).toBe(30);
+    expect(saved.nutrientsPerBasis).toEqual({
+      calories: 500,
+      protein: 40,
+      carbs: 60,
+      fat: 10,
+      fiber: 6.67,
+    });
+    expect(saved.micronutrientsPerBasis.sugarG).toBe(13.33);
+
+    const options = getServingOptionsForFood(saved);
+    const gramOpt = options.find((o) => o.unit === 'g')!;
+    const scaled30g = scaleFoodByOption(saved, 30, gramOpt);
+    expect(scaled30g.macros.calories).toBe(150);
+    expect(scaled30g.macros.protein).toBe(12);
+    expect(scaled30g.macros.carbs).toBe(18);
+    expect(scaled30g.macros.fat).toBe(3);
   });
 });
