@@ -1,28 +1,41 @@
-import type {
-  DBCore,
-  DBCoreMutateRequest,
-  DBCoreMutateResponse,
-  DBCoreTable,
-  Middleware,
+import Dexie, {
+  type DBCore,
+  type DBCoreMutateRequest,
+  type DBCoreMutateResponse,
+  type DBCoreTable,
+  type Middleware,
 } from 'dexie';
 import type { MacroAIDB } from './macroai-db';
 import type {
   CustomRecipe,
   FoodItem,
   FoodLogEntry,
+  PinnedFood,
+  SyncTombstone,
   UserGoals,
+  WeightLogEntry,
 } from '@/types/nutrition';
 import type {
   CentralTableCounts,
   CentralTableName,
   ServerDbMode,
 } from './server-db';
+import { useLoggerStore } from '@/stores/logger-store';
+
+export class SyncAuthError extends Error {
+  constructor(message = 'Sync authentication required') {
+    super(message);
+    this.name = 'SyncAuthError';
+  }
+}
 
 const SYNC_TABLES = new Set<CentralTableName>([
   'foodLogs',
   'foodsCache',
   'customRecipes',
   'userGoals',
+  'weightLogs',
+  'pinnedFoods',
 ]);
 
 const MIGRATED_KEY = 'macroai_central_migrated_v1';
@@ -30,6 +43,7 @@ const DIRTY_SYNC_KEY = 'macroai_dirty_sync';
 
 let forceEnableInTests = false;
 let isHydratingFromServer = false;
+let tombstoneQueue: Promise<void> = Promise.resolve();
 let mutationQueue: Promise<void> = Promise.resolve();
 let inFlightSync: Promise<CentralSyncResult> | null = null;
 
@@ -52,6 +66,9 @@ interface SyncApiResponse {
     foodsCache?: FoodItem[];
     customRecipes?: CustomRecipe[];
     userGoals?: UserGoals[];
+    weightLogs?: WeightLogEntry[];
+    pinnedFoods?: PinnedFood[];
+    tombstones?: SyncTombstone[];
   };
   counts?: CentralTableCounts;
   error?: string;
@@ -84,6 +101,19 @@ function safeRemoveLocalStorage(key: string): void {
   }
 }
 
+function enqueueTombstoneWork(work: () => Promise<void>): Promise<void> {
+  const run = async () => {
+    try {
+      await Dexie.ignoreTransaction(work);
+    } catch {
+      // Ignore errors if DB was closed/deleted during test teardown
+    }
+  };
+  const next = tombstoneQueue.then(run, run);
+  tombstoneQueue = next;
+  return next;
+}
+
 export function setCloudSyncEnabledForTests(enabled: boolean): void {
   forceEnableInTests = enabled;
 }
@@ -104,6 +134,7 @@ export function pushMutationToCentralDb(payload: {
   op: 'put' | 'delete' | 'clear';
   values?: unknown[];
   keys?: string[];
+  deletedAt?: number;
 }): Promise<void> {
   const run = async () => {
     try {
@@ -115,8 +146,17 @@ export function pushMutationToCentralDb(payload: {
           ...payload,
         }),
       });
+      if (res.status === 401) {
+        safeSetLocalStorage(DIRTY_SYNC_KEY, '1');
+        useLoggerStore.getState().setSyncAuthLocked(true);
+        return;
+      }
       if (!res.ok) {
         safeSetLocalStorage(DIRTY_SYNC_KEY, '1');
+        return;
+      }
+      if (useLoggerStore.getState().syncAuthLocked) {
+        useLoggerStore.getState().setSyncAuthLocked(false);
       }
     } catch {
       safeSetLocalStorage(DIRTY_SYNC_KEY, '1');
@@ -128,8 +168,11 @@ export function pushMutationToCentralDb(payload: {
   return next;
 }
 
-export function flushPendingMutationsForTests(): Promise<void> {
-  return mutationQueue;
+export async function flushPendingMutationsForTests(): Promise<void> {
+  await tombstoneQueue;
+  await mutationQueue;
+  await tombstoneQueue;
+  await mutationQueue;
 }
 
 export function createCentralSyncMiddleware(
@@ -163,7 +206,28 @@ export function createCentralSyncMiddleware(
                   ? req.values.filter((_, idx) => !res.failures?.[idx])
                   : [];
 
-                if (values.length > 0) {
+                if (values.length > 0 && Array.isArray(req.values)) {
+                  const tombstoneIds: string[] = [];
+                  for (let idx = 0; idx < req.values.length; idx++) {
+                    if (res.failures?.[idx]) continue;
+                    const rawVal = req.values[idx] as { id?: unknown } | undefined;
+                    const recordId =
+                      rawVal && typeof rawVal.id === 'string' && rawVal.id.length > 0
+                        ? rawVal.id
+                        : res.results?.[idx] !== undefined
+                          ? String(res.results[idx])
+                          : null;
+                    if (recordId) {
+                      tombstoneIds.push(`${typedTableName}:${recordId}`);
+                    }
+                  }
+
+                  if (tombstoneIds.length > 0) {
+                    void enqueueTombstoneWork(async () => {
+                      await getDb().tombstones.bulkDelete(tombstoneIds);
+                    });
+                  }
+
                   void pushMutationToCentralDb({
                     table: typedTableName,
                     op: 'put',
@@ -175,11 +239,18 @@ export function createCentralSyncMiddleware(
                   req.updates.keys.length > 0
                 ) {
                   const updateKeys = [...req.updates.keys];
+                  const tombstoneIds = updateKeys.map(
+                    (k) => `${typedTableName}:${String(k)}`
+                  );
+                  void enqueueTombstoneWork(async () => {
+                    await getDb().tombstones.bulkDelete(tombstoneIds);
+                  });
+
                   void Promise.resolve().then(async () => {
                     try {
-                      const updatedRows = await getDb()
-                        .table(typedTableName)
-                        .bulkGet(updateKeys);
+                      const updatedRows = await Dexie.ignoreTransaction(() =>
+                        getDb().table(typedTableName).bulkGet(updateKeys)
+                      );
                       const validRows = updatedRows.filter(Boolean);
                       if (validRows.length > 0) {
                         await pushMutationToCentralDb({
@@ -195,16 +266,34 @@ export function createCentralSyncMiddleware(
                 }
               } else if (req.type === 'delete') {
                 const keys = (req.keys ?? [])
+                  .filter((_, idx) => !res.failures?.[idx])
                   .map((k) => String(k))
                   .filter((k) => k.length > 0);
                 if (keys.length > 0) {
+                  const deletedAt = Date.now();
+                  const tombstones: SyncTombstone[] = keys.map((recordId) => ({
+                    id: `${typedTableName}:${recordId}`,
+                    tableName: typedTableName,
+                    recordId,
+                    deletedAt,
+                  }));
+                  void enqueueTombstoneWork(async () => {
+                    await getDb().tombstones.bulkPut(tombstones);
+                  });
                   void pushMutationToCentralDb({
                     table: typedTableName,
                     op: 'delete',
                     keys,
+                    deletedAt,
                   });
                 }
               } else if (req.type === 'deleteRange') {
+                void enqueueTombstoneWork(async () => {
+                  await getDb()
+                    .tombstones.where('tableName')
+                    .equals(typedTableName)
+                    .delete();
+                });
                 void pushMutationToCentralDb({
                   table: typedTableName,
                   op: 'clear',
@@ -224,6 +313,7 @@ async function runSyncWithCentralDb(
   dbInstance: MacroAIDB,
   options?: { forcePushMode?: 'merge' | 'replace' }
 ): Promise<CentralSyncResult> {
+  await tombstoneQueue;
   await mutationQueue;
 
   const needsPush =
@@ -234,11 +324,22 @@ async function runSyncWithCentralDb(
   let data: SyncApiResponse;
 
   if (needsPush) {
-    const [foodLogs, foodsCache, customRecipes, userGoals] = await Promise.all([
+    const [
+      foodLogs,
+      foodsCache,
+      customRecipes,
+      userGoals,
+      weightLogs,
+      pinnedFoods,
+      tombstones,
+    ] = await Promise.all([
       dbInstance.foodLogs.toArray(),
       dbInstance.foodsCache.toArray(),
       dbInstance.customRecipes.toArray(),
       dbInstance.userGoals.toArray(),
+      dbInstance.weightLogs.toArray(),
+      dbInstance.pinnedFoods.toArray(),
+      dbInstance.tombstones.toArray(),
     ]);
 
     const res = await fetch('/api/db/sync', {
@@ -252,9 +353,17 @@ async function runSyncWithCentralDb(
           foodsCache,
           customRecipes,
           userGoals,
+          weightLogs,
+          pinnedFoods,
+          tombstones,
         },
       }),
     });
+
+    if (res.status === 401) {
+      useLoggerStore.getState().setSyncAuthLocked(true);
+      throw new SyncAuthError('Sync authentication required');
+    }
 
     if (!res.ok) {
       throw new Error(`Central DB sync failed (${res.status})`);
@@ -273,6 +382,11 @@ async function runSyncWithCentralDb(
       headers: { 'Cache-Control': 'no-cache' },
     });
 
+    if (res.status === 401) {
+      useLoggerStore.getState().setSyncAuthLocked(true);
+      throw new SyncAuthError('Sync authentication required');
+    }
+
     if (!res.ok) {
       throw new Error(`Central DB fetch failed (${res.status})`);
     }
@@ -283,11 +397,18 @@ async function runSyncWithCentralDb(
     }
   }
 
+  if (useLoggerStore.getState().syncAuthLocked) {
+    useLoggerStore.getState().setSyncAuthLocked(false);
+  }
+
   const incoming = data.tables ?? {};
   const foodLogs = incoming.foodLogs ?? [];
   const foodsCache = incoming.foodsCache ?? [];
   const customRecipes = incoming.customRecipes ?? [];
   const userGoals = incoming.userGoals ?? [];
+  const weightLogs = incoming.weightLogs ?? [];
+  const pinnedFoods = incoming.pinnedFoods ?? [];
+  const tombstones = incoming.tombstones ?? [];
 
   isHydratingFromServer = true;
   try {
@@ -298,6 +419,9 @@ async function runSyncWithCentralDb(
         dbInstance.foodsCache,
         dbInstance.customRecipes,
         dbInstance.userGoals,
+        dbInstance.weightLogs,
+        dbInstance.pinnedFoods,
+        dbInstance.tombstones,
       ],
       async () => {
         await Promise.all([
@@ -305,6 +429,9 @@ async function runSyncWithCentralDb(
           dbInstance.foodsCache.clear(),
           dbInstance.customRecipes.clear(),
           dbInstance.userGoals.clear(),
+          dbInstance.weightLogs.clear(),
+          dbInstance.pinnedFoods.clear(),
+          dbInstance.tombstones.clear(),
         ]);
 
         if (foodLogs.length > 0) {
@@ -318,6 +445,15 @@ async function runSyncWithCentralDb(
         }
         if (userGoals.length > 0) {
           await dbInstance.userGoals.bulkPut(userGoals);
+        }
+        if (weightLogs.length > 0) {
+          await dbInstance.weightLogs.bulkPut(weightLogs);
+        }
+        if (pinnedFoods.length > 0) {
+          await dbInstance.pinnedFoods.bulkPut(pinnedFoods);
+        }
+        if (tombstones.length > 0) {
+          await dbInstance.tombstones.bulkPut(tombstones);
         }
       }
     );
@@ -335,6 +471,9 @@ async function runSyncWithCentralDb(
       foodsCache: foodsCache.length,
       customRecipes: customRecipes.length,
       userGoals: userGoals.length,
+      weightLogs: weightLogs.length,
+      pinnedFoods: pinnedFoods.length,
+      tombstones: tombstones.length,
     },
     syncedAt: Date.now(),
   };

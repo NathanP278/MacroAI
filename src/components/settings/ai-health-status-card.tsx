@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Sparkles, RefreshCw, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { useLoggerStore } from '@/stores/logger-store';
+import { SyncUnlockCard } from '@/components/auth/sync-unlock-modal';
 
 interface AiHealthStatus {
   configured: boolean;
@@ -14,16 +16,25 @@ export function AiHealthStatusCard() {
   const [status, setStatus] = useState<AiHealthStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasTested, setHasTested] = useState(false);
+  const [authLocked, setAuthLocked] = useState(false);
+  const syncAuthLocked = useLoggerStore((s) => s.syncAuthLocked);
 
-  const checkHealth = async () => {
+  const checkHealth = useCallback(async () => {
     setIsLoading(true);
     try {
       const res = await fetch('/api/ai/health', {
         method: 'GET',
         headers: { 'Cache-Control': 'no-cache' },
       });
+      if (res.status === 401) {
+        setAuthLocked(true);
+        useLoggerStore.getState().setSyncAuthLocked(true);
+        setStatus(null);
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
+        setAuthLocked(false);
         setStatus(data);
       } else {
         setStatus({
@@ -45,14 +56,28 @@ export function AiHealthStatusCard() {
       setIsLoading(false);
       setHasTested(true);
     }
-  };
+  }, []);
+
+  const prevSyncLockedRef = React.useRef(syncAuthLocked);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      checkHealth();
+      void checkHealth();
     }, 0);
     return () => clearTimeout(timer);
-  }, []);
+  }, [checkHealth]);
+
+  useEffect(() => {
+    const wasLocked = prevSyncLockedRef.current;
+    prevSyncLockedRef.current = syncAuthLocked;
+    if (wasLocked && !syncAuthLocked) {
+      const timer = setTimeout(() => {
+        setAuthLocked(false);
+        void checkHealth();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [syncAuthLocked, checkHealth]);
 
   return (
     <section className="bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-3.5">
@@ -79,8 +104,19 @@ export function AiHealthStatusCard() {
         </button>
       </div>
 
+      {/* Unlock Prompt when SYNC_ACCESS_KEY is active */}
+      {(authLocked || syncAuthLocked) && (
+        <SyncUnlockCard
+          compact
+          onUnlocked={() => {
+            setAuthLocked(false);
+            void checkHealth();
+          }}
+        />
+      )}
+
       {/* Status Details */}
-      {status && (
+      {!authLocked && status && (
         <div className="bg-surface-sub rounded-xl p-3 space-y-2 text-xs">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Configured in Server:</span>

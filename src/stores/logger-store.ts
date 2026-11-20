@@ -35,6 +35,7 @@ export interface LoggerState {
   aiDraft: AiDraft | null;
   undoToast: UndoToastItem | null;
   isCommandPaletteOpen: boolean;
+  syncAuthLocked: boolean;
   openSheet: (sheet: LogSheetType, mealSlot?: string) => void;
   closeSheet: () => void;
   setSearchInitialQuery: (query: string) => void;
@@ -45,6 +46,7 @@ export interface LoggerState {
   showUndoToast: (item: Omit<UndoToastItem, 'id'>) => void;
   dismissUndoToast: () => void;
   setCommandPaletteOpen: (open: boolean) => void;
+  setSyncAuthLocked: (locked: boolean) => void;
 }
 
 function getTodayIsoDate(): string {
@@ -64,6 +66,7 @@ export const useLoggerStore = create<LoggerState>((set) => ({
   aiDraft: null,
   undoToast: null,
   isCommandPaletteOpen: false,
+  syncAuthLocked: false,
   openSheet: (sheet, mealSlot) =>
     set((state) => ({
       activeSheet: sheet,
@@ -93,4 +96,5 @@ export const useLoggerStore = create<LoggerState>((set) => ({
     }),
   dismissUndoToast: () => set({ undoToast: null }),
   setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+  setSyncAuthLocked: (locked) => set({ syncAuthLocked: locked }),
 }));

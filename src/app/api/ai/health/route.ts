@@ -4,16 +4,18 @@ import {
   callVisionChatCompletionWithMeta,
   sanitizeError,
 } from '@/lib/ai/openai-compat';
+import { NO_STORE_HEADERS, requireSyncAuth } from '@/lib/auth/sync-auth';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-export async function GET() {
+export async function GET(request?: Request) {
+  const authError = requireSyncAuth(request);
+  if (authError) return authError;
+
   const config = getServerAiConfig();
 
-  const headers = {
-    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
-  };
+  const headers = NO_STORE_HEADERS;
 
   if (!config.isConfigured) {
     return NextResponse.json(

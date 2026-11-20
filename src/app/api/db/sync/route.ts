@@ -7,6 +7,7 @@ import {
   syncCentralTables,
   type CentralTableName,
 } from '@/lib/db/server-db';
+import { NO_STORE_HEADERS, requireSyncAuth } from '@/lib/auth/sync-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,14 +16,15 @@ const VALID_TABLES = new Set<CentralTableName>([
   'foodsCache',
   'customRecipes',
   'userGoals',
+  'weightLogs',
+  'pinnedFoods',
 ]);
 const VALID_OPS = new Set(['put', 'delete', 'clear']);
 
-const NO_STORE_HEADERS = {
-  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
-};
+export async function GET(request?: Request) {
+  const authError = requireSyncAuth(request);
+  if (authError) return authError;
 
-export async function GET() {
   try {
     const status = getServerDbStatus();
     const data = await getAllCentralTables();
@@ -40,6 +42,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const authError = requireSyncAuth(request);
+  if (authError) return authError;
+
   try {
     const body = (await request.json()) as Record<string, unknown>;
 
@@ -59,6 +64,10 @@ export async function POST(request: Request) {
         op,
         values: Array.isArray(body.values) ? body.values : undefined,
         keys: Array.isArray(body.keys) ? body.keys.map(String) : undefined,
+        deletedAt:
+          typeof body.deletedAt === 'number' && Number.isFinite(body.deletedAt)
+            ? body.deletedAt
+            : undefined,
       });
 
       return NextResponse.json(

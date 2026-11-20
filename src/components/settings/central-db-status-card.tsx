@@ -10,15 +10,19 @@ import {
 } from 'lucide-react';
 import { db } from '@/lib/db/macroai-db';
 import {
+  SyncAuthError,
   isCloudSyncEnabled,
   syncWithCentralDb,
   type CentralSyncResult,
 } from '@/lib/db/cloud-sync';
+import { useLoggerStore } from '@/stores/logger-store';
+import { SyncUnlockCard } from '@/components/auth/sync-unlock-modal';
 
 export function CentralDbStatusCard() {
   const [status, setStatus] = useState<CentralSyncResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const syncAuthLocked = useLoggerStore((s) => s.syncAuthLocked);
 
   const handleSync = async () => {
     setIsSyncing(true);
@@ -27,8 +31,12 @@ export function CentralDbStatusCard() {
       const result = await syncWithCentralDb(db);
       setStatus(result);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Central sync failed';
-      setError(msg);
+      if (err instanceof SyncAuthError) {
+        setError(null);
+      } else {
+        const msg = err instanceof Error ? err.message : 'Central sync failed';
+        setError(msg);
+      }
     } finally {
       setIsSyncing(false);
     }
@@ -83,6 +91,16 @@ export function CentralDbStatusCard() {
         </button>
       </div>
 
+      {/* Unlock Prompt when SYNC_ACCESS_KEY is active */}
+      {syncAuthLocked && (
+        <SyncUnlockCard
+          compact
+          onUnlocked={() => {
+            void handleSync();
+          }}
+        />
+      )}
+
       {/* Status Details */}
       {(status || error) && (
         <div className="bg-surface-sub rounded-xl p-3 space-y-2 text-xs">
@@ -103,7 +121,7 @@ export function CentralDbStatusCard() {
                 )}
               </div>
 
-              <div className="grid grid-cols-3 gap-2 pt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
                 <div className="bg-card rounded-lg px-2.5 py-1.5 text-center">
                   <div className="text-[10px] text-muted-foreground">Logs</div>
                   <div className="text-xs font-semibold tabular-nums text-foreground">
@@ -120,6 +138,18 @@ export function CentralDbStatusCard() {
                   <div className="text-[10px] text-muted-foreground">Cached Foods</div>
                   <div className="text-xs font-semibold tabular-nums text-foreground">
                     {status.counts.foodsCache}
+                  </div>
+                </div>
+                <div className="bg-card rounded-lg px-2.5 py-1.5 text-center">
+                  <div className="text-[10px] text-muted-foreground">Weigh-Ins</div>
+                  <div className="text-xs font-semibold tabular-nums text-foreground">
+                    {status.counts.weightLogs ?? 0}
+                  </div>
+                </div>
+                <div className="bg-card rounded-lg px-2.5 py-1.5 text-center col-span-2 sm:col-span-1">
+                  <div className="text-[10px] text-muted-foreground">Pinned</div>
+                  <div className="text-xs font-semibold tabular-nums text-foreground">
+                    {status.counts.pinnedFoods ?? 0}
                   </div>
                 </div>
               </div>

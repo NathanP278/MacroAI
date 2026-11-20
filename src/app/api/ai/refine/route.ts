@@ -2,9 +2,13 @@ import { NextResponse } from 'next/server';
 import { getServerAiConfig, callVisionChatCompletion, AiServiceError } from '@/lib/ai/openai-compat';
 import { parseAiJsonResponse, AiMealScanResponseSchema } from '@/lib/ai/schemas';
 import { enrichMealItemsWithStaples } from '@/lib/foods/staples-search';
+import { NO_STORE_HEADERS, requireSyncAuth } from '@/lib/auth/sync-auth';
 import type { Micronutrients } from '@/types/nutrition';
 
 export async function POST(request: Request) {
+  const authError = requireSyncAuth(request);
+  if (authError) return authError;
+
   let body: unknown;
   try {
     body = await request.json();
@@ -109,7 +113,7 @@ export async function POST(request: Request) {
       };
     });
     const enrichedItems = await enrichMealItemsWithStaples(mergedItems);
-    return NextResponse.json({ items: enrichedItems }, { status: 200 });
+    return NextResponse.json({ items: enrichedItems }, { status: 200, headers: NO_STORE_HEADERS });
   } catch (err: unknown) {
     if (err instanceof AiServiceError) {
       return NextResponse.json({ error: err.message }, { status: err.status });

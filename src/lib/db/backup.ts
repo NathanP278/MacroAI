@@ -25,6 +25,7 @@ export const FoodSourceSchema = z.enum([
   'usda',
   'off',
   'custom_barcode',
+  'custom_food',
   'ai_scan',
   'quick_add',
   'recipe',
@@ -33,7 +34,7 @@ export const FoodSourceSchema = z.enum([
 export const FoodLogEntrySchema = z.object({
   id: z.string(),
   date: z.string(),
-  mealSlot: z.string(),
+  mealSlot: z.string().optional(),
   foodId: z.string(),
   name: z.string(),
   source: FoodSourceSchema,
@@ -57,7 +58,7 @@ export const FoodServingOptionSchema = z.object({
 export const FoodItemSchema = z.object({
   id: z.string(),
   barcode: z.string().nullable().optional(),
-  source: z.enum(['staple', 'usda', 'off', 'custom_barcode']),
+  source: z.enum(['staple', 'usda', 'off', 'custom_barcode', 'custom_food']),
   name: z.string(),
   brand: z.string().optional(),
   region: z.enum(['PH', 'GLOBAL']).optional(),
@@ -82,6 +83,9 @@ export const CustomRecipeIngredientSchema = z.object({
   gramWeight: z.number().optional(),
   gramsPerUnit: z.number().optional(),
   servingSize: z.number().optional(),
+  baseBasis: z.enum(['per100g', 'per100ml', 'perServing']).optional(),
+  baseNutrients: MacroNutrientsSchema.optional(),
+  baseMicros: MicronutrientsSchema.optional(),
 });
 
 export const CustomRecipeSchema = z.object({
@@ -90,6 +94,7 @@ export const CustomRecipeSchema = z.object({
   ingredients: z.array(CustomRecipeIngredientSchema),
   basis: z.enum(['per100g', 'perServing']),
   totalGrams: z.number(),
+  cookedWeightGrams: z.number().nullable().optional(),
   nutrientsPerBasis: MacroNutrientsSchema,
   micronutrientsPerBasis: MicronutrientsSchema,
   defaultServings: z.number(),
@@ -100,6 +105,24 @@ export const MealSlotConfigSchema = z.object({
   id: z.string(),
   name: z.string(),
   weightPct: z.number(),
+});
+
+export const DailyMacroTargetsSchema = z.object({
+  calories: z.number(),
+  proteinG: z.number(),
+  carbsG: z.number(),
+  fatG: z.number(),
+  fiberG: z.number(),
+});
+
+export const WeeklyScheduleSchema = z.object({
+  mon: DailyMacroTargetsSchema,
+  tue: DailyMacroTargetsSchema,
+  wed: DailyMacroTargetsSchema,
+  thu: DailyMacroTargetsSchema,
+  fri: DailyMacroTargetsSchema,
+  sat: DailyMacroTargetsSchema,
+  sun: DailyMacroTargetsSchema,
 });
 
 export const UserProfileSchema = z.object({
@@ -120,9 +143,60 @@ export const UserGoalsSchema = z.object({
   fatG: z.number(),
   fiberG: z.number(),
   micronutrientTargets: z.record(z.string(), z.number().optional()).default({}),
-  mealSlots: z.array(MealSlotConfigSchema).default([]),
+  mealSlots: z.array(MealSlotConfigSchema).optional(),
+  targetMode: z.enum(['calculator', 'custom']).optional(),
+  goalDeltaKcal: z.number().optional(),
+  weeklyCyclingEnabled: z.boolean().optional(),
+  weeklySchedule: WeeklyScheduleSchema.optional(),
+  weightUnit: z.enum(['kg', 'lb']).optional(),
+  lastCheckInAt: z.number().optional(),
+  lastCheckInDismissedAt: z.number().optional(),
   profile: UserProfileSchema.optional(),
   updatedAt: z.number(),
+});
+
+export const WeightLogEntrySchema = z.object({
+  id: z.string(),
+  date: z.string(),
+  weightKg: z.number(),
+  note: z.string().optional(),
+  source: z.enum(['manual', 'apple_health']),
+  recordedAt: z.string(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+
+export const PinnedFoodSchema = z.object({
+  id: z.string(),
+  kind: z.enum(['food', 'recipe']),
+  refId: z.string(),
+  pinnedAt: z.number(),
+});
+
+export const SyncTableNameSchema = z.enum([
+  'foodLogs',
+  'foodsCache',
+  'customRecipes',
+  'userGoals',
+  'weightLogs',
+  'pinnedFoods',
+]);
+
+export const SyncTombstoneSchema = z.object({
+  id: z.string(),
+  tableName: SyncTableNameSchema,
+  recordId: z.string(),
+  deletedAt: z.number(),
+});
+
+export const CentralTablesSyncSchema = z.object({
+  foodLogs: z.array(FoodLogEntrySchema).default([]),
+  foodsCache: z.array(FoodItemSchema).default([]),
+  customRecipes: z.array(CustomRecipeSchema).default([]),
+  userGoals: z.array(UserGoalsSchema).default([]),
+  weightLogs: z.array(WeightLogEntrySchema).default([]),
+  pinnedFoods: z.array(PinnedFoodSchema).default([]),
+  tombstones: z.array(SyncTombstoneSchema).default([]),
 });
 
 export const MacroAIBackupSchema = z.object({
