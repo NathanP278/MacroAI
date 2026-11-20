@@ -54,6 +54,17 @@ export const AiMealScanResponseSchema = z.object({
   items: z.array(AiMealItemSchema).min(1),
 });
 
+export const AiMealIdeaSchema = z.object({
+  title: z.string().trim().min(1),
+  prepMinutes: z.number().nonnegative().optional(),
+  summary: z.string().trim().optional(),
+  items: z.array(AiMealItemSchema).min(1),
+});
+
+export const AiMealIdeasResponseSchema = z.object({
+  ideas: z.array(AiMealIdeaSchema).min(1).max(6),
+});
+
 export const AiLabelOcrResponseSchema = z.object({
   name: z.string().optional(),
   brand: z.string().optional(),
@@ -76,6 +87,8 @@ export const AiLabelOcrResponseSchema = z.object({
 export type AiMacroNutrients = z.infer<typeof AiMacroNutrientsSchema>;
 export type AiMealItem = z.infer<typeof AiMealItemSchema>;
 export type AiMealScanResponse = z.infer<typeof AiMealScanResponseSchema>;
+export type AiMealIdea = z.infer<typeof AiMealIdeaSchema>;
+export type AiMealIdeasResponse = z.infer<typeof AiMealIdeasResponseSchema>;
 export type AiLabelOcrResponse = z.infer<typeof AiLabelOcrResponseSchema>;
 
 /**

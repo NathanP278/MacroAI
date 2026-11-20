@@ -13,6 +13,7 @@ import { FoodSearchDrawer } from "@/components/logging/food-search-drawer";
 import { EditLogEntryDrawer } from "@/components/logging/edit-log-entry-drawer";
 import { BarcodeScannerDrawer } from "@/components/scanner/barcode-scanner-drawer";
 import { AiMealScannerSheet } from "@/components/scanner/ai-meal-scanner-sheet";
+import { AiMealIdeasDrawer } from "@/components/scanner/ai-meal-ideas-drawer";
 import { useLoggerStore } from "@/stores/logger-store";
 import { ensureDefaultUserGoals } from "@/lib/nutrition/goals";
 import { db } from "@/lib/db/macroai-db";
@@ -266,6 +267,13 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
           open={activeSheet === "ai-scan"}
           date={activeDate}
           mealSlot={activeMealSlot}
+          onClose={closeSheet}
+        />
+
+        {/* AI Meal Ideas Drawer */}
+        <AiMealIdeasDrawer
+          open={activeSheet === "meal-ideas"}
+          date={activeDate}
           onClose={closeSheet}
         />
 

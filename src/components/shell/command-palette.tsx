@@ -181,6 +181,14 @@ function CommandPaletteDialog() {
         onSelect: closeAnd(() => openSheet("ai-scan")),
       },
       {
+        id: "action-meal-ideas",
+        section: "Log & Actions",
+        label: "AI Meal Ideas",
+        hint: "Fill My Remaining Macros",
+        icon: Sparkles,
+        onSelect: closeAnd(() => openSheet("meal-ideas")),
+      },
+      {
         id: "action-log-weight",
         section: "Log & Actions",
         label: "Log Weight",
