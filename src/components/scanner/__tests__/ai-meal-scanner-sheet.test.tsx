@@ -18,6 +18,7 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
       activeMealSlot: 'lunch',
       activeSheet: null,
       aiDraft: null,
+      syncAuthLocked: false,
     });
   });
 
@@ -707,5 +708,204 @@ describe('Task 10: AI Meal Scanner Sheet & HITL Review', () => {
 
     // Qualitative prep changes must still defer to LLM refinement
     expect(tryDeterministicRefine(sampleItems, 'Make it trimmed and 120 grams')).toBeNull();
+  });
+
+  // 14. Task 11: Text-Only Describe Meal mode, extended nutrients, and separate Save as Recipe action
+  test('supports Describe Meal (Text) without uploading a photo, displays extended nutrients, and renders separate Save as Recipe action in Stage 3', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.includes('/api/ai/meal-scan')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            items: [
+              {
+                name: 'Boiled Eggs',
+                grams: 100,
+                per100g: { calories: 155, protein: 12.6, carbs: 1.1, fat: 10.6, fiber: 0 },
+                microsPer100g: {
+                  sodiumMg: 124,
+                  sugarG: 1.1,
+                  saturatedFatG: 3.3,
+                  cholesterolMg: 373,
+                },
+              },
+              {
+                name: 'White Rice',
+                grams: 150,
+                per100g: { calories: 130, protein: 2.7, carbs: 28, fat: 0.3, fiber: 0.4 },
+                microsPer100g: {
+                  sugarG: 0.1,
+                  saturatedFatG: 0.1,
+                },
+              },
+              {
+                name: 'Black Coffee',
+                grams: 240,
+                per100g: { calories: 2, protein: 0.2, carbs: 0, fat: 0, fiber: 0 },
+                microsPer100g: {
+                  caffeineMg: 40,
+                },
+              },
+            ],
+          }),
+        } as Response;
+      }
+      return { ok: false, status: 404 } as Response;
+    });
+
+    render(<AiMealScannerSheet open date="2026-11-14" mealSlot="lunch" onClose={() => {}} />);
+
+    // Strictly NO voice or microphone UI anywhere
+    expect(screen.queryByRole('button', { name: /voice|mic|microphone|speak/i })).not.toBeInTheDocument();
+
+    // Photo mode has separate Take Photo (with capture="environment") and Upload Photo (without capture) inputs
+    const cameraInput = screen.getByTestId('meal-camera-input');
+    const galleryInput = screen.getByLabelText(/upload meal photo/i, { selector: 'input' });
+    expect(cameraInput).toHaveAttribute('capture', 'environment');
+    expect(galleryInput).not.toHaveAttribute('capture');
+
+    // Switch to "Describe Meal" tab
+    const describeTab = screen.getByRole('tab', { name: /describe meal/i });
+    fireEvent.click(describeTab);
+    expect(describeTab).toHaveAttribute('aria-selected', 'true');
+
+    // Type meal description and click Analyze Meal
+    const descInput = screen.getByPlaceholderText(/2 boiled eggs, 150g white rice/i);
+    fireEvent.change(descInput, {
+      target: { value: '2 boiled eggs, 150g white rice, and 1 cup black coffee' },
+    });
+
+    const analyzeBtn = screen.getByRole('button', { name: /analyze meal/i });
+    expect(analyzeBtn).not.toBeDisabled();
+    fireEvent.click(analyzeBtn);
+
+    // Verify POST /api/ai/meal-scan was called without imageDataUrl
+    await waitFor(() => {
+      expect(screen.getByText('Boiled Eggs')).toBeInTheDocument();
+      expect(screen.getByText('White Rice')).toBeInTheDocument();
+      expect(screen.getByText('Black Coffee')).toBeInTheDocument();
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/ai/meal-scan',
+      expect.objectContaining({
+        method: 'POST',
+      })
+    );
+    const scanCallBody = JSON.parse(
+      (fetchSpy.mock.calls.find((c) => String(c[0]).includes('/api/ai/meal-scan'))?.[1] as RequestInit)
+        .body as string
+    );
+    expect(scanCallBody.imageDataUrl).toBeUndefined();
+    expect(scanCallBody.contextPrompt).toBe('2 boiled eggs, 150g white rice, and 1 cup black coffee');
+
+    // Expand collapsible nutrients breakdown and verify extended nutrients are displayed
+    fireEvent.click(screen.getByRole('button', { name: /estimated micronutrients/i }));
+    const microsGrid = screen.getByTestId('hitl-micronutrients-grid');
+    expect(microsGrid).toHaveTextContent('Sugar');
+    expect(microsGrid).toHaveTextContent('Added Sugar');
+    expect(microsGrid).toHaveTextContent('Sat. Fat');
+    expect(microsGrid).toHaveTextContent('Cholesterol');
+    expect(microsGrid).toHaveTextContent('373mg');
+    expect(microsGrid).toHaveTextContent('Caffeine');
+    expect(microsGrid).toHaveTextContent('96mg'); // 240g * 40mg / 100g = 96mg
+    expect(microsGrid).toHaveTextContent('Alcohol');
+
+    // Verify separate "Save as Recipe" button exists alongside "Confirm & Log"
+    const saveAsRecipeBtn = screen.getByRole('button', { name: /save as recipe/i });
+    expect(saveAsRecipeBtn).toBeInTheDocument();
+    fireEvent.click(saveAsRecipeBtn);
+
+    // RecipeBuilderModal opens pre-populated with finalized HITL items
+    expect(screen.getByRole('dialog', { name: /new custom recipe/i })).toBeInTheDocument();
+    const recipeTitleInput = screen.getByPlaceholderText(/recipe title/i);
+    fireEvent.change(recipeTitleInput, { target: { value: 'Power Breakfast Bowl' } });
+    fireEvent.click(screen.getByRole('button', { name: /^save recipe$/i }));
+
+    await waitFor(async () => {
+      expect(await db.customRecipes.count()).toBe(1);
+    });
+    const savedRecipes = await db.customRecipes.toArray();
+    expect(savedRecipes[0].name).toBe('Power Breakfast Bowl');
+    expect(savedRecipes[0].ingredients).toHaveLength(3);
+    expect(savedRecipes[0].totalGrams).toBe(490); // 100 + 150 + 240
+
+    // Still not logged to foodLogs until Confirm & Log is clicked
+    expect(await db.foodLogs.count()).toBe(0);
+
+    // Confirm & Log preserves extended nutrients in nutritionSnapshot.micros
+    fireEvent.click(screen.getByRole('button', { name: /confirm & log/i }));
+    await waitFor(async () => {
+      expect(await db.foodLogs.count()).toBe(3);
+    });
+    const logs = await db.foodLogs.toArray();
+    const eggLog = logs.find((l) => l.name === 'Boiled Eggs');
+    const coffeeLog = logs.find((l) => l.name === 'Black Coffee');
+    expect(eggLog?.nutritionSnapshot.micros.saturatedFatG).toBe(3.3);
+    expect(eggLog?.nutritionSnapshot.micros.cholesterolMg).toBe(373);
+    expect(coffeeLog?.nutritionSnapshot.micros.caffeineMg).toBe(96);
+  });
+
+  // 15. Task 11: 401 Unauthorized handling with inline SyncUnlockCard
+  test('renders inline SyncUnlockCard on 401 from /api/ai/meal-scan or /api/ai/refine without losing user input', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: 'Unauthorized', authRequired: true }),
+    } as Response);
+
+    render(<AiMealScannerSheet open date="2026-11-14" mealSlot="lunch" onClose={() => {}} />);
+
+    // Switch to Describe Meal and trigger scan that returns 401
+    fireEvent.click(screen.getByRole('tab', { name: /describe meal/i }));
+    const descInput = screen.getByPlaceholderText(/2 boiled eggs, 150g white rice/i);
+    fireEvent.change(descInput, { target: { value: '150g grilled chicken breast' } });
+    fireEvent.click(screen.getByRole('button', { name: /analyze meal/i }));
+
+    await waitFor(() => {
+      expect(useLoggerStore.getState().syncAuthLocked).toBe(true);
+      expect(screen.getByTestId('sync-unlock-card')).toBeInTheDocument();
+    });
+    // Meal description is preserved so user can retry after unlocking
+    expect(descInput).toHaveValue('150g grilled chicken breast');
+
+    // Also test 401 from /api/ai/refine in Stage 3
+    cleanup();
+    useLoggerStore.setState({
+      syncAuthLocked: false,
+      aiDraft: {
+        imageDataUrl: null,
+        contextPrompt: 'grilled chicken',
+        items: [
+          {
+            id: 'item-1',
+            name: 'Grilled Chicken Breast',
+            grams: 150,
+            per100g: { calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0 },
+            verifiedSource: null,
+          },
+        ],
+      },
+    });
+
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: 'Unauthorized', authRequired: true }),
+    } as Response);
+
+    render(<AiMealScannerSheet open date="2026-11-14" mealSlot="lunch" onClose={() => {}} />);
+    const refineInput = screen.getByPlaceholderText(/e\.g\., remove the cheese, make the chicken 200g/i);
+    fireEvent.change(refineInput, { target: { value: 'Swap to grilled salmon fillet' } });
+    fireEvent.click(screen.getByRole('button', { name: /refine/i }));
+
+    await waitFor(() => {
+      expect(useLoggerStore.getState().syncAuthLocked).toBe(true);
+      expect(screen.getByTestId('sync-unlock-card')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Grilled Chicken Breast')).toBeInTheDocument();
+    expect(refineInput).toHaveValue('Swap to grilled salmon fillet');
   });
 });

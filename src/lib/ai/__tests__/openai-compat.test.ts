@@ -838,6 +838,115 @@ describe('Task 9: Route Handlers', () => {
         expect(promptText).toContain(key);
       }
     });
+
+    it('accepts text-only contextPrompt without imageDataUrl, returns 400 when both are empty or imageDataUrl is invalid, and preserves extended nutrients', async () => {
+      process.env.AI_BASE_URL = 'https://api.openai.com/v1';
+      process.env.AI_API_KEY = 'sk-key';
+      process.env.AI_MODEL = 'gpt-4o';
+
+      // 1) Both missing/whitespace -> 400
+      const emptyReq = new Request('http://localhost/api/ai/meal-scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageDataUrl: '   ', contextPrompt: '   ' }),
+      });
+      const emptyRes = await postMealScan(emptyReq);
+      expect(emptyRes.status).toBe(400);
+
+      // 2) Invalid non-empty imageDataUrl -> 400 even if contextPrompt is provided
+      const badImgReq = new Request('http://localhost/api/ai/meal-scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageDataUrl: 'https://example.com/not-a-data-url.jpg',
+          contextPrompt: '200g chicken adobo',
+        }),
+      });
+      const badImgRes = await postMealScan(badImgReq);
+      expect(badImgRes.status).toBe(400);
+
+      // 3) Valid text-only request with no imageDataUrl
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  items: [
+                    {
+                      name: 'Chicken Adobo',
+                      grams: 200,
+                      per100g: { calories: 195, protein: 24, carbs: 3.5, fat: 9.2, fiber: 0.2 },
+                      microsPer100g: {
+                        sodiumMg: 680,
+                        sugarG: 2.4,
+                        addedSugarG: 1.5,
+                        saturatedFatG: 2.9,
+                        cholesterolMg: 78,
+                      },
+                    },
+                    {
+                      name: 'Brewed Black Coffee',
+                      grams: 240,
+                      per100g: { calories: 2, protein: 0.2, carbs: 0, fat: 0, fiber: 0 },
+                      microsPer100g: {
+                        potassiumMg: 49,
+                        caffeineMg: 45,
+                      },
+                    },
+                  ],
+                }),
+              },
+            },
+          ],
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const textOnlyReq = new Request('http://localhost/api/ai/meal-scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contextPrompt: '200g chicken adobo with 1 cup black coffee',
+        }),
+      });
+
+      const res = await postMealScan(textOnlyReq);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.items).toHaveLength(2);
+      expect(data.items[0].name).toBe('Chicken Adobo');
+      expect(data.items[0].microsPer100g.sugarG).toBe(2.4);
+      expect(data.items[0].microsPer100g.addedSugarG).toBe(1.5);
+      expect(data.items[0].microsPer100g.saturatedFatG).toBe(2.9);
+      expect(data.items[0].microsPer100g.cholesterolMg).toBe(78);
+      expect(data.items[1].microsPer100g.caffeineMg).toBe(45);
+
+      const sentBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      const userContent = sentBody.messages[0].content;
+      const promptText =
+        typeof userContent === 'string' ? userContent : userContent[0].text;
+
+      // Text-only request must not send an image_url block
+      if (Array.isArray(userContent)) {
+        expect(userContent.some((part: { type?: string }) => part.type === 'image_url')).toBe(false);
+      } else {
+        expect(typeof userContent).toBe('string');
+      }
+
+      for (const extKey of [
+        'sugarG',
+        'addedSugarG',
+        'saturatedFatG',
+        'cholesterolMg',
+        'caffeineMg',
+        'alcoholG',
+      ]) {
+        expect(promptText).toContain(extKey);
+      }
+    });
   });
 
   describe('POST /api/ai/refine', () => {
@@ -976,6 +1085,12 @@ describe('Task 9: Route Handlers', () => {
         'vitaminB6Mg',
         'vitaminB12Mcg',
         'folateMcg',
+        'sugarG',
+        'addedSugarG',
+        'saturatedFatG',
+        'cholesterolMg',
+        'caffeineMg',
+        'alcoholG',
       ]) {
         expect(promptText).toContain(key);
       }

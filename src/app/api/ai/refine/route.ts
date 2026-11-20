@@ -84,7 +84,7 @@ export async function POST(request: Request) {
     `Instruction: "${instruction.trim()}"`,
     contextPrompt ? `Prep context: "${contextPrompt.trim()}"` : '',
     'Apply requested gram edits, additions, removals, or density updates across non-overlapping items (grams > 0).',
-    'Include per100g (calories, protein, carbs, fat, fiber) and optional microsPer100g (sodiumMg, potassiumMg, calciumMg, ironMg, magnesiumMg, zincMg, vitaminAMcg, vitaminCMg, vitaminDMcg, vitaminB6Mg, vitaminB12Mcg, folateMcg per 100g). Omit microsPer100g for unchanged or standard whole foods and omit 0 keys.',
+    'Include per100g (calories, protein, carbs, fat, fiber) and optional microsPer100g (sodiumMg, potassiumMg, calciumMg, ironMg, magnesiumMg, zincMg, vitaminAMcg, vitaminCMg, vitaminDMcg, vitaminB6Mg, vitaminB12Mcg, folateMcg, sugarG, addedSugarG, saturatedFatG, cholesterolMg, caffeineMg, alcoholG per 100g). Estimate non-zero extended nutrients (sugarG, addedSugarG, saturatedFatG, cholesterolMg, caffeineMg, alcoholG) in microsPer100g; omit microsPer100g for unchanged standard whole foods and omit 0 keys.',
     'Return ONLY compact JSON matching this schema:',
     '{"items":[{"name":"Ingredient Name","grams":150,"per100g":{"calories":165,"protein":31,"carbs":0,"fat":3.6,"fiber":0}}]}',
   ]

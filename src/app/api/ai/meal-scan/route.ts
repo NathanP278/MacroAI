@@ -30,9 +30,22 @@ export async function POST(request: Request) {
     contextPrompt?: string;
   };
 
-  if (!imageDataUrl || typeof imageDataUrl !== 'string' || !imageDataUrl.startsWith('data:')) {
+  const trimmedImage = typeof imageDataUrl === 'string' ? imageDataUrl.trim() : '';
+  const trimmedContext = typeof contextPrompt === 'string' ? contextPrompt.trim() : '';
+
+  if (trimmedImage && !trimmedImage.startsWith('data:image/')) {
     return NextResponse.json(
-      { error: 'Missing or invalid imageDataUrl: must be a valid base64 data URL' },
+      { error: 'Invalid imageDataUrl: must be a valid data:image/ base64 data URL' },
+      { status: 400, headers: NO_STORE_HEADERS }
+    );
+  }
+
+  if (!trimmedImage && !trimmedContext) {
+    return NextResponse.json(
+      {
+        error:
+          'Missing meal input: provide a valid imageDataUrl (data:image/...) or a non-empty contextPrompt',
+      },
       { status: 400, headers: NO_STORE_HEADERS }
     );
   }
@@ -45,16 +58,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const trimmedContext = typeof contextPrompt === 'string' ? contextPrompt.trim() : '';
-
   const promptText = [
     'Output JSON immediately without extended thinking.',
-    'Decompose this meal image into non-overlapping whole-food/ingredient components (do NOT double-count composite dishes; split bun, patty, cheese, sauce, oils).',
+    trimmedImage
+      ? 'Decompose this meal image into non-overlapping whole-food/ingredient components (do NOT double-count composite dishes; split bun, patty, cheese, sauce, oils).'
+      : 'Decompose this meal description into non-overlapping whole-food/ingredient components (do NOT double-count composite dishes; split bun, patty, cheese, sauce, oils).',
     trimmedContext
-      ? `USER-PROVIDED MEAL DESCRIPTION (ground truth): "${trimmedContext}". Use this with the image for exact cuts, brands, hidden oils/sauces, prep methods, and stated weights.`
+      ? trimmedImage
+        ? `USER-PROVIDED MEAL DESCRIPTION (ground truth): "${trimmedContext}". Use this with the image for exact cuts, brands, hidden oils/sauces, prep methods, and stated weights.`
+        : `USER-PROVIDED MEAL DESCRIPTION (ground truth): "${trimmedContext}". Estimate realistic portion weights in grams when not explicitly stated, and honor exact cuts, brands, hidden oils/sauces, prep methods, and stated weights.`
       : '',
-    'Per component provide: name, grams (>0), per100g (calories, protein, carbs, fat, fiber in g), and optional microsPer100g (sodiumMg, potassiumMg, calciumMg, ironMg, magnesiumMg, zincMg, vitaminAMcg, vitaminCMg, vitaminDMcg, vitaminB6Mg, vitaminB12Mcg, folateMcg per 100g).',
-    'To minimize latency, omit microsPer100g for standard whole foods (server backfills USDA micronutrients) and omit any nutrient key equal to 0.',
+    'Per component provide: name, grams (>0), per100g (calories, protein, carbs, fat, fiber in g), and optional microsPer100g (sodiumMg, potassiumMg, calciumMg, ironMg, magnesiumMg, zincMg, vitaminAMcg, vitaminCMg, vitaminDMcg, vitaminB6Mg, vitaminB12Mcg, folateMcg, sugarG, addedSugarG, saturatedFatG, cholesterolMg, caffeineMg, alcoholG per 100g).',
+    'Estimate non-zero extended nutrients (sugarG, addedSugarG, saturatedFatG, cholesterolMg, caffeineMg, alcoholG) and core micronutrients in microsPer100g; to minimize latency, omit microsPer100g keys equal to 0 (server backfills USDA micronutrients for standard whole foods).',
     'Return ONLY compact JSON matching this schema:',
     '{"items":[{"name":"Ingredient Name","grams":150,"per100g":{"calories":165,"protein":31,"carbs":0,"fat":3.6,"fiber":0}}]}',
   ]
@@ -62,19 +77,23 @@ export async function POST(request: Request) {
     .join('\n');
 
   try {
+    const userContent = trimmedImage
+      ? [
+          { type: 'text', text: promptText },
+          {
+            type: 'image_url',
+            image_url: {
+              url: trimmedImage,
+            },
+          },
+        ]
+      : promptText;
+
     const rawAiOutput = await callVisionChatCompletion(
       [
         {
           role: 'user',
-          content: [
-            { type: 'text', text: promptText },
-            {
-              type: 'image_url',
-              image_url: {
-                url: imageDataUrl,
-              },
-            },
-          ],
+          content: userContent,
         },
       ],
       {

@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   ArrowLeft,
   ChevronDown,
+  ChefHat,
+  FileText,
 } from 'lucide-react';
 import { useLoggerStore, AiDraftItem } from '@/stores/logger-store';
 import { db, generateId } from '@/lib/db/macroai-db';
@@ -21,9 +23,32 @@ import { scaleNutrition } from '@/lib/nutrition/scaling';
 import { RDA_MICRONUTRIENT_METADATA } from '@/lib/nutrition/daily-summary';
 import { compressImageToJpeg } from '@/lib/media/image-compress';
 import { loadStaples } from '@/lib/foods/staples-search';
+import { SyncUnlockCard } from '@/components/auth/sync-unlock-modal';
+import { RecipeBuilderModal } from '@/components/recipes/recipe-builder-modal';
 import { HitlIngredientRow } from './hitl-ingredient-row';
 import { HitlVerificationSwapModal } from './hitl-verification-swap-modal';
-import type { FoodLogEntry, FoodSource, MacroNutrients, Micronutrients } from '@/types/nutrition';
+import type {
+  CustomRecipeIngredient,
+  FoodLogEntry,
+  FoodSource,
+  MacroNutrients,
+  Micronutrients,
+} from '@/types/nutrition';
+
+const STAGE3_EXTENDED_NUTRIENTS = [
+  { key: 'sugarG', name: 'Sugar', unit: 'g' },
+  { key: 'addedSugarG', name: 'Added Sugar', unit: 'g' },
+  { key: 'saturatedFatG', name: 'Sat. Fat', unit: 'g' },
+  { key: 'cholesterolMg', name: 'Cholesterol', unit: 'mg' },
+  { key: 'caffeineMg', name: 'Caffeine', unit: 'mg' },
+  { key: 'alcoholG', name: 'Alcohol', unit: 'g' },
+] as const;
+
+const TEXT_MEAL_EXAMPLES = [
+  '2 boiled eggs, 150g white rice, and 1 cup black coffee',
+  '200g chicken adobo with 150g garlic rice',
+  '60g rolled oats, 1 banana, and 1 scoop whey protein',
+] as const;
 
 const MEAL_SCAN_MAX_DIMENSION = 640;
 const MEAL_SCAN_JPEG_QUALITY = 0.72;
@@ -144,21 +169,30 @@ export function AiMealScannerSheet({
   const aiDraft = useLoggerStore((s) => s.aiDraft);
   const setAiDraft = useLoggerStore((s) => s.setAiDraft);
   const resetDraft = useLoggerStore((s) => s.resetDraft);
+  const syncAuthLocked = useLoggerStore((s) => s.syncAuthLocked);
 
   // Stage 1 Local State
+  const [inputMode, setInputMode] = useState<'photo' | 'text'>('photo');
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [contextPrompt, setContextPrompt] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   // Stage 2 Refinement & Verification State
   const [refineInstruction, setRefineInstruction] = useState('');
   const [isRefining, setIsRefining] = useState(false);
   const [refineError, setRefineError] = useState<string | null>(null);
 
-  // Verification / Swap Modal State
+  // Verification / Swap Modal & Save as Recipe Modal State
   const [isSwapModalOpen, setIsSwapModalOpen] = useState(false);
   const [swapTargetItem, setSwapTargetItem] = useState<AiDraftItem | null>(null);
+  const [isRecipeBuilderOpen, setIsRecipeBuilderOpen] = useState(false);
+  const [recipeSeedIngredients, setRecipeSeedIngredients] = useState<
+    CustomRecipeIngredient[] | null
+  >(null);
   const [showMicros, setShowMicros] = useState(false);
 
   // User explicitly wants to re-scan with a new photo
@@ -181,6 +215,9 @@ export function AiMealScannerSheet({
     setPrevDraft(aiDraft);
     if (aiDraft?.imageDataUrl) {
       setImageDataUrl(aiDraft.imageDataUrl);
+      setInputMode('photo');
+    } else if (aiDraft && !aiDraft.imageDataUrl && aiDraft.contextPrompt) {
+      setInputMode('text');
     }
     if (aiDraft?.contextPrompt) {
       setContextPrompt(aiDraft.contextPrompt);
@@ -199,9 +236,12 @@ export function AiMealScannerSheet({
       setRefineInstruction('');
       setIsSwapModalOpen(false);
       setSwapTargetItem(null);
+      setIsRecipeBuilderOpen(false);
+      setRecipeSeedIngredients(null);
       setIsRescanning(false);
       setIsSubmittingLog(false);
       if (!aiDraft) {
+        setInputMode('photo');
         setImageDataUrl(null);
         setContextPrompt('');
       }
@@ -209,7 +249,7 @@ export function AiMealScannerSheet({
   }
 
   // Decide active stage:
-  // 1) Stage 1 (Image Intake): no draft items (or rescanning) and no image yet
+  // 1) Stage 1 (Image Intake or Text-Only Describe Meal): no draft items (or rescanning) and no image yet
   // 2) Stage 2 (Pre-Scan HITL): image captured, user describes what's in it before vision scan
   // 3) Stage 3 (Post-Scan Review): draft items present and not rescanning
   const hasDraftItems = Boolean(aiDraft && aiDraft.items && aiDraft.items.length > 0);
@@ -217,9 +257,14 @@ export function AiMealScannerSheet({
   const showPreScanHitl = !showReviewStage && Boolean(imageDataUrl);
 
   const executeMealScan = useCallback(
-    async (imgUrl: string, ctxPrompt: string, speculative: boolean): Promise<AiDraftItem[]> => {
+    async (
+      imgUrl: string | null,
+      ctxPrompt: string,
+      speculative: boolean
+    ): Promise<AiDraftItem[]> => {
+      const trimmedImg = imgUrl ? imgUrl.trim() : '';
       const trimmedPrompt = ctxPrompt.trim();
-      const cacheKey = `${imgUrl}::${trimmedPrompt}`;
+      const cacheKey = `${trimmedImg || 'text-only'}::${trimmedPrompt}`;
 
       const cached = scanCacheRef.current.get(cacheKey);
       if (cached) {
@@ -242,17 +287,29 @@ export function AiMealScannerSheet({
 
       const controller = new AbortController();
       const promise = (async (): Promise<AiDraftItem[]> => {
+        const requestBody: { imageDataUrl?: string; contextPrompt?: string } = {};
+        if (trimmedImg) {
+          requestBody.imageDataUrl = trimmedImg;
+        }
+        if (trimmedPrompt || trimmedImg) {
+          requestBody.contextPrompt = trimmedPrompt;
+        }
+
         const res = await fetch('/api/ai/meal-scan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            imageDataUrl: imgUrl,
-            contextPrompt: trimmedPrompt,
-          }),
+          body: JSON.stringify(requestBody),
           signal: controller.signal,
         });
 
         const data = await res.json().catch(() => ({}));
+
+        if (res.status === 401) {
+          useLoggerStore.getState().setSyncAuthLocked(true);
+          throw new Error(
+            data.error || 'Sync & AI locked. Enter your passphrase below to unlock and retry.'
+          );
+        }
 
         if (!res.ok) {
           throw new Error(data.error || `Meal scan failed with status ${res.status}`);
@@ -260,7 +317,7 @@ export function AiMealScannerSheet({
 
         if (!Array.isArray(data.items) || data.items.length === 0) {
           throw new Error(
-            'No food items detected in image. Please try again or add items manually.'
+            'No food items detected. Please try again or add items manually.'
           );
         }
 
@@ -358,18 +415,18 @@ export function AiMealScannerSheet({
     return () => clearTimeout(timer);
   }, [shouldSpeculate, open, showPreScanHitl, imageDataUrl, contextPrompt, executeMealScan]);
 
-  // Escape key listener to close sheet (guarded when swap modal is open)
+  // Escape key listener to close sheet (guarded when swap modal or recipe builder modal is open)
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (isSwapModalOpen) return;
+        if (isSwapModalOpen || isRecipeBuilderOpen) return;
         onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, isSwapModalOpen, onClose]);
+  }, [open, isSwapModalOpen, isRecipeBuilderOpen, onClose]);
 
   // Stage 2: Item manipulation (cleanly updates useLoggerStore.aiDraft locally)
   const handleChangeGrams = useCallback(
@@ -451,7 +508,7 @@ export function AiMealScannerSheet({
     [setAiDraft]
   );
 
-  // Memoize Stage 3 macro + 12-micronutrient totals
+  // Memoize Stage 3 macro + 12-micronutrient + 6-extended-nutrient totals
   const draftItems = aiDraft?.items;
   const { totalCalories, totalProtein, totalCarbs, totalFat, totalFiber, totalMicros } =
     useMemo(() => {
@@ -463,6 +520,9 @@ export function AiMealScannerSheet({
       const microsMap: Record<string, number> = {};
       for (const key of Object.keys(RDA_MICRONUTRIENT_METADATA)) {
         microsMap[key] = 0;
+      }
+      for (const ext of STAGE3_EXTENDED_NUTRIENTS) {
+        microsMap[ext.key] = 0;
       }
 
       if (draftItems) {
@@ -517,19 +577,21 @@ export function AiMealScannerSheet({
     }
   };
 
-  // Analyze meal POST /api/ai/meal-scan (Stage 1)
+  // Analyze meal POST /api/ai/meal-scan (Photo or Describe Meal text-only mode)
   const handleAnalyzeMeal = async () => {
-    if (!imageDataUrl) return;
+    const trimmedContext = contextPrompt.trim();
+    const effectiveImage = inputMode === 'text' ? null : imageDataUrl;
+    if (!effectiveImage && !trimmedContext) return;
 
     setIsAnalyzing(true);
     setScanError(null);
 
     try {
-      const itemsWithIds = await executeMealScan(imageDataUrl, contextPrompt, false);
+      const itemsWithIds = await executeMealScan(effectiveImage, trimmedContext, false);
 
       setAiDraft({
-        imageDataUrl,
-        contextPrompt: contextPrompt.trim(),
+        imageDataUrl: effectiveImage,
+        contextPrompt: trimmedContext,
         items: itemsWithIds,
       });
       setIsRescanning(false);
@@ -593,6 +655,13 @@ export function AiMealScannerSheet({
 
       const data = await res.json().catch(() => ({}));
 
+      if (res.status === 401) {
+        useLoggerStore.getState().setSyncAuthLocked(true);
+        throw new Error(
+          data.error || 'Sync & AI locked. Enter your passphrase below to unlock and retry.'
+        );
+      }
+
       if (!res.ok) {
         throw new Error(data.error || `Refinement failed with status ${res.status}`);
       }
@@ -631,6 +700,43 @@ export function AiMealScannerSheet({
     }
   };
 
+  // Separate Save as Recipe action in Stage 3
+  const handleSaveAsRecipe = () => {
+    if (!aiDraft || aiDraft.items.length === 0) return;
+
+    const ingredients: CustomRecipeIngredient[] = aiDraft.items.map((item) => {
+      const safeGrams =
+        typeof item.grams === 'number' && Number.isFinite(item.grams) && item.grams > 0
+          ? item.grams
+          : 100;
+      const scaled = scaleNutrition(
+        item.per100g,
+        item.microsPer100g ?? {},
+        'per100g',
+        safeGrams
+      );
+
+      return {
+        foodId: item.verifiedFoodId || item.id,
+        name: item.name,
+        amount: safeGrams,
+        unit: 'g',
+        gramWeight: safeGrams,
+        gramsPerUnit: 1,
+        baseBasis: 'per100g',
+        baseNutrients: { ...item.per100g },
+        baseMicros: { ...(item.microsPer100g ?? {}) },
+        nutritionSnapshot: {
+          ...scaled.macros,
+          micros: scaled.micros,
+        },
+      };
+    });
+
+    setRecipeSeedIngredients(ingredients);
+    setIsRecipeBuilderOpen(true);
+  };
+
   // Confirm & Log: Dexie bulkAdd in one transaction
   const handleConfirmAndLog = async () => {
     if (!aiDraft || aiDraft.items.length === 0 || isSubmittingLog) return;
@@ -651,6 +757,7 @@ export function AiMealScannerSheet({
           item.verifiedSource === 'usda' ||
           item.verifiedSource === 'off' ||
           item.verifiedSource === 'custom_barcode' ||
+          item.verifiedSource === 'custom_food' ||
           item.verifiedSource === 'quick_add' ||
           item.verifiedSource === 'recipe'
             ? item.verifiedSource
@@ -678,6 +785,7 @@ export function AiMealScannerSheet({
       });
 
       resetDraft();
+      setInputMode('photo');
       setImageDataUrl(null);
       setContextPrompt('');
       setRefineInstruction('');
@@ -685,6 +793,8 @@ export function AiMealScannerSheet({
       setRefineError(null);
       setIsSwapModalOpen(false);
       setSwapTargetItem(null);
+      setIsRecipeBuilderOpen(false);
+      setRecipeSeedIngredients(null);
       setIsRescanning(false);
       onClose();
     } catch (err) {
@@ -747,7 +857,12 @@ export function AiMealScannerSheet({
               {showReviewStage && (
                 <button
                   type="button"
-                  onClick={() => setIsRescanning(true)}
+                  onClick={() => {
+                    if (aiDraft && !aiDraft.imageDataUrl && aiDraft.contextPrompt) {
+                      setInputMode('text');
+                    }
+                    setIsRescanning(true);
+                  }}
                   aria-label="Re-scan or take new photo"
                   className="touch-target tactile-press p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub mr-0.5"
                   title="Edit meal context / re-scan"
@@ -766,29 +881,80 @@ export function AiMealScannerSheet({
             </div>
           </div>
 
-          {/* Body: Stage 1 (Image Intake) -> Stage 2 (Pre-Scan HITL) -> Stage 3 (Review) */}
+          {/* Body: Stage 1 (Photo or Describe Meal Text Intake) -> Stage 2 (Pre-Scan HITL) -> Stage 3 (Review) */}
           {!showReviewStage && !showPreScanHitl ? (
-            /* STAGE 1: Image Intake Only */
-            <div className="pt-4 flex-1 overflow-y-auto overscroll-contain space-y-4">
-              {scanError && (
+            /* STAGE 1: Photo or Text-Only Meal Description Intake */
+            <div className="pt-3.5 flex-1 overflow-y-auto overscroll-contain space-y-4">
+              {/* Segmented Mode Toggle: Photo | Describe Meal */}
+              <div
+                role="tablist"
+                aria-label="Meal scan input mode"
+                className="grid grid-cols-2 gap-1.5 p-1 bg-surface-sub rounded-full border border-border/60"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={inputMode === 'photo'}
+                  onClick={() => {
+                    setInputMode('photo');
+                    setScanError(null);
+                  }}
+                  className={`tactile-press flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-full text-xs transition-colors ${
+                    inputMode === 'photo'
+                      ? 'bg-foreground text-background font-semibold shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground font-medium'
+                  }`}
+                >
+                  <Camera className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Photo</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={inputMode === 'text'}
+                  onClick={() => {
+                    setInputMode('text');
+                    setImageDataUrl(null);
+                    setScanError(null);
+                  }}
+                  className={`tactile-press flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-full text-xs transition-colors ${
+                    inputMode === 'text'
+                      ? 'bg-foreground text-background font-semibold shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground font-medium'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Describe Meal</span>
+                </button>
+              </div>
+
+              {syncAuthLocked && (
+                <SyncUnlockCard
+                  compact
+                  onUnlocked={() => {
+                    setScanError(null);
+                  }}
+                />
+              )}
+
+              {scanError && !syncAuthLocked && (
                 <div className="p-3 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
                   <div className="flex-1 space-y-1">
                     <p>{scanError}</p>
                     <p className="text-[11px] text-muted-foreground">
-                      Check your AI configuration in Settings, retry with a sharper photo, or log items manually below.
+                      Check your AI configuration in Settings, retry with a clearer description or photo, or log items manually below.
                     </p>
                   </div>
                 </div>
               )}
 
-              <div>
-                <label
-                  htmlFor="meal-photo-upload"
-                  aria-label="Upload meal photo"
-                  className="block cursor-pointer"
-                >
-                  <div className="w-full h-52 rounded-2xl border-2 border-dashed border-border hover:border-[var(--macro-calories)]/60 bg-surface-sub/50 flex flex-col items-center justify-center p-4 transition-colors">
+              {inputMode === 'photo' ? (
+                <div className="space-y-3">
+                  <div
+                    onClick={() => uploadInputRef.current?.click()}
+                    className="w-full rounded-2xl border-2 border-dashed border-border hover:border-[var(--macro-calories)]/60 bg-surface-sub/50 flex flex-col items-center justify-center p-5 transition-colors cursor-pointer"
+                  >
                     <div className="w-12 h-12 rounded-full bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)] mb-2.5">
                       <Camera className="w-6 h-6" aria-hidden="true" />
                     </div>
@@ -798,18 +964,120 @@ export function AiMealScannerSheet({
                     <span className="text-[11px] text-muted-foreground mt-1 text-center">
                       Next, tell the AI what&apos;s in your meal before scanning for higher accuracy
                     </span>
+
+                    <div
+                      className="grid grid-cols-2 gap-2.5 w-full mt-4"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="tactile-press py-2.5 px-3 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 flex items-center justify-center gap-1.5 shadow-xs"
+                      >
+                        <Camera className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>Take Photo</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => uploadInputRef.current?.click()}
+                        className="tactile-press py-2.5 px-3 rounded-full bg-card border border-border text-foreground hover:bg-surface-sub font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs"
+                      >
+                        <Upload className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>Upload Photo</span>
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Hidden camera input (with capture="environment") */}
                   <input
-                    id="meal-photo-upload"
+                    ref={cameraInputRef}
+                    id="meal-camera-capture"
+                    data-testid="meal-camera-input"
                     type="file"
                     accept="image/*"
                     capture="environment"
+                    aria-label="Camera capture input"
+                    onChange={handleImageFileChange}
+                    className="sr-only"
+                  />
+
+                  {/* Hidden gallery/upload input (no capture attribute so mobile galleries work) */}
+                  <input
+                    ref={uploadInputRef}
+                    id="meal-photo-upload"
+                    type="file"
+                    accept="image/*"
                     aria-label="Upload meal photo"
                     onChange={handleImageFileChange}
                     className="sr-only"
                   />
-                </label>
-              </div>
+                </div>
+              ) : (
+                /* Describe Meal (Text-Only Mode — strictly no voice/microphone UI) */
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="meal-text-description"
+                      className="text-xs font-semibold text-foreground flex items-center justify-between"
+                    >
+                      <span>Describe what you ate</span>
+                      <span className="text-[10px] font-medium text-muted-foreground">
+                        Text-only AI estimate
+                      </span>
+                    </label>
+                    <textarea
+                      id="meal-text-description"
+                      value={contextPrompt}
+                      onChange={(e) => setContextPrompt(e.target.value)}
+                      placeholder="Describe your meal (e.g., 2 boiled eggs, 150g white rice, and 1 cup black coffee)..."
+                      rows={4}
+                      autoFocus
+                      className="w-full p-3 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:border-border-focus text-foreground placeholder:text-muted-foreground/60 resize-none"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Include approximate weights, counts, brands, cooking oils, or sauces. You can review and adjust every ingredient before logging.
+                    </p>
+                  </div>
+
+                  {/* Quick example chips */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-medium text-muted-foreground block">
+                      Quick examples:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {TEXT_MEAL_EXAMPLES.map((example) => (
+                        <button
+                          key={example}
+                          type="button"
+                          onClick={() => setContextPrompt(example)}
+                          className="tactile-press text-left px-2.5 py-1 rounded-full bg-surface-sub border border-border/60 text-[11px] text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
+                        >
+                          {example}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAnalyzeMeal}
+                    disabled={!contextPrompt.trim() || isAnalyzing}
+                    className="tactile-press w-full py-3 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 shadow-xs"
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Analyzing meal description...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        <span>Analyze Meal</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
 
               <div className="text-center pt-1">
                 <button
@@ -824,7 +1092,16 @@ export function AiMealScannerSheet({
           ) : !showReviewStage && showPreScanHitl ? (
             /* STAGE 2: Pre-Scan Human-in-the-Loop Context */
             <div className="pt-4 flex-1 overflow-y-auto overscroll-contain space-y-4">
-              {scanError && (
+              {syncAuthLocked && (
+                <SyncUnlockCard
+                  compact
+                  onUnlocked={() => {
+                    setScanError(null);
+                  }}
+                />
+              )}
+
+              {scanError && !syncAuthLocked && (
                 <div className="p-3 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
                   <div className="flex-1 space-y-1">
@@ -858,7 +1135,6 @@ export function AiMealScannerSheet({
                     id="meal-photo-upload"
                     type="file"
                     accept="image/*"
-                    capture="environment"
                     aria-label="Upload meal photo"
                     onChange={handleImageFileChange}
                     className="sr-only"
@@ -970,7 +1246,7 @@ export function AiMealScannerSheet({
                 </div>
               </div>
 
-              {/* Collapsible Estimated Micronutrients Summary */}
+              {/* Collapsible Estimated Micronutrients & Extended Summary */}
               <div className="mb-3 rounded-2xl bg-surface-sub/60 border border-border shrink-0">
                 <button
                   type="button"
@@ -978,7 +1254,7 @@ export function AiMealScannerSheet({
                   aria-expanded={showMicros}
                   className="w-full px-3 py-2 flex items-center justify-between text-[11px] font-medium text-muted-foreground hover:text-foreground"
                 >
-                  <span>Estimated Micronutrients (12)</span>
+                  <span>Estimated Micronutrients &amp; Extended (18)</span>
                   <ChevronDown
                     className={`w-3.5 h-3.5 transition-transform duration-200 ${
                       showMicros ? 'rotate-180 text-foreground' : ''
@@ -1007,13 +1283,35 @@ export function AiMealScannerSheet({
                           </div>
                         );
                       })}
+                      {STAGE3_EXTENDED_NUTRIENTS.map((meta) => {
+                        const val = Math.round((totalMicros[meta.key] ?? 0) * 10) / 10;
+                        return (
+                          <div key={meta.key} className="flex items-center justify-between gap-1">
+                            <span className="text-muted-foreground truncate">{meta.name}</span>
+                            <span className="font-semibold text-foreground shrink-0">
+                              {val}{meta.unit}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
               </div>
 
+              {syncAuthLocked && (
+                <div className="mb-2 shrink-0">
+                  <SyncUnlockCard
+                    compact
+                    onUnlocked={() => {
+                      setRefineError(null);
+                    }}
+                  />
+                </div>
+              )}
+
               {/* Refine Error Banner */}
-              {refineError && (
+              {refineError && !syncAuthLocked && (
                 <div className="mb-2 p-2.5 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-start gap-2 shrink-0">
                   <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
                   <div className="flex-1 space-y-0.5">
@@ -1052,7 +1350,7 @@ export function AiMealScannerSheet({
                 </button>
               </div>
 
-              {/* Bottom Actions Area: Conversational Refine Bar + Confirm & Log */}
+              {/* Bottom Actions Area: Conversational Refine Bar + Separate Save as Recipe + Confirm & Log */}
               <div className="pt-3 mt-2 border-t border-border space-y-2.5 shrink-0">
                 {/* Conversational "Refine with AI" Input Bar */}
                 <form onSubmit={handleRefineAi} className="flex items-center gap-1.5">
@@ -1078,25 +1376,37 @@ export function AiMealScannerSheet({
                   </button>
                 </form>
 
-                {/* Confirm & Log Button */}
-                <button
-                  type="button"
-                  onClick={handleConfirmAndLog}
-                  disabled={isSubmittingLog || !aiDraft?.items.length}
-                  className="tactile-press w-full py-3 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 shadow-xs"
-                >
-                  {isSubmittingLog ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Logging meal entries...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Confirm &amp; Log</span>
-                    </>
-                  )}
-                </button>
+                {/* Primary & Secondary Action Buttons */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveAsRecipe}
+                    disabled={isSubmittingLog || !aiDraft?.items.length}
+                    className="tactile-press py-2.5 px-4 rounded-full bg-surface-sub border border-border text-foreground hover:bg-card font-semibold text-xs disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0"
+                  >
+                    <ChefHat className="w-3.5 h-3.5 text-[var(--macro-calories)]" aria-hidden="true" />
+                    <span>Save as Recipe</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleConfirmAndLog}
+                    disabled={isSubmittingLog || !aiDraft?.items.length}
+                    className="tactile-press flex-1 py-3 px-4 rounded-full bg-foreground text-background font-semibold text-xs hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 shadow-xs"
+                  >
+                    {isSubmittingLog ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Logging meal entries...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Confirm &amp; Log</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -1114,6 +1424,17 @@ export function AiMealScannerSheet({
           }}
           onSwapItem={handleSwapItem}
           onAddCustomItem={handleAddCustomItem}
+        />
+      )}
+
+      {/* Save as Recipe Builder Modal */}
+      {isRecipeBuilderOpen && (
+        <RecipeBuilderModal
+          isOpen={isRecipeBuilderOpen}
+          initialIngredients={recipeSeedIngredients}
+          onClose={() => {
+            setIsRecipeBuilderOpen(false);
+          }}
         />
       )}
     </>
