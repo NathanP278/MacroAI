@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getServerAiConfig, callVisionChatCompletion, sanitizeError } from '@/lib/ai/openai-compat';
+import {
+  getServerAiConfig,
+  callVisionChatCompletionWithMeta,
+  sanitizeError,
+} from '@/lib/ai/openai-compat';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 export async function GET() {
   const config = getServerAiConfig();
@@ -22,23 +27,23 @@ export async function GET() {
   }
 
   try {
-    // Perform a lightweight probe to test reachability
-    await callVisionChatCompletion(
+    // Perform a lightweight probe (with parallel ping across fallback candidates if configured)
+    const result = await callVisionChatCompletionWithMeta(
       [{ role: 'user', content: 'Respond with OK' }],
-      { timeoutMs: 10000, responseFormat: false }
+      { timeoutMs: 45000, responseFormat: false }
     );
 
     return NextResponse.json(
       {
         configured: true,
-        model: config.model,
+        model: result.model,
         reachable: true,
       },
       { status: 200, headers }
     );
   } catch (err: unknown) {
     const rawMsg = err instanceof Error ? err.message : String(err);
-    const safeError = sanitizeError(rawMsg, config.apiKey, config.customHeaders);
+    const safeError = sanitizeError(rawMsg, config.apiKeys, config.customHeaders);
 
     return NextResponse.json(
       {

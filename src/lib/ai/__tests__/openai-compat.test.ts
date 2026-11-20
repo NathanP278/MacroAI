@@ -454,6 +454,165 @@ describe('Task 9: OpenAI-Compatible Client Helper', () => {
     const r4 = await callVisionChatCompletion(messages, { enableCache: true });
     expect(r4).toContain('Egg v2');
   });
+
+  it('retries transient 503/429 responses and succeeds on subsequent attempt', async () => {
+    process.env.AI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai';
+    process.env.AI_API_KEY = 'AQ.test-key';
+    process.env.AI_MODEL = 'gemini-3.8-flash';
+
+    let attempts = 0;
+    const mockFetch = vi.fn().mockImplementation(async () => {
+      attempts++;
+      if (attempts === 1) {
+        return {
+          ok: false,
+          status: 503,
+          text: async () => 'This model is currently experiencing high demand.',
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: 'OK' } }],
+        }),
+      };
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await callVisionChatCompletion(
+      [{ role: 'user', content: 'Respond with OK' }],
+      { responseFormat: false }
+    );
+    expect(attempts).toBe(2);
+    expect(result).toBe('OK');
+  });
+
+  it('builds priority-ordered candidates from AI_FALLBACK_API_KEYS and AI_FALLBACK_MODELS', () => {
+    process.env.AI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai';
+    process.env.AI_API_KEY = 'key-1';
+    process.env.AI_FALLBACK_API_KEYS = 'key-2';
+    process.env.AI_MODEL = 'gemini-3.8-flash';
+    process.env.AI_FALLBACK_MODELS = 'gemma-4-31b-it, gemini-3.5-flash-lite';
+
+    const config = getServerAiConfig();
+    expect(config.isConfigured).toBe(true);
+    expect(config.apiKeys).toEqual(['key-1', 'key-2']);
+    expect(config.models).toEqual(['gemini-3.8-flash', 'gemma-4-31b-it', 'gemini-3.5-flash-lite']);
+    expect(config.candidates.map((c) => `${c.apiKey}:${c.model}`)).toEqual([
+      'key-1:gemini-3.8-flash',
+      'key-1:gemma-4-31b-it',
+      'key-1:gemini-3.5-flash-lite',
+      'key-2:gemini-3.8-flash',
+      'key-2:gemma-4-31b-it',
+      'key-2:gemini-3.5-flash-lite',
+    ]);
+  });
+
+  it('pings all candidates in parallel and selects highest-priority healthy model', async () => {
+    process.env.AI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai';
+    process.env.AI_API_KEY = 'key-1';
+    process.env.AI_FALLBACK_API_KEYS = 'key-2';
+    process.env.AI_MODEL = 'gemini-3.8-flash';
+    process.env.AI_FALLBACK_MODELS = 'gemma-4-31b-it,gemini-3.5-flash-lite';
+
+    const mockFetch = vi.fn().mockImplementation(async (_url, init) => {
+      const auth = (init.headers as Record<string, string>).Authorization;
+      const body = JSON.parse(init.body as string);
+      const isPing = body.max_tokens === 1 && body.messages?.[0]?.content === 'OK';
+
+      if (isPing) {
+        // key-1 primary is 503, key-1 secondary (gemma-4-31b-it) is healthy!
+        if (auth === 'Bearer key-1' && body.model === 'gemini-3.8-flash') {
+          return { ok: false, status: 503, text: async () => 'UNAVAILABLE' };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ choices: [{ message: { content: 'OK' } }] }),
+        };
+      }
+
+      // Actual vision/chat request
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: `served-by:${auth}:${body.model}` } }],
+        }),
+      };
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await callVisionChatCompletion([{ role: 'user', content: 'Scan meal' }]);
+    expect(result).toBe('served-by:Bearer key-1:gemma-4-31b-it');
+
+    // Subsequent call reuses cached healthy candidate without re-pinging
+    const callCountAfterFirst = mockFetch.mock.calls.length;
+    const result2 = await callVisionChatCompletion([{ role: 'user', content: 'Scan meal 2' }]);
+    expect(result2).toBe('served-by:Bearer key-1:gemma-4-31b-it');
+    expect(mockFetch.mock.calls.length).toBe(callCountAfterFirst + 1);
+  });
+
+  it('falls back to second API key when all first-key models fail ping, without leaking keys', async () => {
+    const KEY1 = 'AQ.secret-primary-key-11111';
+    const KEY2 = 'AQ.secret-fallback-key-22222';
+    process.env.AI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai';
+    process.env.AI_API_KEY = KEY1;
+    process.env.AI_FALLBACK_API_KEYS = KEY2;
+    process.env.AI_MODEL = 'gemini-3.8-flash';
+    process.env.AI_FALLBACK_MODELS = 'gemma-4-31b-it';
+
+    const mockFetch = vi.fn().mockImplementation(async (_url, init) => {
+      const auth = (init.headers as Record<string, string>).Authorization;
+      const body = JSON.parse(init.body as string);
+      const isPing = body.max_tokens === 1 && body.messages?.[0]?.content === 'OK';
+
+      if (auth === `Bearer ${KEY1}`) {
+        return { ok: false, status: 429, text: async () => `Quota exceeded for ${KEY1}` };
+      }
+      if (isPing) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ choices: [{ message: { content: 'OK' } }] }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: `ok:${body.model}` } }],
+        }),
+      };
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await callVisionChatCompletion([{ role: 'user', content: 'Scan meal' }]);
+    expect(result).toBe('ok:gemini-3.8-flash');
+  });
+
+  it('redacts all primary and fallback API keys if every candidate fails', async () => {
+    const KEY1 = 'AQ.secret-primary-key-33333';
+    const KEY2 = 'AQ.secret-fallback-key-44444';
+    process.env.AI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai';
+    process.env.AI_API_KEY = KEY1;
+    process.env.AI_FALLBACK_API_KEYS = KEY2;
+    process.env.AI_MODEL = 'gemini-3.8-flash';
+    process.env.AI_FALLBACK_MODELS = 'gemma-4-31b-it';
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (_url, init) => {
+        const auth = (init.headers as Record<string, string>).Authorization;
+        return { ok: false, status: 503, text: async () => `Error with ${auth}` };
+      })
+    );
+
+    const promise = callVisionChatCompletion([{ role: 'user', content: 'Scan meal' }]);
+    await expect(promise).rejects.toThrowError(expect.not.stringContaining(KEY1));
+    await expect(promise).rejects.toThrowError(expect.not.stringContaining(KEY2));
+  });
 });
 
 describe('Task 9: Route Handlers', () => {

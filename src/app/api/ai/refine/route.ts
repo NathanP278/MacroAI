@@ -91,7 +91,7 @@ export async function POST(request: Request) {
       ],
       {
         temperature: 0,
-        maxTokens: 1200,
+        maxTokens: 2500,
         signal: request.signal,
       }
     );
