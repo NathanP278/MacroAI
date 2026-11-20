@@ -57,3 +57,7 @@ macroai.db-shm
 
 # codegraph
 .codegraph/
+
+# IDE / tool scratch
+.openidea/
+
