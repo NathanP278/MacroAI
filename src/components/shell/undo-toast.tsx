@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { RotateCcw, X } from "lucide-react";
 import { useLoggerStore } from "@/stores/logger-store";
 import { triggerHaptic } from "@/lib/motion";
@@ -8,12 +9,49 @@ import { triggerHaptic } from "@/lib/motion";
 const AUTO_DISMISS_MS = 5000;
 
 export function UndoToast() {
+  const pathname = usePathname() ?? "/";
   const undoToast = useLoggerStore((s) => s.undoToast);
   const dismissUndoToast = useLoggerStore((s) => s.dismissUndoToast);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const remainingMsRef = useRef<number>(AUTO_DISMISS_MS);
+  const startedAtRef = useRef<number>(0);
+  const isPausedRef = useRef(false);
   const isUndoingRef = useRef(false);
 
-  const handleUndo = React.useCallback(async () => {
+  const clearTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const startTimer = useCallback(
+    (delayMs: number) => {
+      clearTimer();
+      startedAtRef.current = Date.now();
+      timerRef.current = setTimeout(() => {
+        dismissUndoToast();
+        timerRef.current = null;
+      }, Math.max(0, delayMs));
+    },
+    [clearTimer, dismissUndoToast]
+  );
+
+  const handlePause = useCallback(() => {
+    if (isPausedRef.current || !undoToast) return;
+    isPausedRef.current = true;
+    const elapsed = Date.now() - startedAtRef.current;
+    remainingMsRef.current = Math.max(250, remainingMsRef.current - elapsed);
+    clearTimer();
+  }, [clearTimer, undoToast]);
+
+  const handleResume = useCallback(() => {
+    if (!isPausedRef.current || !undoToast) return;
+    isPausedRef.current = false;
+    startTimer(remainingMsRef.current);
+  }, [startTimer, undoToast]);
+
+  const handleUndo = useCallback(async () => {
     if (!undoToast || isUndoingRef.current) return;
     isUndoingRef.current = true;
     try {
@@ -30,21 +68,14 @@ export function UndoToast() {
   useEffect(() => {
     if (!undoToast) return;
 
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-    timerRef.current = setTimeout(() => {
-      dismissUndoToast();
-      timerRef.current = null;
-    }, AUTO_DISMISS_MS);
+    remainingMsRef.current = AUTO_DISMISS_MS;
+    isPausedRef.current = false;
+    startTimer(AUTO_DISMISS_MS);
 
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
+      clearTimer();
     };
-  }, [undoToast, dismissUndoToast]);
+  }, [undoToast, startTimer, clearTimer]);
 
   useEffect(() => {
     if (!undoToast) return;
@@ -66,14 +97,28 @@ export function UndoToast() {
 
   if (!undoToast) return null;
 
+  const hasQuickSearchBar = pathname === "/" || pathname.startsWith("/log");
+
   return (
     <div
       role="status"
       aria-live="polite"
       data-testid="undo-toast"
-      className="fixed bottom-28 sm:bottom-32 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-md pointer-events-auto animate-sheet-in"
+      onMouseEnter={handlePause}
+      onMouseLeave={handleResume}
+      onFocus={handlePause}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          handleResume();
+        }
+      }}
+      className={`fixed left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-md pointer-events-auto animate-sheet-in ${
+        hasQuickSearchBar
+          ? "bottom-[calc(8.75rem+env(safe-area-inset-bottom))]"
+          : "bottom-[calc(5.25rem+env(safe-area-inset-bottom))]"
+      }`}
     >
-      <div className="surface-elevated-sheet rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3">
+      <div className="undo-toast-card relative overflow-hidden surface-elevated-sheet rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3">
         <span className="text-xs font-medium text-foreground truncate">
           {undoToast.message}
         </span>
@@ -98,6 +143,12 @@ export function UndoToast() {
             <X className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
         </div>
+
+        <div
+          key={undoToast.id}
+          aria-hidden="true"
+          className="undo-toast-bar absolute bottom-0 left-0 right-0 h-[2px] bg-[var(--macro-calories)]/85 pointer-events-none"
+        />
       </div>
     </div>
   );

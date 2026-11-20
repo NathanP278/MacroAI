@@ -192,13 +192,17 @@
   html {
     font-family: var(--font-sans);
     -webkit-tap-highlight-color: transparent;
+    scroll-padding-top: max(1rem, env(safe-area-inset-top, 0px));
+    scroll-padding-bottom: calc(9.25rem + env(safe-area-inset-bottom, 0px));
   }
   body {
     @apply bg-background text-foreground font-sans;
-    overflow-wrap: anywhere;
-    overflow-x: clip;
+    overflow-wrap: break-word;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     accent-color: var(--macro-calories);
+  }
+  :where(a, code) {
+    overflow-wrap: anywhere;
   }
   ::selection {
     background-color: color-mix(in srgb, var(--macro-calories) 28%, transparent);
@@ -323,11 +327,224 @@ progress.macro-progress::-moz-progress-bar {
   transition: inline-size 420ms var(--ease-out-expo);
 }
 
+/* Size-aware Daily Nutrition Hero container queries */
+.hero-container {
+  container: hero / inline-size;
+}
+
+.hero-arc-box {
+  width: 128px;
+  height: 116px;
+}
+
+.hero-center-value {
+  font-size: 1.75rem;
+  line-height: 1.1;
+}
+
+.hero-flank-value {
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.hero-macro-readout {
+  font-size: 0.6875rem;
+  line-height: 1.25;
+}
+
+.hero-weekly-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.875rem;
+}
+
+.hero-weekly-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  text-align: center;
+}
+
+@container hero (inline-size >= 340px) {
+  .hero-arc-box {
+    width: 152px;
+    height: 138px;
+  }
+
+  .hero-center-value {
+    font-size: 1.875rem;
+  }
+
+  .hero-flank-value {
+    font-size: 1.125rem;
+  }
+
+  .hero-macro-readout {
+    font-size: 0.75rem;
+    line-height: 1.3;
+  }
+}
+
+@container hero (inline-size >= 360px) {
+  .hero-weekly-grid {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .hero-weekly-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding-top: 0;
+    padding-left: 0.75rem;
+    border-top: 0;
+    border-left: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+    text-align: left;
+  }
+}
+
+@container hero (inline-size >= 420px) {
+  .hero-arc-box {
+    width: 172px;
+    height: 156px;
+  }
+
+  .hero-center-value {
+    font-size: 2.25rem;
+    line-height: 1.05;
+  }
+
+  .hero-flank-value {
+    font-size: 1.25rem;
+  }
+}
+
+@keyframes macro-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes macro-vt-out-left {
+  from {
+    opacity: 1;
+    translate: 0 0;
+  }
+  to {
+    opacity: 0;
+    translate: -16px 0;
+  }
+}
+
+@keyframes macro-vt-in-right {
+  from {
+    opacity: 0;
+    translate: 16px 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes macro-vt-out-right {
+  from {
+    opacity: 1;
+    translate: 0 0;
+  }
+  to {
+    opacity: 0;
+    translate: 16px 0;
+  }
+}
+
+@keyframes macro-vt-in-left {
+  from {
+    opacity: 0;
+    translate: -16px 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes macro-toast-countdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* Keep pinned bottom chrome rock-steady during directional View Transitions */
+::view-transition-group(bottom-chrome),
+::view-transition-old(bottom-chrome),
+::view-transition-new(bottom-chrome) {
+  animation: none;
+}
+
+/* Smooth CSS Grid Accordion Disclosure */
+.accordion-grid {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    grid-template-rows 220ms var(--ease-out-quint),
+    opacity 180ms ease,
+    visibility 0ms linear 220ms;
+}
+
+.accordion-grid > .accordion-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.accordion-grid[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    grid-template-rows 220ms var(--ease-out-quint),
+    opacity 180ms ease,
+    visibility 0ms linear 0ms;
+}
+
+/* Flat tonal hover feedback without self-translation flicker */
+.macro-card-interactive {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+
+@media (hover: hover) {
+  .macro-card-interactive:hover {
+    border-color: var(--border-focus);
+  }
+}
+
+.hero-panel-active {
+  opacity: 1;
+}
+
+.hero-panel-off-left,
+.hero-panel-off-right {
+  opacity: 0;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   @keyframes macro-page-enter {
     from {
-      opacity: 0;
-      translate: 0 6px;
+      opacity: 0.94;
+      translate: 0 4px;
     }
     to {
       opacity: 1;
@@ -338,22 +555,11 @@ progress.macro-progress::-moz-progress-bar {
   @keyframes macro-panel-switch {
     from {
       opacity: 0;
-      translate: 0 4px;
-      filter: blur(2px);
+      translate: 0 3px;
     }
     to {
       opacity: 1;
       translate: 0 0;
-      filter: blur(0);
-    }
-  }
-
-  @keyframes macro-backdrop-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
     }
   }
 
@@ -371,18 +577,20 @@ progress.macro-progress::-moz-progress-bar {
   @keyframes macro-modal-in {
     from {
       opacity: 0;
-      scale: 0.96;
+      scale: 0.97;
+      translate: 0 6px;
     }
     to {
       opacity: 1;
       scale: 1;
+      translate: 0 0;
     }
   }
 
   @keyframes macro-card-enter {
     from {
-      opacity: 0;
-      translate: 0 8px;
+      opacity: 0.92;
+      translate: 0 5px;
     }
     to {
       opacity: 1;
@@ -393,11 +601,11 @@ progress.macro-progress::-moz-progress-bar {
   @keyframes macro-check-pop {
     0% {
       opacity: 0.7;
-      scale: 0.78;
+      scale: 0.8;
     }
     55% {
       opacity: 1;
-      scale: 1.1;
+      scale: 1.08;
     }
     100% {
       opacity: 1;
@@ -406,39 +614,37 @@ progress.macro-progress::-moz-progress-bar {
   }
 
   .animate-page-enter {
-    animation: macro-page-enter 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: macro-page-enter 160ms var(--ease-out-quint) both;
   }
 
   .animate-panel-switch {
-    animation: macro-panel-switch 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: macro-panel-switch 200ms var(--ease-out-quint) both;
   }
 
   .animate-backdrop-in {
-    animation: macro-backdrop-in 180ms ease-out both;
+    animation: macro-fade-in 160ms ease-out both;
   }
 
   .animate-sheet-in {
-    animation: macro-sheet-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
-    animation-timing-function: linear(0, 0.45 15%, 1.04 42%, 0.99 68%, 1 100%);
+    animation: macro-sheet-in 260ms var(--ease-out-quint) both;
   }
 
   .animate-modal-in {
-    animation: macro-modal-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
-    animation-timing-function: linear(0, 0.45 15%, 1.05 40%, 0.99 68%, 1 100%);
+    animation: macro-modal-in 200ms var(--ease-out-quint) both;
   }
 
   .animate-card-enter {
-    animation: macro-card-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: macro-card-enter 200ms var(--ease-out-quint) both;
   }
 
   .animate-check-pop {
-    animation: macro-check-pop 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: macro-check-pop 260ms var(--ease-out-quint) both;
   }
 
   @keyframes macro-stagger-up {
     from {
-      opacity: 0;
-      transform: translateY(8px);
+      opacity: 0.9;
+      transform: translateY(4px);
     }
     to {
       opacity: 1;
@@ -447,14 +653,14 @@ progress.macro-progress::-moz-progress-bar {
   }
 
   .stagger-item {
-    animation: macro-stagger-up 260ms var(--ease-out-quint) both;
-    animation-delay: calc(min(var(--stagger-index, 0), 8) * 28ms);
+    animation: macro-stagger-up 220ms var(--ease-out-quint) both;
+    animation-delay: calc(min(var(--stagger-index, 0), 6) * 22ms);
   }
 
   @keyframes macro-slide-from-right {
     from {
       opacity: 0;
-      transform: translateX(14px);
+      transform: translateX(12px);
     }
     to {
       opacity: 1;
@@ -465,7 +671,7 @@ progress.macro-progress::-moz-progress-bar {
   @keyframes macro-slide-from-left {
     from {
       opacity: 0;
-      transform: translateX(-14px);
+      transform: translateX(-12px);
     }
     to {
       opacity: 1;
@@ -474,11 +680,29 @@ progress.macro-progress::-moz-progress-bar {
   }
 
   .slide-enter-right {
-    animation: macro-slide-from-right 240ms var(--ease-out-quint) both;
+    animation: macro-slide-from-right 220ms var(--ease-out-quint) both;
   }
 
   .slide-enter-left {
-    animation: macro-slide-from-left 240ms var(--ease-out-quint) both;
+    animation: macro-slide-from-left 220ms var(--ease-out-quint) both;
+  }
+
+  .hero-panel-slide {
+    transition:
+      opacity 220ms var(--ease-out-quint),
+      transform 220ms var(--ease-out-quint);
+  }
+
+  .hero-panel-active {
+    transform: translateX(0);
+  }
+
+  .hero-panel-off-left {
+    transform: translateX(-12px);
+  }
+
+  .hero-panel-off-right {
+    transform: translateX(12px);
   }
 
   @keyframes macro-shimmer {
@@ -501,12 +725,44 @@ progress.macro-progress::-moz-progress-bar {
     animation: macro-shimmer 1.6s ease-in-out infinite;
   }
 
-  /* Directional View Transitions */
-  html[data-transition-direction="forward"]::view-transition-old(root) {
-    animation: 180ms var(--ease-out-quint) both fade-out;
+  .segmented-thumb {
+    transition:
+      transform 220ms var(--ease-out-quint),
+      width 220ms var(--ease-out-quint);
   }
-  html[data-transition-direction="backward"]::view-transition-old(root) {
-    animation: 180ms var(--ease-out-quint) both fade-out;
+
+  .undo-toast-bar {
+    transform-origin: left center;
+    animation: macro-toast-countdown 5000ms linear forwards;
+  }
+
+  .undo-toast-card:hover .undo-toast-bar,
+  .undo-toast-card:focus-within .undo-toast-bar {
+    animation-play-state: paused;
+  }
+
+  .macro-bar-fill {
+    transform-origin: left center;
+    transition: transform 420ms var(--ease-out-quint);
+  }
+
+  .macro-bar-fill-y {
+    transform-origin: bottom center;
+    transition: transform 360ms var(--ease-out-quint);
+  }
+
+  /* Directional View Transitions on date-stage */
+  html[data-transition-direction="forward"]::view-transition-old(date-stage) {
+    animation: 180ms var(--ease-out-quint) both macro-vt-out-left;
+  }
+  html[data-transition-direction="forward"]::view-transition-new(date-stage) {
+    animation: 220ms var(--ease-out-quint) both macro-vt-in-right;
+  }
+  html[data-transition-direction="backward"]::view-transition-old(date-stage) {
+    animation: 180ms var(--ease-out-quint) both macro-vt-out-right;
+  }
+  html[data-transition-direction="backward"]::view-transition-new(date-stage) {
+    animation: 220ms var(--ease-out-quint) both macro-vt-in-left;
   }
 
   .macro-spring {
@@ -516,24 +772,8 @@ progress.macro-progress::-moz-progress-bar {
     transition-timing-function: linear(0, 0.45 15%, 1.06 38%, 0.98 62%, 1 100%);
   }
 
-  .macro-card-interactive {
-    transition:
-      transform 220ms var(--ease-out-expo),
-      background-color 180ms ease,
-      border-color 180ms ease,
-      box-shadow 220ms ease;
-  }
-
-  @media (hover: hover) {
-    .macro-card-interactive:hover {
-      translate: 0 -1px;
-      border-color: var(--border-focus);
-      box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.28);
-    }
-  }
-
   .macro-arc-transition {
-    transition: stroke-dashoffset 600ms var(--ease-out-expo);
+    transition: stroke-dashoffset 600ms var(--ease-out-quint);
   }
 }
 
@@ -544,11 +784,42 @@ progress.macro-progress::-moz-progress-bar {
   .animate-sheet-in,
   .animate-modal-in,
   .animate-card-enter,
+  .animate-check-pop,
   .stagger-item,
   .slide-enter-right,
   .slide-enter-left {
-    animation: macro-backdrop-in 120ms ease-out both;
+    animation: macro-fade-in 120ms ease-out both;
     transform: none !important;
+    translate: none !important;
+  }
+
+  .accordion-grid,
+  .accordion-grid[data-open="true"] {
+    transition:
+      opacity 120ms ease,
+      visibility 0ms linear 0ms;
+  }
+
+  .segmented-thumb {
+    transition: none;
+  }
+
+  .undo-toast-bar {
+    animation: none;
+  }
+
+  .macro-bar-fill,
+  .macro-bar-fill-y,
+  .macro-arc-transition {
+    transition: none;
+  }
+
+  .hero-panel-slide {
+    transition: opacity 120ms ease-out;
+  }
+
+  .segmented-pill-reduce {
+    transition: opacity 120ms ease-out;
   }
 
   .tactile-press:active:not(:disabled) {
@@ -564,6 +835,12 @@ progress.macro-progress::-moz-progress-bar {
   ::view-transition-old(*),
   ::view-transition-new(*) {
     animation-duration: 120ms !important;
+  }
+
+  ::view-transition-group(bottom-chrome),
+  ::view-transition-old(bottom-chrome),
+  ::view-transition-new(bottom-chrome) {
+    animation: none !important;
   }
 
   progress.macro-progress::-webkit-progress-value {

@@ -201,14 +201,14 @@ export function AddBarcodeProductModal({
       role="dialog"
       aria-modal="true"
       aria-label="Add Missing Product"
-      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs transition-opacity"
+      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-6 bg-black/70 backdrop-blur-xs animate-backdrop-in"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] animate-sheet-in max-h-[92vh] flex flex-col"
+        className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 animate-sheet-in sm:animate-modal-in max-h-[90dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0" aria-hidden="true" />
+        <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0 sm:hidden" aria-hidden="true" />
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-border">
           <div>
@@ -270,7 +270,7 @@ export function AddBarcodeProductModal({
         </div>
 
         {/* Form */}
-        <form noValidate onSubmit={handleSaveAndLog} className="flex-1 overflow-y-auto space-y-3 pt-1 pr-0.5">
+        <form noValidate onSubmit={handleSaveAndLog} className="flex-1 overflow-y-auto overscroll-contain space-y-3 pt-1 pr-0.5">
           {/* Product Name */}
           <div className="space-y-1">
             <label htmlFor="product-name" className="text-xs font-semibold text-foreground">
@@ -286,7 +286,7 @@ export function AddBarcodeProductModal({
               onChange={(e) => setName(e.target.value)}
               onBlur={() => setTouchedName(true)}
               placeholder="e.g. Whey Isolate, Greek Yogurt"
-              className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground placeholder:text-muted-foreground/50"
+              className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground placeholder:text-muted-foreground/50"
             />
             {touchedName && !name.trim() && (
               <p className="text-[11px] text-[var(--neutral-over)]">
@@ -307,7 +307,7 @@ export function AddBarcodeProductModal({
               value={brand}
               onChange={(e) => setBrand(e.target.value)}
               placeholder="e.g. Optimum Nutrition, Chobani"
-              className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground placeholder:text-muted-foreground/50"
+              className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground placeholder:text-muted-foreground/50"
             />
           </div>
 
@@ -337,7 +337,7 @@ export function AddBarcodeProductModal({
                     );
                   }
                 }}
-                className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
+                className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
               />
               {servingError && (
                 <p className="text-[11px] text-[var(--neutral-over)]">{servingError}</p>
@@ -352,7 +352,7 @@ export function AddBarcodeProductModal({
                 aria-label="Serving Unit"
                 value={servingUnit}
                 onChange={(e) => setServingUnit(e.target.value as 'g' | 'ml' | 'serving')}
-                className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground"
+                className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground"
               >
                 <option value="g">g</option>
                 <option value="ml">ml</option>
@@ -377,7 +377,7 @@ export function AddBarcodeProductModal({
                 value={calories}
                 onChange={(e) => setCalories(e.target.value)}
                 placeholder="0"
-                className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
+                className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
               />
             </div>
             <div className="space-y-1">
@@ -394,7 +394,7 @@ export function AddBarcodeProductModal({
                 value={protein}
                 onChange={(e) => setProtein(e.target.value)}
                 placeholder="0"
-                className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
+                className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
               />
             </div>
           </div>
@@ -414,7 +414,7 @@ export function AddBarcodeProductModal({
                 value={carbs}
                 onChange={(e) => setCarbs(e.target.value)}
                 placeholder="0"
-                className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
+                className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
               />
             </div>
             <div className="space-y-1">
@@ -430,7 +430,7 @@ export function AddBarcodeProductModal({
                 value={fat}
                 onChange={(e) => setFat(e.target.value)}
                 placeholder="0"
-                className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
+                className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
               />
             </div>
           </div>
@@ -450,7 +450,7 @@ export function AddBarcodeProductModal({
                 value={fiber}
                 onChange={(e) => setFiber(e.target.value)}
                 placeholder="0"
-                className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
+                className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
               />
             </div>
             <div className="space-y-1">
@@ -466,7 +466,7 @@ export function AddBarcodeProductModal({
                 value={sodiumMg}
                 onChange={(e) => setSodiumMg(e.target.value)}
                 placeholder="0"
-                className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
+                className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:border-border-focus focus:outline-none text-foreground tabular-nums"
               />
             </div>
           </div>

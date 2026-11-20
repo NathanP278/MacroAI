@@ -77,8 +77,8 @@ export const HitlIngredientRow = React.memo(function HitlIngredientRow({
   return (
     <div className="bg-surface-sub/80 border border-border rounded-2xl p-3.5 space-y-3 shadow-sm hover:border-border-focus/40 transition-colors">
       {/* Top Header: Name, Source Badge, Verify/Swap trigger, Delete button */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex-1 min-w-0 flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex-1 min-w-[140px] flex items-center gap-2">
           <span className="font-semibold text-sm text-foreground truncate">
             {item.name}
           </span>
@@ -163,14 +163,14 @@ export const HitlIngredientRow = React.memo(function HitlIngredientRow({
             value={item.grams === 0 ? '' : item.grams}
             placeholder="0"
             onChange={handleNumberChange}
-            className="w-16 px-2 py-1 text-xs font-semibold text-right tabular-nums bg-surface-elevated border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+            className="w-16 px-2 py-1 text-base sm:text-xs font-semibold text-right tabular-nums bg-surface-elevated border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
           />
           <span className="text-xs font-medium text-muted-foreground">g</span>
         </div>
       </div>
 
       {/* Quick Multiplier Chips (Row-specific) */}
-      <div className="flex items-center gap-1.5 pt-0.5">
+      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
         <span className="text-[10px] text-muted-foreground font-medium mr-1">Scale:</span>
         {MULTIPLIERS.map((m) => {
           const targetGrams = Math.round((baselineGrams || 100) * m);
@@ -180,7 +180,7 @@ export const HitlIngredientRow = React.memo(function HitlIngredientRow({
               key={m}
               type="button"
               onClick={() => handleMultiplierClick(m)}
-              className={`macro-spring active:scale-95 px-2.5 py-0.5 text-[11px] font-semibold rounded-full border ${
+              className={`tactile-press px-2.5 py-1 text-[11px] font-semibold rounded-full border ${
                 isSelected
                   ? 'bg-foreground text-background border-foreground shadow-xs'
                   : 'bg-surface-elevated border-border text-foreground/80 hover:text-foreground'

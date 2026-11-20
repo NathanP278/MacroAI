@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-15T02:25:00Z",
+  "generatedAt": "2026-11-20T11:47:00Z",
   "title": "Design System: MacroAI",
   "extensions": {
     "colorMeta": {
@@ -61,13 +61,13 @@
       "obsidian-elevated": {
         "role": "neutral",
         "displayName": "Elevated Sheet",
-        "canonical": "#28282d",
-        "tonalRamp": ["#151518", "#202024", "#28282d", "#3b3b42", "#585862", "#81818e", "#b9b9c3", "#ececf0"]
+        "canonical": "#222226",
+        "tonalRamp": ["#111114", "#1a1a1d", "#222226", "#34343a", "#505059", "#7a7a85", "#b4b4be", "#ececf0"]
       },
       "obsidian-hairline": {
         "role": "neutral",
         "displayName": "Obsidian Hairline",
-        "canonical": "rgba(255, 255, 255, 0.06)",
+        "canonical": "rgba(255, 255, 255, 0.07)",
         "tonalRamp": ["#141416", "#1a1a1d", "#232327", "#323238", "#4d4d55", "#767680", "#b2b2bc", "#ededf2"]
       },
       "ink-primary": {
@@ -79,8 +79,8 @@
       "ink-muted": {
         "role": "neutral",
         "displayName": "Slate Muted Ink",
-        "canonical": "#8e8e93",
-        "tonalRamp": ["#18181a", "#2b2b2e", "#46464a", "#69696f", "#8e8e93", "#ababb0", "#ccccd0", "#ededef"]
+        "canonical": "#9a9aa2",
+        "tonalRamp": ["#19191c", "#2d2d31", "#494950", "#6f6f77", "#9a9aa2", "#b6b6bc", "#d4d4d8", "#f0f0f2"]
       },
       "light-canvas": {
         "role": "neutral",
@@ -135,26 +135,36 @@
     },
     "shadows": [
       {
-        "name": "floating-search-pill",
-        "value": "0 8px 24px rgba(0, 0, 0, 0.28)",
-        "purpose": "Lifts the pinned Search for a food strip gently above scrolling content."
+        "name": "surface-floating-bar",
+        "value": "0 16px 40px -8px rgba(0, 0, 0, 0.55), 0 2px 10px -2px rgba(0, 0, 0, 0.35)",
+        "purpose": "Lifts the pinned Search for a food strip, UndoToast, and BottomNav gently above scrolling content (--shadow-ambient)."
       },
       {
-        "name": "modal-dock-sheet",
-        "value": "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-        "purpose": "Separates bottom-anchored Quick Action modal drawers from the dimmed backdrop."
+        "name": "surface-elevated-sheet",
+        "value": "0 24px 56px -12px rgba(0, 0, 0, 0.7), 0 4px 16px -4px rgba(0, 0, 0, 0.45)",
+        "purpose": "Separates adaptive bottom sheets, Quick Action dock, and centered desktop dialogs from dimmed backdrops (--shadow-floating)."
       }
     ],
     "motion": [
       {
-        "name": "gauge-ease-out",
-        "value": "cubic-bezier(0, 0, 0.2, 1)",
-        "purpose": "300ms fill transitions on horseshoe arc and calorie bar fills (disabled under prefers-reduced-motion)."
+        "name": "ease-out-quart",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "140ms tactile-press response and horizontal macro fill deceleration."
       },
       {
-        "name": "pill-tap-press",
-        "value": "150ms cubic-bezier(0.4, 0, 0.2, 1)",
-        "purpose": "Crisp color and active scale feedback on segmented pills, tile hovers, and centered FAB."
+        "name": "ease-out-quint",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "220ms hero panel cross-slides, SegmentedControl thumb travel, CSS Grid accordion disclosures, and 600ms calorie arc sweeps (replaced by <=120ms opacity cross-dissolves under prefers-reduced-motion)."
+      },
+      {
+        "name": "macro-arc-transition",
+        "value": "600ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Smooth stroke-dashoffset sweep across the 240-degree calorie horseshoe arc."
+      },
+      {
+        "name": "tactile-press",
+        "value": "140ms cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Subtle scale(0.97) press and background feedback on buttons, pills, and compact action triggers."
       }
     ],
     "breakpoints": [
@@ -171,7 +181,7 @@
       "refersTo": "button-primary",
       "description": "High-contrast monochrome toggle switch for Today/7-Day views and Consumed/Remaining telemetry modes.",
       "html": "<div class=\"ds-pill-group\" role=\"group\" aria-label=\"Display mode\"><button type=\"button\" class=\"ds-pill ds-pill-active\" aria-pressed=\"true\">Consumed</button><button type=\"button\" class=\"ds-pill\" aria-pressed=\"false\">Remaining</button></div>",
-      "css": ".ds-pill-group { display: inline-flex; align-items: center; gap: 2px; background: var(--surface-sub, #2a2a30); padding: 4px; border-radius: 9999px; font-family: var(--font-sans, system-ui, sans-serif); } .ds-pill { border: 0; background: transparent; color: var(--muted-foreground, #8e8e93); font-size: 12px; font-weight: 500; padding: 6px 20px; border-radius: 9999px; cursor: pointer; transition: color 0.15s ease, background-color 0.15s ease; } .ds-pill:hover { color: var(--foreground, #f5f5f7); } .ds-pill:focus-visible { outline: 2px solid var(--ring, #6c8eff); outline-offset: 2px; } .ds-pill-active, .ds-pill-active:hover { background: var(--foreground, #f5f5f7); color: var(--background, #141416); font-weight: 600; }"
+      "css": ".ds-pill-group { display: inline-flex; align-items: center; gap: 2px; background: var(--surface-sub, #2a2a30); padding: 4px; border-radius: 9999px; font-family: var(--font-sans, system-ui, sans-serif); } .ds-pill { border: 0; background: transparent; color: var(--muted-foreground, #9a9aa2); font-size: 12px; font-weight: 500; padding: 6px 20px; border-radius: 9999px; cursor: pointer; transition: color 0.15s ease, background-color 0.15s ease; } .ds-pill:hover { color: var(--foreground, #f5f5f7); } .ds-pill:focus-visible { outline: 2px solid var(--ring, #6c8eff); outline-offset: 2px; } .ds-pill-active, .ds-pill-active:hover { background: var(--foreground, #f5f5f7); color: var(--background, #141416); font-weight: 600; }"
     },
     {
       "name": "Center Quick Action FAB",
@@ -179,7 +189,7 @@
       "refersTo": "nav-fab",
       "description": "Solid monochrome circular plus button centered inside the bottom navigation bar.",
       "html": "<button type=\"button\" class=\"ds-fab\" aria-label=\"Open quick actions\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12h14\"/><path d=\"M12 5v14\"/></svg></button>",
-      "css": ".ds-fab { width: 44px; height: 44px; border-radius: 9999px; border: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--foreground, #f5f5f7); color: var(--background, #141416); cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.2); transition: opacity 0.15s ease, transform 0.12s ease; } .ds-fab:hover { opacity: 0.9; } .ds-fab:active { transform: scale(0.95); } .ds-fab:focus-visible { outline: 2px solid var(--ring, #6c8eff); outline-offset: 2px; }"
+      "css": ".ds-fab { width: 44px; height: 44px; border-radius: 9999px; border: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--foreground, #f5f5f7); color: var(--background, #141416); cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.2); transition: opacity 0.15s ease, transform 0.14s cubic-bezier(0.22, 1, 0.36, 1); } .ds-fab:hover { opacity: 0.9; } .ds-fab:active { transform: scale(0.97); } .ds-fab:focus-visible { outline: 2px solid var(--ring, #6c8eff); outline-offset: 2px; }"
     },
     {
       "name": "Daily Nutrition Horseshoe Card",
@@ -187,7 +197,7 @@
       "refersTo": "card-bento",
       "description": "Primary hero telemetry card pairing an open 240-degree Calorie horseshoe arc with 3-column macro progress bars.",
       "html": "<section class=\"ds-hero-card\"><div class=\"ds-hero-head\"><h2 class=\"ds-hero-title\">Daily Nutrition</h2><div class=\"ds-mini-tabs\"><span class=\"ds-mini-tab ds-mini-tab-active\">Today</span><span class=\"ds-mini-tab\">7-Day</span></div></div><div class=\"ds-arc-row\"><div class=\"ds-flank\"><div class=\"ds-flank-val\">535</div><div class=\"ds-flank-lbl\">Remaining</div></div><div class=\"ds-arc-wrap\"><svg viewBox=\"0 0 168 168\" width=\"136\" height=\"124\"><circle cx=\"84\" cy=\"88\" r=\"66\" fill=\"none\" stroke=\"var(--surface-sub, #2a2a30)\" stroke-width=\"9\" stroke-dasharray=\"276.46 414.69\" stroke-linecap=\"round\" transform=\"rotate(150 84 88)\"/><circle cx=\"84\" cy=\"88\" r=\"66\" fill=\"none\" stroke=\"var(--macro-calories, #6c8eff)\" stroke-width=\"9\" stroke-dasharray=\"220.5 414.69\" stroke-linecap=\"round\" transform=\"rotate(150 84 88)\"/></svg><div class=\"ds-arc-center\"><span class=\"ds-arc-val\">2,108</span><span class=\"ds-arc-lbl\">Consumed</span></div></div><div class=\"ds-flank\"><div class=\"ds-flank-val\">2,643</div><div class=\"ds-flank-lbl\">Target</div></div></div><div class=\"ds-macro-grid\"><div class=\"ds-macro-col\"><span class=\"ds-macro-name\">Protein</span><div class=\"ds-track\"><div class=\"ds-fill\" style=\"width:82%;background:var(--macro-protein,#e56b4e)\"></div></div><span class=\"ds-macro-num\">103 / 126g</span></div><div class=\"ds-macro-col\"><span class=\"ds-macro-name\">Fat</span><div class=\"ds-track\"><div class=\"ds-fill\" style=\"width:100%;background:var(--macro-fat,#e8c547)\"></div></div><span class=\"ds-macro-num\">94 / 58g</span></div><div class=\"ds-macro-col\"><span class=\"ds-macro-name\">Carbs</span><div class=\"ds-track\"><div class=\"ds-fill\" style=\"width:54%;background:var(--macro-carbs,#4caf79)\"></div></div><span class=\"ds-macro-num\">218 / 403g</span></div></div></section>",
-      "css": ".ds-hero-card { background: var(--surface-card, #1c1c1f); color: var(--foreground, #f5f5f7); border-radius: 16px; padding: 20px; font-family: var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; display: flex; flex-direction: column; gap: 16px; } .ds-hero-head { display: flex; align-items: center; justify-content: space-between; } .ds-hero-title { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -0.015em; } .ds-mini-tabs { display: flex; gap: 4px; background: var(--surface-sub, #2a2a30); padding: 4px 6px; border-radius: 9999px; font-size: 11px; } .ds-mini-tab { padding: 2px 8px; border-radius: 9999px; color: var(--muted-foreground, #8e8e93); font-weight: 500; } .ds-mini-tab-active { background: var(--foreground, #f5f5f7); color: var(--background, #141416); font-weight: 600; } .ds-arc-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; } .ds-flank { text-align: center; } .ds-flank-val { font-size: 18px; font-weight: 700; } .ds-flank-lbl { font-size: 11px; color: var(--muted-foreground, #8e8e93); } .ds-arc-wrap { position: relative; display: flex; align-items: center; justify-content: center; width: 136px; height: 124px; } .ds-arc-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 8px; } .ds-arc-val { font-size: 30px; font-weight: 700; line-height: 1.1; } .ds-arc-lbl { font-size: 12px; color: var(--muted-foreground, #8e8e93); } .ds-macro-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } .ds-macro-col { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; } .ds-macro-name { font-size: 11px; color: var(--muted-foreground, #8e8e93); } .ds-track { width: 100%; height: 6px; border-radius: 9999px; background: var(--surface-sub, #2a2a30); overflow: hidden; } .ds-fill { height: 100%; border-radius: 9999px; } .ds-macro-num { font-size: 11px; font-weight: 600; white-space: nowrap; }"
+      "css": ".ds-hero-card { background: var(--surface-card, #1c1c1f); color: var(--foreground, #f5f5f7); border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06)); border-radius: 16px; padding: 20px; font-family: var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; display: flex; flex-direction: column; gap: 16px; } .ds-hero-head { display: flex; align-items: center; justify-content: space-between; } .ds-hero-title { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -0.015em; } .ds-mini-tabs { display: flex; gap: 4px; background: var(--surface-sub, #2a2a30); padding: 4px 6px; border-radius: 9999px; font-size: 11px; } .ds-mini-tab { padding: 2px 8px; border-radius: 9999px; color: var(--muted-foreground, #9a9aa2); font-weight: 500; } .ds-mini-tab-active { background: var(--foreground, #f5f5f7); color: var(--background, #141416); font-weight: 600; } .ds-arc-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; } .ds-flank { text-align: center; } .ds-flank-val { font-size: 18px; font-weight: 700; } .ds-flank-lbl { font-size: 11px; color: var(--muted-foreground, #9a9aa2); } .ds-arc-wrap { position: relative; display: flex; align-items: center; justify-content: center; width: 136px; height: 124px; } .ds-arc-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 8px; } .ds-arc-val { font-size: 30px; font-weight: 700; line-height: 1.1; } .ds-arc-lbl { font-size: 12px; color: var(--muted-foreground, #9a9aa2); } .ds-macro-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } .ds-macro-col { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; } .ds-macro-name { font-size: 11px; color: var(--muted-foreground, #9a9aa2); } .ds-track { width: 100%; height: 6px; border-radius: 9999px; background: var(--surface-sub, #2a2a30); overflow: hidden; } .ds-fill { height: 100%; border-radius: 9999px; } .ds-macro-num { font-size: 11px; font-weight: 600; white-space: nowrap; }"
     },
     {
       "name": "Calories Target Notch Tile",
@@ -195,7 +205,7 @@
       "refersTo": "card-bento",
       "description": "Compact analytics bento tile with a Cornflower Blue horizontal energy bar and vertical white target tick.",
       "html": "<a href=\"#\" class=\"ds-bento-tile\"><div><div class=\"ds-tile-title\">Calories</div><div class=\"ds-tile-sub\">Today</div></div><div class=\"ds-notch-track\"><div class=\"ds-notch-fill\" style=\"width:72%\"></div><span class=\"ds-notch-tick\" style=\"left:87%\"></span></div><div class=\"ds-tile-foot\"><span class=\"ds-tile-metric\">2,108 <small>kcal</small></span><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m9 18 6-6-6-6\"/></svg></div></a>",
-      "css": ".ds-bento-tile { display: flex; flex-direction: column; justify-content: space-between; gap: 16px; padding: 14px; border-radius: 16px; background: var(--surface-card, #1c1c1f); color: var(--foreground, #f5f5f7); text-decoration: none; font-family: var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; transition: background-color 0.15s ease; } .ds-bento-tile:hover { background: var(--surface-sub, #2a2a30); } .ds-bento-tile:focus-visible { outline: 2px solid var(--ring, #6c8eff); outline-offset: 2px; } .ds-tile-title { font-size: 14px; font-weight: 600; } .ds-tile-sub { font-size: 11px; color: var(--muted-foreground, #8e8e93); } .ds-notch-track { position: relative; width: 100%; height: 14px; border-radius: 3px; background: var(--surface-sub, #2a2a30); overflow: hidden; } .ds-notch-fill { height: 100%; background: var(--macro-calories, #6c8eff); border-radius: 3px; } .ds-notch-tick { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--foreground, #f5f5f7); opacity: 0.78; } .ds-tile-foot { display: flex; align-items: center; justify-content: space-between; color: var(--muted-foreground, #8e8e93); } .ds-tile-metric { font-size: 14px; font-weight: 700; color: var(--foreground, #f5f5f7); } .ds-tile-metric small { font-size: 12px; font-weight: 400; color: var(--muted-foreground, #8e8e93); }"
+      "css": ".ds-bento-tile { display: flex; flex-direction: column; justify-content: space-between; gap: 16px; padding: 14px; border-radius: 16px; border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06)); background: var(--surface-card, #1c1c1f); color: var(--foreground, #f5f5f7); text-decoration: none; font-family: var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; transition: background-color 0.18s ease, border-color 0.18s ease; } .ds-bento-tile:hover { border-color: var(--border-focus, rgba(255, 255, 255, 0.16)); } .ds-bento-tile:focus-visible { outline: 2px solid var(--ring, #6c8eff); outline-offset: 2px; } .ds-tile-title { font-size: 14px; font-weight: 600; } .ds-tile-sub { font-size: 11px; color: var(--muted-foreground, #9a9aa2); } .ds-notch-track { position: relative; width: 100%; height: 14px; border-radius: 3px; background: var(--surface-sub, #2a2a30); overflow: hidden; } .ds-notch-fill { height: 100%; background: var(--macro-calories, #6c8eff); border-radius: 3px; } .ds-notch-tick { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--foreground, #f5f5f7); opacity: 0.78; } .ds-tile-foot { display: flex; align-items: center; justify-content: space-between; color: var(--muted-foreground, #9a9aa2); } .ds-tile-metric { font-size: 14px; font-weight: 700; color: var(--foreground, #f5f5f7); } .ds-tile-metric small { font-size: 12px; font-weight: 400; color: var(--muted-foreground, #9a9aa2); }"
     },
     {
       "name": "Food Logging 30-Day Dot Matrix",
@@ -203,7 +213,7 @@
       "refersTo": "card-bento",
       "description": "Habits tile plotting the last 30 logging days as a 10x3 grid of Cornflower Blue active squares over matte wells.",
       "html": "<div class=\"ds-habit-tile\"><div><div class=\"ds-tile-title\">Food Logging</div><div class=\"ds-tile-sub\">Last 30 Days</div></div><div class=\"ds-dot-grid\"><span class=\"ds-dot ds-dot-on\"></span><span class=\"ds-dot ds-dot-on\"></span><span class=\"ds-dot\"></span><span class=\"ds-dot ds-dot-on\"></span><span class=\"ds-dot ds-dot-on\"></span><span class=\"ds-dot ds-dot-on\"></span><span class=\"ds-dot ds-dot-on\"></span><span class=\"ds-dot ds-dot-on\"></span><span class=\"ds-dot ds-dot-on\"></span><span class=\"ds-dot ds-dot-on\"></span></div><div class=\"ds-habit-foot\"><strong>7/7</strong> this week</div></div>",
-      "css": ".ds-habit-tile { display: flex; flex-direction: column; justify-content: space-between; gap: 12px; padding: 14px; border-radius: 16px; background: var(--surface-card, #1c1c1f); color: var(--foreground, #f5f5f7); font-family: var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; } .ds-dot-grid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; } .ds-dot { aspect-ratio: 1; border-radius: 3px; background: var(--surface-sub, #2a2a30); } .ds-dot-on { background: var(--macro-calories, #6c8eff); } .ds-habit-foot { font-size: 12px; color: var(--muted-foreground, #8e8e93); } .ds-habit-foot strong { font-size: 14px; color: var(--foreground, #f5f5f7); }"
+      "css": ".ds-habit-tile { display: flex; flex-direction: column; justify-content: space-between; gap: 12px; padding: 14px; border-radius: 16px; border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06)); background: var(--surface-card, #1c1c1f); color: var(--foreground, #f5f5f7); font-family: var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; } .ds-dot-grid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; } .ds-dot { aspect-ratio: 1; border-radius: 3px; background: var(--surface-sub, #2a2a30); } .ds-dot-on { background: var(--macro-calories, #6c8eff); } .ds-habit-foot { font-size: 12px; color: var(--muted-foreground, #9a9aa2); } .ds-habit-foot strong { font-size: 14px; color: var(--foreground, #f5f5f7); }"
     },
     {
       "name": "Persistent Quick Search Strip",
@@ -211,7 +221,7 @@
       "refersTo": "input-search-dock",
       "description": "Floating glass-obsidian search launcher above the bottom dock with barcode and AI meal scan triggers.",
       "html": "<div class=\"ds-search-strip\"><button type=\"button\" class=\"ds-search-trigger\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg><span>Search for a food</span></button><div class=\"ds-search-actions\"><button type=\"button\" class=\"ds-search-icon-btn\" aria-label=\"Barcode camera\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M3 7V5a2 2 0 0 1 2-2h2\"/><path d=\"M17 3h2a2 2 0 0 1 2 2v2\"/><path d=\"M21 17v2a2 2 0 0 1-2 2h-2\"/><path d=\"M7 21H5a2 2 0 0 1-2-2v-2\"/><path d=\"M8 7v10\"/><path d=\"M12 7v10\"/><path d=\"M17 7v10\"/></svg></button><button type=\"button\" class=\"ds-search-icon-btn ds-search-ai\" aria-label=\"AI photo scan\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z\"/></svg></button></div></div>",
-      "css": ".ds-search-strip { height: 44px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--border, rgba(255,255,255,0.06)); background: color-mix(in srgb, var(--surface-card, #1c1c1f) 95%, transparent); backdrop-filter: blur(12px); box-shadow: 0 8px 24px rgba(0,0,0,0.28); display: flex; align-items: center; gap: 8px; font-family: var(--font-sans, system-ui, sans-serif); } .ds-search-trigger { flex: 1; height: 100%; border: 0; background: transparent; color: var(--muted-foreground, #8e8e93); display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 500; cursor: pointer; text-align: left; } .ds-search-trigger:hover { color: var(--foreground, #f5f5f7); } .ds-search-trigger:focus-visible, .ds-search-icon-btn:focus-visible { outline: 2px solid var(--ring, #6c8eff); outline-offset: 1px; } .ds-search-actions { display: flex; align-items: center; gap: 4px; } .ds-search-icon-btn { width: 32px; height: 32px; border-radius: 12px; border: 0; background: transparent; color: var(--muted-foreground, #8e8e93); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background-color 0.15s ease, color 0.15s ease; } .ds-search-icon-btn:hover { background: var(--surface-sub, #2a2a30); color: var(--foreground, #f5f5f7); } .ds-search-ai { color: var(--macro-calories, #6c8eff); }"
+      "css": ".ds-search-strip { height: 44px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--border-hairline, rgba(255,255,255,0.07)); background: color-mix(in srgb, var(--surface-card, #1c1c1f) 85%, transparent); backdrop-filter: blur(16px); box-shadow: var(--shadow-ambient, 0 16px 40px -8px rgba(0,0,0,0.55)); display: flex; align-items: center; gap: 8px; font-family: var(--font-sans, system-ui, sans-serif); } .ds-search-trigger { flex: 1; height: 100%; border: 0; background: transparent; color: var(--muted-foreground, #9a9aa2); display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 500; cursor: pointer; text-align: left; } .ds-search-trigger:hover { color: var(--foreground, #f5f5f7); } .ds-search-trigger:focus-visible, .ds-search-icon-btn:focus-visible { outline: 2px solid var(--ring, #6c8eff); outline-offset: 1px; } .ds-search-actions { display: flex; align-items: center; gap: 4px; } .ds-search-icon-btn { width: 32px; height: 32px; border-radius: 12px; border: 0; background: transparent; color: var(--muted-foreground, #9a9aa2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background-color 0.15s ease, color 0.15s ease; } .ds-search-icon-btn:hover { background: var(--surface-sub, #2a2a30); color: var(--foreground, #f5f5f7); } .ds-search-ai { color: var(--macro-calories, #6c8eff); }"
     },
     {
       "name": "Bottom Navigation Bar",
@@ -219,7 +229,7 @@
       "refersTo": "nav-fab",
       "description": "Docked monochrome four-tab bar anchored around the centered solid white quick-action button.",
       "html": "<nav class=\"ds-bottom-nav\" aria-label=\"Bottom Navigation\"><a href=\"#\" class=\"ds-nav-item ds-nav-active\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.25\"><rect width=\"7\" height=\"7\" x=\"3\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"7\" x=\"14\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"7\" x=\"14\" y=\"14\" rx=\"1\"/><rect width=\"7\" height=\"7\" x=\"3\" y=\"14\" rx=\"1\"/></svg><span>Dashboard</span></a><a href=\"#\" class=\"ds-nav-item\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><path d=\"M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z\"/><path d=\"M10 2c1 .5 2 2 2 5\"/></svg><span>Food Log</span></a><button type=\"button\" class=\"ds-fab\" aria-label=\"Open quick actions\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\"><path d=\"M5 12h14\"/><path d=\"M12 5v14\"/></svg></button><a href=\"#\" class=\"ds-nav-item\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><path d=\"m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8\"/><path d=\"M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7\"/><path d=\"m2.1 21.8 6.4-6.3\"/><path d=\"m19 5-7 7\"/></svg><span>Recipes</span></a><a href=\"#\" class=\"ds-nav-item\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><path d=\"M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg><span>Settings</span></a></nav>",
-      "css": ".ds-bottom-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 16px; border-top: 1px solid var(--border, rgba(255,255,255,0.06)); background: color-mix(in srgb, var(--surface-card, #1c1c1f) 95%, transparent); backdrop-filter: blur(12px); font-family: var(--font-sans, system-ui, sans-serif); } .ds-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; text-decoration: none; color: var(--muted-foreground, #8e8e93); font-size: 10px; transition: color 0.15s ease; } .ds-nav-item:hover { color: var(--foreground, #f5f5f7); } .ds-nav-active { color: var(--foreground, #f5f5f7); font-weight: 600; } .ds-fab { width: 44px; height: 44px; border-radius: 9999px; border: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--foreground, #f5f5f7); color: var(--background, #141416); cursor: pointer; flex-shrink: 0; }"
+      "css": ".ds-bottom-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 16px; border-top: 1px solid var(--border-hairline, rgba(255,255,255,0.07)); background: color-mix(in srgb, var(--surface-card, #1c1c1f) 85%, transparent); backdrop-filter: blur(16px); font-family: var(--font-sans, system-ui, sans-serif); } .ds-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; text-decoration: none; color: var(--muted-foreground, #9a9aa2); font-size: 10px; transition: color 0.15s ease; } .ds-nav-item:hover { color: var(--foreground, #f5f5f7); } .ds-nav-active { color: var(--foreground, #f5f5f7); font-weight: 600; } .ds-fab { width: 44px; height: 44px; border-radius: 9999px; border: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--foreground, #f5f5f7); color: var(--background, #141416); cursor: pointer; flex-shrink: 0; }"
     }
   ],
   "narrative": {
@@ -250,19 +260,13 @@
         "name": "The Tonal Slab Rule",
         "body": "Dashboard cards rest flat on `#141416` using `#1c1c1f` fill alone; reserve blurs and drop shadows exclusively for pinned bottom strips and modal sheets.",
         "section": "elevation"
-      },
-      {
-        "name": "The Multi-Page Bento Parity Rule",
-        "body": "Every top-level route (`/`, `/log`, `/recipes`, `/settings`) uses the unified `max-w-6xl` container (`px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-8`) and responsive multi-column bento grids with `.macro-spring`, `.touch-target`, and `prefers-reduced-motion`-gated keyframes.",
-        "section": "layout"
       }
     ],
     "dos": [
       "Do enforce **The Adherence Neutrality Rule**: render over-target values with neutral `+N` / `Surplus` labels and slate accents (`#94a3b8`), keeping nutrient colors steady.",
       "Do enforce **The Tabular Lock Rule**: include `tabular-nums` on every numeric KPI, macro fraction, calorie total, and budget readout.",
       "Do set `min-w-0` on horizontal grid/flex children and `min-inline-size: 0` on native `<progress>` controls so multi-column macro strips never overflow 390px viewports.",
-      "Do pair monochrome active UI (`#f5f5f7` pills & FAB) exclusively with matte `#141416` / `#1c1c1f` / `#2a2a30` surfaces on primary tracking screens.",
-      "Do apply `.macro-spring` (`active:scale-95`), `.touch-target` on coarse-pointer compact buttons, and `prefers-reduced-motion: no-preference` keyframes (`macro-sheet-in`, `macro-modal-in`, `macro-card-enter`, `macro-check-pop`) across every interactive control."
+      "Do pair monochrome active UI (`#f5f5f7` pills & FAB) exclusively with matte `#141416` / `#1c1c1f` / `#2a2a30` surfaces on primary tracking screens."
     ],
     "donts": [
       "Don't turn calories, progress tracks, badges, or borders red (`#ef4444` / destructive alarms) when a user logs above daily targets.",

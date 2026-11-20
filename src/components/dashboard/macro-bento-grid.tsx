@@ -2,7 +2,8 @@
 
 import React, { useState, useRef } from 'react';
 import type { DailySummary, MacroMetric } from '@/lib/nutrition/daily-summary';
-import { runViewTransition, triggerHaptic } from '@/lib/motion';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { triggerHaptic } from '@/lib/motion';
 
 export interface DayNutritionPoint {
   date: string;
@@ -66,7 +67,7 @@ function MacroColumnBar({
           } as React.CSSProperties
         }
       />
-      <span className="text-xs font-semibold tabular-nums text-foreground whitespace-nowrap">
+      <span className="hero-macro-readout font-semibold tabular-nums text-foreground whitespace-nowrap">
         {formatMacroReadout(metric, mode)}
       </span>
     </div>
@@ -86,15 +87,12 @@ export function MacroBentoGrid({
 }: MacroBentoGridProps) {
   const [mode, setMode] = useState<DisplayMode>('consumed');
   const [heroView, setHeroView] = useState<HeroView>('daily');
-  const [viewDirection, setViewDirection] = useState<'forward' | 'backward' | null>(null);
   const swipeStartX = useRef<number | null>(null);
 
   const switchHeroView = (nextView: HeroView) => {
     if (nextView === heroView) return;
-    const direction = nextView === 'weekly' ? 'forward' : 'backward';
-    setViewDirection(direction);
     triggerHaptic(8);
-    runViewTransition(() => setHeroView(nextView), { direction });
+    setHeroView(nextView);
   };
 
   const { calories, protein, carbs, fat, fiber } = summary;
@@ -141,67 +139,47 @@ export function MacroBentoGrid({
         if (dx < 0 && heroView === 'daily') switchHeroView('weekly');
         if (dx > 0 && heroView === 'weekly') switchHeroView('daily');
       }}
-      className={`rounded-2xl bg-card border border-border/50 p-5 sm:p-6 flex flex-col justify-between gap-4 min-w-0 ${className}`}
+      className={`hero-container rounded-2xl bg-card border border-border/50 p-4 sm:p-5 lg:p-6 flex flex-col justify-between gap-4 min-w-0 ${className}`}
     >
       {/* Top Card Header + Slide Switcher Dots (Pics 1 & 4) */}
       <div className="flex items-center justify-between gap-2 min-w-0">
-        <h2 className="text-base font-bold tracking-tight text-foreground truncate">
+        <h2 className="flex-1 text-base font-bold tracking-tight text-foreground truncate min-w-0">
           {heroView === 'daily' ? 'Daily Nutrition' : 'Nutrition & Targets'}
         </h2>
 
-        <div
+        <SegmentedControl
           role="tablist"
-          aria-label="Nutrition hero view"
-          className="flex items-center gap-1 bg-surface-sub/90 px-1.5 py-1 rounded-full shrink-0"
-        >
-          <button
-            type="button"
-            role="tab"
-            id="hero-daily-tab"
-            aria-selected={heroView === 'daily'}
-            onClick={() => switchHeroView('daily')}
-            className={`tactile-press px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
-              heroView === 'daily'
-                ? 'bg-foreground text-background font-semibold shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Today
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id="hero-weekly-tab"
-            aria-selected={heroView === 'weekly'}
-            onClick={() => switchHeroView('weekly')}
-            className={`tactile-press px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
-              heroView === 'weekly'
-                ? 'bg-foreground text-background font-semibold shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            7-Day
-          </button>
-        </div>
+          ariaLabel="Nutrition hero view"
+          value={heroView}
+          onChange={switchHeroView}
+          className="bg-surface-sub/90 p-1 shrink-0"
+          buttonClassName="px-2.5 py-0.5 text-[11px]"
+          options={[
+            { value: 'daily', id: 'hero-daily-tab', label: 'Today' },
+            { value: 'weekly', id: 'hero-weekly-tab', label: '7-Day' },
+          ]}
+        />
       </div>
 
-      {/* View 0: Daily Nutrition Arc & 3 Macro Bars (Pic 1) */}
-      {heroView === 'daily' ? (
+      {/* Stacked CSS Grid Stage keeps both tabpanels mounted for seamless cross-slides */}
+      <div className="grid overflow-hidden">
+        {/* View 0: Daily Nutrition Arc & 3 Macro Bars (Pic 1) */}
         <div
-          key="hero-daily"
           role="tabpanel"
           aria-labelledby="hero-daily-tab"
-          className={`space-y-5 ${
-            viewDirection === 'backward'
-              ? 'slide-enter-left'
-              : 'animate-panel-switch'
+          aria-hidden={heroView !== 'daily'}
+          inert={heroView !== 'daily' ? true : undefined}
+          className={`[grid-area:1/1] space-y-5 hero-panel-slide ${
+            heroView === 'daily'
+              ? 'hero-panel-active'
+              : 'hero-panel-off-left pointer-events-none select-none'
           }`}
         >
           {/* Horseshoe Arc + Flanking Numbers */}
           <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 sm:gap-3 pt-1">
             {/* Left Flanking Metric */}
             <div className="text-center min-w-0">
-              <div className="text-lg sm:text-xl font-bold tabular-nums text-foreground truncate">
+              <div className="hero-flank-value font-bold tabular-nums text-foreground truncate">
                 {leftFlankValue.toLocaleString()}
               </div>
               <div className="text-xs font-medium text-muted-foreground mt-0.5">
@@ -210,7 +188,7 @@ export function MacroBentoGrid({
             </div>
 
             {/* Center Horseshoe Arc */}
-            <div className="relative flex items-center justify-center w-[144px] h-[130px] sm:w-[168px] sm:h-[152px] shrink-0">
+            <div className="relative flex items-center justify-center hero-arc-box shrink-0">
               <svg
                 viewBox={`0 0 ${size} ${size}`}
                 className="w-full h-full overflow-visible"
@@ -242,19 +220,12 @@ export function MacroBentoGrid({
                     strokeLinecap="round"
                     transform={`rotate(150 ${cx} ${cy})`}
                     className="macro-arc-transition"
-                    style={{
-                      filter:
-                        'drop-shadow(0 0 8px color-mix(in srgb, var(--macro-calories) 32%, transparent))',
-                    }}
                   />
                 )}
               </svg>
 
-              <div
-                key={mode}
-                className="absolute inset-0 flex flex-col items-center justify-center pt-2 text-center pointer-events-none animate-panel-switch"
-              >
-                <span className="text-3xl sm:text-4xl font-bold tracking-tight tabular-nums text-foreground">
+              <div className="absolute inset-0 flex flex-col items-center justify-center pt-2 text-center pointer-events-none">
+                <span className="hero-center-value font-bold tracking-tight tabular-nums text-foreground">
                   {typeof centerPrimaryValue === 'number'
                     ? centerPrimaryValue.toLocaleString()
                     : centerPrimaryValue}
@@ -267,7 +238,7 @@ export function MacroBentoGrid({
 
             {/* Right Flanking Metric */}
             <div className="text-center min-w-0">
-              <div className="text-lg sm:text-xl font-bold tabular-nums text-foreground truncate">
+              <div className="hero-flank-value font-bold tabular-nums text-foreground truncate">
                 {calories.target.toLocaleString()}
               </div>
               <div className="text-xs font-medium text-muted-foreground mt-0.5">
@@ -277,7 +248,7 @@ export function MacroBentoGrid({
           </div>
 
           {/* 3-Column Macro Slim Progress Row (Protein, Fat, Carbs) */}
-          <div className="grid grid-cols-3 gap-2.5 sm:gap-4 min-w-0">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3.5 min-w-0">
             <MacroColumnBar
               label="Protein"
               metric={protein}
@@ -313,20 +284,21 @@ export function MacroBentoGrid({
             </span>
           </div>
         </div>
-      ) : (
-        /* View 1: 7-Day Nutrition & Targets Columns (Pic 4 left phone) */
+
+        {/* View 1: 7-Day Nutrition & Targets Columns (Pic 4 left phone) */}
         <div
-          key="hero-weekly"
           role="tabpanel"
           aria-labelledby="hero-weekly-tab"
-          className={`space-y-4 pt-1 ${
-            viewDirection === 'forward'
-              ? 'slide-enter-right'
-              : 'animate-panel-switch'
+          aria-hidden={heroView !== 'weekly'}
+          inert={heroView !== 'weekly' ? true : undefined}
+          className={`[grid-area:1/1] space-y-4 pt-1 hero-panel-slide ${
+            heroView === 'weekly'
+              ? 'hero-panel-active'
+              : 'hero-panel-off-right pointer-events-none select-none'
           }`}
         >
-          <div className="grid grid-cols-[1fr_auto] gap-3 items-center">
-            <div className="grid grid-cols-7 gap-1.5">
+          <div className="hero-weekly-grid">
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5 min-w-0">
               {(weeklyDays.length > 0
                 ? weeklyDays
                 : [
@@ -366,12 +338,13 @@ export function MacroBentoGrid({
                   <button
                     key={day.date}
                     type="button"
+                    tabIndex={heroView === 'weekly' ? 0 : -1}
                     onClick={() => onSelectDate?.(day.date)}
                     disabled={!onSelectDate}
-                    className={`flex flex-col items-center gap-1.5 py-1.5 px-1 rounded-xl transition-colors ${
+                    className={`tactile-press min-h-[44px] flex flex-col items-center gap-1.5 py-1.5 px-1 rounded-xl transition-colors ${
                       day.isSelected
-                        ? 'border border-foreground/45 bg-surface-sub/40'
-                        : 'border border-transparent hover:bg-surface-sub/30'
+                        ? 'border border-foreground/45 bg-surface-sub/45'
+                        : 'border border-transparent hover:bg-surface-sub/35'
                     }`}
                     aria-label={`Select ${day.date}`}
                   >
@@ -383,11 +356,14 @@ export function MacroBentoGrid({
                     ].map((bar, idx) => (
                       <div
                         key={idx}
-                        className="w-2 h-6 rounded-sm bg-surface-sub overflow-hidden flex items-end"
+                        className="w-2 h-6 rounded-sm bg-surface-sub overflow-hidden"
                       >
                         <div
-                          className="w-full rounded-sm transition-all duration-300"
-                          style={{ height: `${bar.pct}%`, backgroundColor: bar.color }}
+                          className="w-full h-full rounded-sm macro-bar-fill-y"
+                          style={{
+                            transform: `scaleY(${bar.pct / 100})`,
+                            backgroundColor: bar.color,
+                          }}
                         />
                       </div>
                     ))}
@@ -399,8 +375,8 @@ export function MacroBentoGrid({
               })}
             </div>
 
-            {/* Right Target Numeric Summary */}
-            <div className="space-y-2.5 pl-3 border-l border-border/60 tabular-nums text-left">
+            {/* Right / Stacked Target Numeric Summary */}
+            <div className="hero-weekly-summary tabular-nums">
               <div>
                 <div className="text-xs font-bold text-foreground">
                   {mode === 'consumed'
@@ -450,40 +426,25 @@ export function MacroBentoGrid({
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Centered Segmented White Pill Toggle: Consumed | Remaining (Pics 1 & 4) */}
       <div className="flex justify-center pt-1">
-        <div
+        <SegmentedControl
           role="group"
-          aria-label="Nutrition metric display mode"
-          className="inline-flex items-center p-1 rounded-full bg-surface-sub"
-        >
-          <button
-            type="button"
-            onClick={() => setMode('consumed')}
-            aria-pressed={mode === 'consumed'}
-            className={`macro-spring active:scale-95 px-4 py-1.5 rounded-full text-xs font-semibold ${
-              mode === 'consumed'
-                ? 'bg-foreground text-background shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Consumed
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('remaining')}
-            aria-pressed={mode === 'remaining'}
-            className={`macro-spring active:scale-95 px-4 py-1.5 rounded-full text-xs font-semibold ${
-              mode === 'remaining'
-                ? 'bg-foreground text-background shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Remaining
-          </button>
-        </div>
+          ariaLabel="Nutrition metric display mode"
+          value={mode}
+          onChange={(next) => {
+            triggerHaptic(6);
+            setMode(next);
+          }}
+          className="bg-surface-sub p-1"
+          buttonClassName="px-4 py-1.5 text-xs"
+          options={[
+            { value: 'consumed', label: 'Consumed' },
+            { value: 'remaining', label: 'Remaining' },
+          ]}
+        />
       </div>
     </section>
   );

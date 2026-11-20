@@ -473,14 +473,14 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
       aria-modal="true"
       aria-label="Food Search"
       data-testid="food-search-drawer"
-      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs transition-opacity"
+      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-6 bg-black/70 backdrop-blur-xs animate-backdrop-in"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] animate-sheet-in max-h-[88vh] flex flex-col"
+        className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 animate-sheet-in sm:animate-modal-in max-h-[90dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0" aria-hidden="true" />
+        <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0 sm:hidden" aria-hidden="true" />
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-border">
           <div className="flex items-center gap-2.5">
@@ -534,7 +534,7 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
           const metricPresets = [50, 100, 150, 200, 250];
 
           return (
-          <div className="pt-4 flex-1 overflow-y-auto space-y-4">
+          <div key={selectedFood.id} className="pt-4 flex-1 overflow-y-auto overscroll-contain space-y-4 animate-panel-switch">
             <div className="bg-surface-sub border border-border rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold text-foreground">Portion Amount</span>
@@ -591,7 +591,7 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
                     type="text"
                     value={unit}
                     onChange={(e) => setUnit(e.target.value)}
-                    className="w-full px-3 py-2 text-xs font-medium rounded-xl bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground text-center"
+                    className="w-full px-3 py-2 text-base sm:text-xs font-medium rounded-xl bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground text-center"
                   />
                 </div>
               </div>
@@ -739,7 +739,7 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
                 autoFocus
-                className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground/50 transition-shadow"
+                className="w-full pl-9 pr-8 py-2 text-base sm:text-sm rounded-xl bg-surface-sub border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground/50 transition-shadow"
               />
               {query && (
                 <button
@@ -771,7 +771,7 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
             <div
               ref={resultsContainerRef}
               data-testid="food-search-results"
-              className="flex-1 overflow-y-auto space-y-1.5 min-h-[260px] max-h-[360px] pr-0.5"
+              className="flex-1 overflow-y-auto overscroll-contain space-y-1.5 min-h-[200px] sm:min-h-[280px] max-h-[52dvh] sm:max-h-[420px] pr-0.5"
             >
               {displayedResults.length > 0 ? (
                 displayedResults.map((item, idx) => (

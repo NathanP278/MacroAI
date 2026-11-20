@@ -155,13 +155,13 @@ export function MealSlotsView() {
   const isLoadingLogs = todayLogs === undefined;
 
   return (
-    <div className="space-y-5 sm:space-y-6 animate-card-enter">
-      {/* Top Daily Consumed Bento Summary */}
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start animate-card-enter">
+      {/* Left Sticky Daily Consumed Rail (Desktop) / Full-Width Summary (Mobile/Tablet) */}
       <aside
         aria-label="Daily nutrition totals"
-        className="bg-card border border-border/50 rounded-2xl p-4 sm:p-5 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 lg:items-center"
+        className="lg:col-span-4 lg:sticky lg:top-[max(1.5rem,env(safe-area-inset-top))] bg-card border border-border/50 rounded-2xl p-4 sm:p-5 grid grid-cols-1 md:grid-cols-12 lg:grid-cols-1 gap-4 md:gap-5 md:items-center"
       >
-        <div className="lg:col-span-5 space-y-3">
+        <div className="md:col-span-5 lg:col-span-1 space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div>
               <span className="text-xs text-muted-foreground font-medium">Daily Consumed</span>
@@ -193,64 +193,58 @@ export function MealSlotsView() {
           />
         </div>
 
-        <div className="lg:col-span-7 space-y-3 lg:border-l lg:border-border/60 lg:pl-6">
-          <div className="grid grid-cols-3 gap-3 sm:gap-4">
-            <div className="space-y-1.5 min-w-0">
-              <div className="flex items-baseline justify-between gap-1 text-xs tabular-nums">
-                <span className="text-muted-foreground font-medium truncate">Protein</span>
-                <span className="font-semibold text-[var(--macro-protein)] whitespace-nowrap">
-                  {Math.round(totalProtein)}
-                  <span className="text-[11px] text-muted-foreground font-normal">
-                    /{activeGoals.proteinG}g
-                  </span>
-                </span>
-              </div>
+        <div className="md:col-span-7 lg:col-span-1 space-y-3 md:border-l md:border-border/60 md:pl-5 lg:border-l-0 lg:pl-0 lg:pt-3 lg:border-t lg:border-border/60">
+          <div className="grid grid-cols-3 lg:grid-cols-1 gap-2.5 sm:gap-3.5 lg:gap-3">
+            <div className="flex flex-col items-center text-center gap-1.5 min-w-0 lg:grid lg:grid-cols-[1fr_auto] lg:items-baseline lg:text-left lg:gap-x-2 lg:gap-y-1.5">
+              <span className="order-1 text-xs text-muted-foreground font-medium">Protein</span>
               <progress
-                className="macro-progress progress-protein w-full h-1.5 block"
+                className="order-2 lg:order-3 lg:col-span-2 macro-progress progress-protein w-full h-1.5 block"
                 max={Math.max(1, activeGoals.proteinG)}
                 value={Math.min(activeGoals.proteinG, Math.max(0, Math.round(totalProtein)))}
                 aria-label="Protein progress"
               />
+              <span className="order-3 lg:order-2 text-[11px] sm:text-xs font-semibold tabular-nums text-[var(--macro-protein)] whitespace-nowrap lg:text-right">
+                {Math.round(totalProtein)}
+                <span className="text-[11px] text-muted-foreground font-normal">
+                  /{activeGoals.proteinG}g
+                </span>
+              </span>
             </div>
 
-            <div className="space-y-1.5 min-w-0">
-              <div className="flex items-baseline justify-between gap-1 text-xs tabular-nums">
-                <span className="text-muted-foreground font-medium truncate">Fat</span>
-                <span className="font-semibold text-[var(--macro-fat)] whitespace-nowrap">
-                  {Math.round(totalFat)}
-                  <span className="text-[11px] text-muted-foreground font-normal">
-                    /{activeGoals.fatG}g
-                  </span>
-                </span>
-              </div>
+            <div className="flex flex-col items-center text-center gap-1.5 min-w-0 lg:grid lg:grid-cols-[1fr_auto] lg:items-baseline lg:text-left lg:gap-x-2 lg:gap-y-1.5">
+              <span className="order-1 text-xs text-muted-foreground font-medium">Fat</span>
               <progress
-                className="macro-progress progress-fat w-full h-1.5 block"
+                className="order-2 lg:order-3 lg:col-span-2 macro-progress progress-fat w-full h-1.5 block"
                 max={Math.max(1, activeGoals.fatG)}
                 value={Math.min(activeGoals.fatG, Math.max(0, Math.round(totalFat)))}
                 aria-label="Fat progress"
               />
+              <span className="order-3 lg:order-2 text-[11px] sm:text-xs font-semibold tabular-nums text-[var(--macro-fat)] whitespace-nowrap lg:text-right">
+                {Math.round(totalFat)}
+                <span className="text-[11px] text-muted-foreground font-normal">
+                  /{activeGoals.fatG}g
+                </span>
+              </span>
             </div>
 
-            <div className="space-y-1.5 min-w-0">
-              <div className="flex items-baseline justify-between gap-1 text-xs tabular-nums">
-                <span className="text-muted-foreground font-medium truncate">Carbs</span>
-                <span className="font-semibold text-[var(--macro-carbs)] whitespace-nowrap">
-                  {Math.round(totalCarbs)}
-                  <span className="text-[11px] text-muted-foreground font-normal">
-                    /{activeGoals.carbsG}g
-                  </span>
-                </span>
-              </div>
+            <div className="flex flex-col items-center text-center gap-1.5 min-w-0 lg:grid lg:grid-cols-[1fr_auto] lg:items-baseline lg:text-left lg:gap-x-2 lg:gap-y-1.5">
+              <span className="order-1 text-xs text-muted-foreground font-medium">Carbs</span>
               <progress
-                className="macro-progress progress-carbs w-full h-1.5 block"
+                className="order-2 lg:order-3 lg:col-span-2 macro-progress progress-carbs w-full h-1.5 block"
                 max={Math.max(1, activeGoals.carbsG)}
                 value={Math.min(activeGoals.carbsG, Math.max(0, Math.round(totalCarbs)))}
                 aria-label="Carbs progress"
               />
+              <span className="order-3 lg:order-2 text-[11px] sm:text-xs font-semibold tabular-nums text-[var(--macro-carbs)] whitespace-nowrap lg:text-right">
+                {Math.round(totalCarbs)}
+                <span className="text-[11px] text-muted-foreground font-normal">
+                  /{activeGoals.carbsG}g
+                </span>
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs tabular-nums">
+          <div className="flex items-center justify-between pt-2.5 border-t border-border/60 text-xs tabular-nums">
             <span className="text-muted-foreground">Fiber</span>
             <span className="font-semibold text-[var(--macro-fiber)]">
               {Math.round(totalFiber)}g{' '}
@@ -261,7 +255,7 @@ export function MealSlotsView() {
       </aside>
 
       {/* Unified Logged Entries List */}
-      <section aria-labelledby="food-log-entries-heading" className="space-y-3">
+      <section aria-labelledby="food-log-entries-heading" className="lg:col-span-8 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
           <div className="flex items-baseline gap-2">
             <h2
@@ -289,7 +283,7 @@ export function MealSlotsView() {
                 type="button"
                 onClick={handleCopyYesterday}
                 aria-label="Copy Yesterday"
-                className="macro-spring active:scale-95 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-sub hover:bg-surface-elevated text-xs text-foreground font-medium"
+                className="touch-target tactile-press flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-sub hover:bg-surface-elevated text-xs text-foreground font-medium"
               >
                 <RotateCcw className="w-3.5 h-3.5 text-[var(--macro-calories)]" aria-hidden="true" />
                 <span>Copy Yesterday</span>
@@ -302,7 +296,7 @@ export function MealSlotsView() {
               type="button"
               onClick={() => openSheet('search')}
               aria-label="Add food"
-              className="touch-target macro-spring active:scale-95 flex items-center gap-1 px-3 py-1.5 rounded-full bg-surface-sub hover:bg-foreground hover:text-background text-xs font-semibold text-foreground"
+              className="touch-target tactile-press flex items-center gap-1 px-3 py-1.5 rounded-full bg-surface-sub hover:bg-foreground hover:text-background text-xs font-semibold text-foreground"
             >
               <Plus className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Add</span>
@@ -401,46 +395,53 @@ export function MealSlotsView() {
                     </div>
                   </div>
 
-                  {isExpanded && (
-                    <div className="px-4 pb-3 pt-1.5 sm:px-5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground border-t border-border/40 bg-surface-sub/35">
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
-                        <span>
-                          Fiber:{' '}
-                          <strong className="text-foreground">
-                            {Math.round((entry.nutritionSnapshot?.fiber ?? 0) * 10) / 10}g
-                          </strong>
-                        </span>
-                        {micros?.sodiumMg !== undefined && (
+                  <div
+                    className="accordion-grid"
+                    data-open={isExpanded ? 'true' : 'false'}
+                    aria-hidden={!isExpanded}
+                  >
+                    <div className="accordion-inner">
+                      <div className="px-4 pb-3 pt-1.5 sm:px-5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground border-t border-border/40 bg-surface-sub/35">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
                           <span>
-                            Sodium:{' '}
+                            Fiber:{' '}
                             <strong className="text-foreground">
-                              {Math.round(micros.sodiumMg)}mg
+                              {Math.round((entry.nutritionSnapshot?.fiber ?? 0) * 10) / 10}g
                             </strong>
                           </span>
-                        )}
-                        {micros?.potassiumMg !== undefined && (
-                          <span>
-                            Potassium:{' '}
-                            <strong className="text-foreground">
-                              {Math.round(micros.potassiumMg)}mg
-                            </strong>
+                          {micros?.sodiumMg !== undefined && (
+                            <span>
+                              Sodium:{' '}
+                              <strong className="text-foreground">
+                                {Math.round(micros.sodiumMg)}mg
+                              </strong>
+                            </span>
+                          )}
+                          {micros?.potassiumMg !== undefined && (
+                            <span>
+                              Potassium:{' '}
+                              <strong className="text-foreground">
+                                {Math.round(micros.potassiumMg)}mg
+                              </strong>
+                            </span>
+                          )}
+                          <span className="uppercase tracking-wider text-[10px]">
+                            {entry.source.replace('_', ' ')}
                           </span>
-                        )}
-                        <span className="uppercase tracking-wider text-[10px]">
-                          {entry.source.replace('_', ' ')}
-                        </span>
-                      </div>
+                        </div>
 
-                      <button
-                        type="button"
-                        onClick={() => void handleDuplicateEntry(entry)}
-                        className="tactile-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-card border border-border text-foreground font-medium hover:bg-surface-elevated"
-                      >
-                        <CopyPlus className="w-3 h-3" aria-hidden="true" />
-                        <span>Log Again</span>
-                      </button>
+                        <button
+                          type="button"
+                          tabIndex={isExpanded ? 0 : -1}
+                          onClick={() => void handleDuplicateEntry(entry)}
+                          className="touch-target tactile-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-card border border-border text-foreground font-medium hover:bg-surface-elevated"
+                        >
+                          <CopyPlus className="w-3 h-3" aria-hidden="true" />
+                          <span>Log Again</span>
+                        </button>
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </li>
               );
             })}
@@ -483,7 +484,7 @@ export function MealSlotsView() {
                 <button
                   type="button"
                   onClick={handleCopyYesterday}
-                  className="tactile-press inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-sub hover:bg-surface-elevated text-xs font-semibold text-foreground"
+                  className="touch-target tactile-press inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-surface-sub hover:bg-surface-elevated text-xs font-semibold text-foreground"
                 >
                   <RotateCcw className="w-3.5 h-3.5 text-[var(--macro-calories)]" aria-hidden="true" />
                   <span>Copy Yesterday ({yesterdayEntries.length})</span>
@@ -492,7 +493,7 @@ export function MealSlotsView() {
               <button
                 type="button"
                 onClick={() => openSheet('search')}
-                className="tactile-press inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90"
+                className="touch-target tactile-press inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90"
               >
                 <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>Log Food</span>

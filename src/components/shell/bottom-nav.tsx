@@ -54,11 +54,14 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
+    <div
+      style={{ viewTransitionName: "bottom-chrome" }}
+      className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none"
+    >
       {/* Persistent Quick Search Strip on Dashboard & Food Log */}
       {showQuickSearchBar && onDirectAction && (
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 pb-2.5 pointer-events-auto">
-          <div className="surface-floating-bar macro-card-interactive rounded-2xl h-12 px-3 flex items-center gap-1.5">
+        <div className="max-w-2xl mx-auto pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:px-6 pb-2.5 pointer-events-auto">
+          <div className="surface-floating-bar hover:border-border-focus transition-colors rounded-2xl h-12 px-3 flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => {
@@ -127,7 +130,7 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
       <nav
         data-testid="bottom-nav"
         aria-label="Bottom Navigation"
-        className="pointer-events-auto bg-surface-card/85 border-t border-border surface-floating-bar border-x-0 border-b-0 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        className="pointer-events-auto bg-surface-card/90 backdrop-blur-md border-t border-border shadow-[0_-8px_28px_-12px_rgba(0,0,0,0.32)] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
       >
         <div className="max-w-2xl mx-auto h-16 px-2 sm:px-6 flex items-center justify-between gap-1">
           {/* Left Nav items */}
@@ -148,22 +151,20 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                   aria-current={active ? "page" : undefined}
                 >
                   <span
-                    style={
-                      active
-                        ? { viewTransitionName: "active-nav-indicator" }
-                        : undefined
-                    }
-                    className={`flex items-center justify-center w-9 h-6 rounded-full mb-0.5 transition-colors duration-200 ${
+                    className={`flex items-center justify-center w-10 h-6 rounded-full mb-0.5 transition-colors duration-200 ${
                       active ? "bg-foreground/10" : "bg-transparent"
                     }`}
                   >
                     <Icon
+                      aria-hidden="true"
                       className={`w-[19px] h-[19px] transition-transform duration-200 ${
                         active ? "stroke-[2.25] scale-105" : "stroke-[1.75]"
                       }`}
                     />
                   </span>
-                  <span className="text-[11px] tracking-tight">{item.label}</span>
+                  <span className="text-[10px] sm:text-[11px] tracking-tight whitespace-nowrap">
+                    {item.label}
+                  </span>
                 </Link>
               );
             })}
@@ -175,9 +176,12 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
               type="button"
               onClick={onOpenQuickActions}
               aria-label="Open quick actions"
-              className="touch-target tactile-press w-11 h-11 rounded-full bg-foreground text-background hover:scale-105 hover:ring-4 hover:ring-foreground/10 flex items-center justify-center shadow-[0_4px_16px_rgba(0,0,0,0.28)] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+              className="group touch-target tactile-press w-11 h-11 rounded-full bg-foreground text-background hover:ring-4 hover:ring-foreground/10 hover:shadow-[0_6px_20px_rgba(0,0,0,0.34)] flex items-center justify-center shadow-[0_4px_16px_rgba(0,0,0,0.28)] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-[box-shadow,transform] duration-200"
             >
-              <Plus className="w-5 h-5 stroke-[2.5]" aria-hidden="true" />
+              <Plus
+                className="w-5 h-5 stroke-[2.5] transition-transform duration-200 group-hover:scale-110 group-hover:rotate-90"
+                aria-hidden="true"
+              />
             </button>
           </div>
 
@@ -199,22 +203,20 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                   aria-current={active ? "page" : undefined}
                 >
                   <span
-                    style={
-                      active
-                        ? { viewTransitionName: "active-nav-indicator" }
-                        : undefined
-                    }
-                    className={`flex items-center justify-center w-9 h-6 rounded-full mb-0.5 transition-colors duration-200 ${
+                    className={`flex items-center justify-center w-10 h-6 rounded-full mb-0.5 transition-colors duration-200 ${
                       active ? "bg-foreground/10" : "bg-transparent"
                     }`}
                   >
                     <Icon
+                      aria-hidden="true"
                       className={`w-[19px] h-[19px] transition-transform duration-200 ${
                         active ? "stroke-[2.25] scale-105" : "stroke-[1.75]"
                       }`}
                     />
                   </span>
-                  <span className="text-[11px] tracking-tight">{item.label}</span>
+                  <span className="text-[10px] sm:text-[11px] tracking-tight whitespace-nowrap">
+                    {item.label}
+                  </span>
                 </Link>
               );
             })}

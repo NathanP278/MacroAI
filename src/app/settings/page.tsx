@@ -73,15 +73,15 @@ export default function SettingsPage() {
           </div>
 
           {/* Right Column: Appearance, Sync, AI Vision & Backup */}
-          <div className="lg:col-span-5 lg:sticky lg:top-[max(1.5rem,env(safe-area-inset-top))] space-y-4 sm:space-y-5">
+          <div className="lg:col-span-5 lg:sticky lg:top-[max(1.5rem,env(safe-area-inset-top))] grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4 sm:gap-5 items-start">
             {/* Theme Section */}
             <section className="bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-9 h-9 rounded-2xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)] shrink-0">
                     <Moon className="w-4 h-4" aria-hidden="true" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h2 className="text-base font-bold text-foreground tracking-tight">
                       Theme & Appearance
                     </h2>

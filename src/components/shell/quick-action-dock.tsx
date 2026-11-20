@@ -97,20 +97,19 @@ export function QuickActionDock({ onAction, onClose }: QuickActionDockProps) {
       aria-modal="true"
       aria-label="Quick Actions"
       data-testid="quick-action-dock"
-      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/65 backdrop-blur-xs animate-backdrop-in"
+      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-6 bg-black/65 backdrop-blur-xs animate-backdrop-in"
       onClick={onClose}
     >
       <div
-        style={{ transformOrigin: "bottom center" }}
-        className="w-full max-w-lg mx-auto bg-surface-elevated/92 border-t border-x border-border surface-elevated-sheet border-b-0 rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] animate-sheet-in"
+        className="w-full max-w-lg mx-auto bg-surface-elevated border-t border-x sm:border border-border surface-elevated-sheet border-b-0 sm:border-b rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 animate-sheet-in sm:animate-modal-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div
-          className="w-9 h-1 rounded-full bg-border mx-auto mb-3"
+          className="w-9 h-1 rounded-full bg-border mx-auto mb-3 sm:hidden"
           aria-hidden="true"
         />
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-border">
+        <div className="flex items-center justify-between pb-3.5 sm:pb-4 border-b border-border">
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-4 bg-[var(--macro-calories)] rounded-full" />
             <h2 className="text-sm font-semibold tracking-tight text-foreground">
@@ -123,12 +122,12 @@ export function QuickActionDock({ onAction, onClose }: QuickActionDockProps) {
             aria-label="Close quick actions"
             className="touch-target tactile-press p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
         {/* Action Grid */}
-        <div className="grid grid-cols-2 gap-3 pt-4 pb-2">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 pt-4 pb-1 sm:pb-0">
           {ACTION_ITEMS.map((item, idx) => {
             const Icon = item.icon;
             return (
@@ -145,17 +144,17 @@ export function QuickActionDock({ onAction, onClose }: QuickActionDockProps) {
                 }}
                 aria-label={item.label}
                 style={{ "--stagger-index": idx } as React.CSSProperties}
-                className="stagger-item tactile-press flex flex-col items-start p-3.5 rounded-2xl bg-surface-sub hover:bg-accent border border-border hover:border-border-focus text-left group"
+                className="stagger-item tactile-press flex flex-col items-start p-3 sm:p-3.5 rounded-2xl bg-surface-sub hover:bg-accent border border-border hover:border-border-focus text-left group min-w-0"
               >
                 <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center border mb-2.5 transition-transform group-hover:scale-105 ${item.accentColor}`}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center border mb-2.5 transition-transform duration-150 group-hover:scale-105 ${item.accentColor}`}
                 >
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-5 h-5" aria-hidden="true" />
                 </div>
                 <span className="text-xs font-semibold text-foreground tracking-tight">
                   {item.label}
                 </span>
-                <span className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+                <span className="text-[11px] text-muted-foreground leading-snug mt-0.5">
                   {item.sublabel}
                 </span>
               </button>

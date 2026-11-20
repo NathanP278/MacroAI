@@ -338,7 +338,7 @@ export function CommandPalette() {
       aria-modal="true"
       aria-label="Command Palette"
       data-testid="command-palette"
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] px-4 bg-black/60 backdrop-blur-sm animate-backdrop-in"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[min(12dvh,5.5rem)] px-4 bg-black/60 backdrop-blur-sm animate-backdrop-in"
       onClick={() => setOpen(false)}
     >
       <div
@@ -362,7 +362,7 @@ export function CommandPalette() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleInputKeyDown}
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+            className="flex-1 bg-transparent text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
           />
           <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground bg-surface-sub border border-border rounded">
             Esc
@@ -381,7 +381,7 @@ export function CommandPalette() {
         <div
           id="command-palette-list"
           role="listbox"
-          className="max-h-[52vh] overflow-y-auto p-2 space-y-1"
+          className="max-h-[min(56dvh,420px)] overflow-y-auto overscroll-contain p-2 space-y-1"
         >
           {actions.length === 0 ? (
             <div className="py-10 text-center text-xs text-muted-foreground">

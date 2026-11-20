@@ -3,6 +3,8 @@
 import React, { useState, useRef } from "react";
 import { Download, Upload, AlertCircle, CheckCircle2, Database, ShieldAlert } from "lucide-react";
 import { exportBackupJson, importBackupJson } from "@/lib/db/backup";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { triggerHaptic } from "@/lib/motion";
 
 interface BackupPanelProps {
   className?: string;
@@ -103,13 +105,13 @@ export function BackupPanel({ className }: BackupPanelProps) {
   };
 
   return (
-    <section className={`bg-card rounded-2xl p-4 sm:p-5 space-y-4 ${className || ""}`}>
+    <section className={`bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-4 ${className || ""}`}>
       {/* Header */}
       <div className="flex items-center gap-2.5">
         <div className="w-9 h-9 rounded-2xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)] shrink-0">
           <Database className="w-4 h-4" aria-hidden="true" />
         </div>
-        <div>
+        <div className="min-w-0">
           <h2 className="text-base font-bold text-foreground tracking-tight">Data Backup & Restore</h2>
           <p className="text-xs text-muted-foreground">Versioned local JSON export and atomic import</p>
         </div>
@@ -127,7 +129,7 @@ export function BackupPanel({ className }: BackupPanelProps) {
           type="button"
           onClick={handleExport}
           disabled={isExporting}
-          className="macro-spring active:scale-95 bg-foreground text-background hover:opacity-90 font-semibold px-3.5 py-2 rounded-full text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0 shadow-xs"
+          className="touch-target tactile-press w-full sm:w-auto justify-center bg-foreground text-background hover:opacity-90 font-semibold px-3.5 py-2 rounded-full text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0 shadow-xs"
         >
           <Download className="w-3.5 h-3.5" aria-hidden="true" />
           <span>{isExporting ? "Exporting..." : "Export Backup"}</span>
@@ -145,30 +147,25 @@ export function BackupPanel({ className }: BackupPanelProps) {
           </div>
 
           {/* Mode Selector */}
-          <div className="flex items-center bg-card rounded-full p-0.5 text-xs shrink-0">
-            <button
-              type="button"
-              onClick={() => setImportMode("merge")}
-              className={`macro-spring active:scale-95 px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap cursor-pointer ${
-                importMode === "merge"
-                  ? "bg-foreground text-background font-semibold shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Merge
-            </button>
-            <button
-              type="button"
-              onClick={() => setImportMode("replace")}
-              className={`macro-spring active:scale-95 px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap cursor-pointer ${
-                importMode === "replace"
-                  ? "bg-[var(--neutral-over)] text-background font-semibold shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Replace
-            </button>
-          </div>
+          <SegmentedControl<"merge" | "replace">
+            role="group"
+            ariaLabel="Backup import mode"
+            value={importMode}
+            onChange={(next) => {
+              triggerHaptic(6);
+              setImportMode(next);
+            }}
+            className="bg-card p-0.5 text-xs shrink-0"
+            buttonClassName="px-3 py-1.5 text-[11px] cursor-pointer"
+            options={[
+              { value: "merge", label: "Merge" },
+              {
+                value: "replace",
+                label: "Replace",
+                activeThumbClassName: "bg-[var(--neutral-over)]",
+              },
+            ]}
+          />
         </div>
 
         {importMode === "replace" && (

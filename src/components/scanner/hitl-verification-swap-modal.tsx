@@ -303,14 +303,14 @@ export function HitlVerificationSwapModal({
       role="dialog"
       aria-modal="true"
       aria-label={targetItem ? 'Verify or swap food' : 'Add ingredient'}
-      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs transition-opacity"
+      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-6 bg-black/70 backdrop-blur-xs animate-backdrop-in"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg mx-auto bg-surface-elevated border-t border-x border-border rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl flex flex-col max-h-[85vh] animate-sheet-in"
+        className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 flex flex-col max-h-[88dvh] animate-sheet-in sm:animate-modal-in"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0" aria-hidden="true" />
+        <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0 sm:hidden" aria-hidden="true" />
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-border shrink-0">
           <div>
@@ -334,7 +334,7 @@ export function HitlVerificationSwapModal({
         </div>
 
         {/* Modal Scrollable Content */}
-        <div className="pt-3 flex-1 overflow-y-auto space-y-4 pr-0.5 min-h-0">
+        <div className="pt-3 flex-1 overflow-y-auto overscroll-contain space-y-4 pr-0.5 min-h-0">
           {/* Search Input */}
           <div className="relative">
             <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" aria-hidden="true" />
@@ -343,7 +343,7 @@ export function HitlVerificationSwapModal({
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
               placeholder="Search staples, USDA, or saved foods..."
-              className="w-full pl-9 pr-9 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground/60"
+              className="w-full pl-9 pr-9 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground/60"
               autoFocus
             />
             {isSearching && (
@@ -424,7 +424,7 @@ export function HitlVerificationSwapModal({
                     value={manualName}
                     onChange={(e) => setManualName(e.target.value)}
                     required
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:border-border-focus text-foreground"
+                    className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:border-border-focus text-foreground"
                   />
                 </div>
 
@@ -440,7 +440,7 @@ export function HitlVerificationSwapModal({
                       onChange={(e) => setManualGrams(e.target.value)}
                       min="1"
                       required
-                      className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:border-border-focus text-foreground tabular-nums"
+                      className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:border-border-focus text-foreground tabular-nums"
                     />
                   </div>
                   <div>
@@ -454,7 +454,7 @@ export function HitlVerificationSwapModal({
                       onChange={(e) => setManualCalories(e.target.value)}
                       min="0"
                       required
-                      className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:border-border-focus text-foreground tabular-nums"
+                      className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:border-border-focus text-foreground tabular-nums"
                     />
                   </div>
                 </div>
@@ -470,7 +470,7 @@ export function HitlVerificationSwapModal({
                       value={manualProtein}
                       onChange={(e) => setManualProtein(e.target.value)}
                       step="0.1"
-                      className="w-full px-2 py-1.5 text-xs rounded-lg bg-surface-sub border border-border text-foreground tabular-nums"
+                      className="w-full px-2 py-1.5 text-base sm:text-xs rounded-lg bg-surface-sub border border-border text-foreground tabular-nums"
                     />
                   </div>
                   <div>
@@ -483,7 +483,7 @@ export function HitlVerificationSwapModal({
                       value={manualCarbs}
                       onChange={(e) => setManualCarbs(e.target.value)}
                       step="0.1"
-                      className="w-full px-2 py-1.5 text-xs rounded-lg bg-surface-sub border border-border text-foreground tabular-nums"
+                      className="w-full px-2 py-1.5 text-base sm:text-xs rounded-lg bg-surface-sub border border-border text-foreground tabular-nums"
                     />
                   </div>
                   <div>
@@ -496,7 +496,7 @@ export function HitlVerificationSwapModal({
                       value={manualFat}
                       onChange={(e) => setManualFat(e.target.value)}
                       step="0.1"
-                      className="w-full px-2 py-1.5 text-xs rounded-lg bg-surface-sub border border-border text-foreground tabular-nums"
+                      className="w-full px-2 py-1.5 text-base sm:text-xs rounded-lg bg-surface-sub border border-border text-foreground tabular-nums"
                     />
                   </div>
                 </div>

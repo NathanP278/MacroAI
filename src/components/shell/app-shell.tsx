@@ -27,6 +27,7 @@ export interface AppShellProps {
 export function AppShell({ children, onQuickAction }: AppShellProps) {
   const [isDockOpen, setIsDockOpen] = useState(false);
   const pathname = usePathname() ?? "/";
+  const hasQuickSearchBar = pathname === "/" || pathname.startsWith("/log");
   const activeSheet = useLoggerStore((s) => s.activeSheet);
   const openSheet = useLoggerStore((s) => s.openSheet);
   const closeSheet = useLoggerStore((s) => s.closeSheet);
@@ -122,7 +123,11 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
       {/* Dynamic responsive workspace: mobile-first full bleed, expands gracefully on tablets & laptops */}
       <div
         data-testid="app-shell-container"
-        className="w-full max-w-6xl mx-auto min-h-dvh flex flex-col relative pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pb-[calc(9rem+env(safe-area-inset-bottom))] sm:pb-[calc(9.5rem+env(safe-area-inset-bottom))]"
+        className={`w-full max-w-6xl mx-auto min-h-dvh flex flex-col relative pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] ${
+          hasQuickSearchBar
+            ? "pb-[calc(8.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(9.25rem+env(safe-area-inset-bottom))]"
+            : "pb-[calc(5.25rem+env(safe-area-inset-bottom))] sm:pb-[calc(5.75rem+env(safe-area-inset-bottom))]"
+        }`}
       >
         <main className="flex-1 flex flex-col w-full animate-page-enter">
           {children}

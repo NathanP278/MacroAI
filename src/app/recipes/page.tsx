@@ -17,6 +17,7 @@ import {
   Edit,
   Utensils,
   Check,
+  X,
 } from 'lucide-react';
 
 export default function RecipesPage() {
@@ -112,17 +113,20 @@ export default function RecipesPage() {
         {/* Header matching Dashboard Obsidian Aesthetic */}
         <header className="flex items-center sm:items-end justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight">
               Recipes & Custom Foods
             </h1>
             <p className="text-xs sm:text-[13px] text-muted-foreground mt-0.5">
               Offline recipe book and custom ingredients
+              {recipes && recipes.length > 0 && (
+                <span className="sm:hidden tabular-nums"> · {filteredRecipes.length} saved</span>
+              )}
             </p>
           </div>
           <button
             type="button"
             onClick={handleOpenCreate}
-            className="touch-target macro-spring active:scale-95 shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
+            className="touch-target tactile-press shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
           >
             <Plus className="w-4 h-4" aria-hidden="true" />
             <span>Create</span>
@@ -131,21 +135,32 @@ export default function RecipesPage() {
 
         {/* Search Bar & Count Summary */}
         <div className="flex items-center gap-3">
-          <div className="relative flex-1">
+          <div className="relative flex-1 min-w-0">
             <Search
-              className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2"
+              className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
               aria-hidden="true"
             />
             <input
               type="text"
+              aria-label="Search saved recipes"
               placeholder="Search saved recipes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-11 sm:h-12 bg-card rounded-2xl pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring transition-shadow"
+              className="w-full h-11 sm:h-12 bg-card border border-border/50 rounded-2xl pl-10 pr-10 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring transition-shadow"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear recipe search"
+                className="touch-target tactile-press absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+              >
+                <X className="w-4 h-4" aria-hidden="true" />
+              </button>
+            )}
           </div>
           {recipes && recipes.length > 0 && (
-            <div className="hidden sm:flex items-center h-11 sm:h-12 px-4 rounded-2xl bg-card text-xs font-medium text-muted-foreground tabular-nums shrink-0">
+            <div className="hidden sm:flex items-center h-11 sm:h-12 px-4 rounded-2xl bg-card border border-border/50 text-xs font-medium text-muted-foreground tabular-nums shrink-0">
               {filteredRecipes.length} {filteredRecipes.length === 1 ? 'recipe' : 'recipes'}
             </div>
           )}
@@ -207,16 +222,16 @@ export default function RecipesPage() {
                   </div>
 
                   {/* Nutrition Summary Pill */}
-                  <div className="bg-surface-sub rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2">
-                    <div>
+                  <div className="bg-surface-sub rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2 min-w-0">
+                    <div className="min-w-0">
                       <span className="text-[11px] text-muted-foreground font-medium">
                         Per {recipe.basis === 'perServing' ? 'Serving' : '100g'}
                       </span>
-                      <div className="text-base font-bold text-[var(--macro-calories)] tabular-nums">
+                      <div className="text-base font-bold text-[var(--macro-calories)] tabular-nums truncate">
                         {recipe.nutrientsPerBasis.calories} kcal
                       </div>
                     </div>
-                    <div className="flex gap-3 text-xs tabular-nums">
+                    <div className="flex gap-2.5 sm:gap-3 text-xs tabular-nums shrink-0">
                       <div className="text-right">
                         <span className="text-[var(--macro-protein)] font-semibold">
                           {recipe.nutrientsPerBasis.protein}g
@@ -250,7 +265,7 @@ export default function RecipesPage() {
                       type="button"
                       onClick={() => handleLogRecipe(recipe)}
                       aria-label={`Log ${recipe.name}`}
-                      className="macro-spring active:scale-95 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
+                      className="touch-target tactile-press flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
                     >
                       <Utensils className="w-3.5 h-3.5" aria-hidden="true" />
                       <span>Log</span>

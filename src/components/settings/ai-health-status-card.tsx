@@ -55,14 +55,14 @@ export function AiHealthStatusCard() {
   }, []);
 
   return (
-    <section className="bg-card rounded-2xl p-4 sm:p-5 space-y-3.5">
+    <section className="bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-3.5">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <div className="w-9 h-9 rounded-2xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)] shrink-0">
             <Sparkles className="w-4 h-4" aria-hidden="true" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h2 className="text-base font-bold text-foreground tracking-tight">AI Vision & OCR Service</h2>
             <p className="text-xs text-muted-foreground">Server-configured OpenAI-compatible model</p>
           </div>
@@ -72,7 +72,7 @@ export function AiHealthStatusCard() {
           type="button"
           onClick={checkHealth}
           disabled={isLoading}
-          className="macro-spring active:scale-95 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-surface-sub text-foreground hover:bg-surface-elevated disabled:opacity-50"
+          className="touch-target tactile-press inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-surface-sub text-foreground hover:bg-surface-elevated disabled:opacity-50 shrink-0"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
           <span>{isLoading ? 'Checking...' : 'Test AI Connection'}</span>

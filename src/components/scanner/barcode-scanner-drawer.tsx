@@ -220,14 +220,14 @@ function BarcodeScannerContent({
         aria-modal="true"
         aria-label="Barcode Scanner"
         data-testid="barcode-scanner-drawer"
-        className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-6 bg-black/70 backdrop-blur-xs animate-backdrop-in"
         onClick={onClose}
       >
         <div
-          className="w-full max-w-lg mx-auto bg-surface-elevated border-t border-x border-border rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl animate-sheet-in max-h-[90vh] flex flex-col"
+          className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 animate-sheet-in sm:animate-modal-in max-h-[90dvh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0" aria-hidden="true" />
+          <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0 sm:hidden" aria-hidden="true" />
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-border">
             <div className="flex items-center gap-2.5">
@@ -269,7 +269,7 @@ function BarcodeScannerContent({
           {/* Body Views */}
           {lookupResult?.status === 'hit' ? (
             /* Hit view: Product details & Portion selection */
-            <div className="pt-4 flex-1 overflow-y-auto space-y-4">
+            <div className="pt-4 flex-1 overflow-y-auto overscroll-contain space-y-4">
               {lookupResult.item.brand && (
                 <p className="text-xs text-muted-foreground -mt-2">
                   Brand: <span className="text-foreground font-medium">{lookupResult.item.brand}</span>
@@ -303,7 +303,7 @@ function BarcodeScannerContent({
                       type="text"
                       value={unit}
                       onChange={(e) => setUnit(e.target.value)}
-                      className="w-full px-3 py-2 text-xs font-medium rounded-xl bg-surface-card border border-border focus:border-border-focus focus:outline-none text-foreground text-center"
+                      className="w-full px-3 py-2 text-base sm:text-xs font-medium rounded-xl bg-surface-card border border-border focus:border-border-focus focus:outline-none text-foreground text-center"
                     />
                   </div>
                 </div>
@@ -563,7 +563,7 @@ function BarcodeScannerContent({
                       placeholder="Enter barcode digits..."
                       value={manualBarcode}
                       onChange={(e) => setManualBarcode(e.target.value)}
-                      className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground/50 font-mono"
+                      className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground/50 font-mono"
                     />
                   </div>
                   <button

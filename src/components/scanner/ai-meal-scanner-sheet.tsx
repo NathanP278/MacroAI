@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   ArrowLeft,
   ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
 import { useLoggerStore, AiDraftItem } from '@/stores/logger-store';
 import { db, generateId } from '@/lib/db/macroai-db';
@@ -702,14 +701,14 @@ export function AiMealScannerSheet({
         aria-modal="true"
         aria-label="AI Meal Scanner"
         data-testid="ai-meal-scanner-sheet"
-        className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-6 bg-black/70 backdrop-blur-xs animate-backdrop-in"
         onClick={onClose}
       >
         <div
-          className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] animate-sheet-in max-h-[92vh] flex flex-col"
+          className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 animate-sheet-in sm:animate-modal-in max-h-[92dvh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0" aria-hidden="true" />
+          <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0 sm:hidden" aria-hidden="true" />
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-border">
             <div className="flex items-center gap-2.5">
@@ -770,7 +769,7 @@ export function AiMealScannerSheet({
           {/* Body: Stage 1 (Image Intake) -> Stage 2 (Pre-Scan HITL) -> Stage 3 (Review) */}
           {!showReviewStage && !showPreScanHitl ? (
             /* STAGE 1: Image Intake Only */
-            <div className="pt-4 flex-1 overflow-y-auto space-y-4">
+            <div className="pt-4 flex-1 overflow-y-auto overscroll-contain space-y-4">
               {scanError && (
                 <div className="p-3 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
@@ -824,7 +823,7 @@ export function AiMealScannerSheet({
             </div>
           ) : !showReviewStage && showPreScanHitl ? (
             /* STAGE 2: Pre-Scan Human-in-the-Loop Context */
-            <div className="pt-4 flex-1 overflow-y-auto space-y-4">
+            <div className="pt-4 flex-1 overflow-y-auto overscroll-contain space-y-4">
               {scanError && (
                 <div className="p-3 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
@@ -885,7 +884,7 @@ export function AiMealScannerSheet({
                   placeholder="List ingredients, cooking oil, sauces, prep style, or weights (e.g. 2 tbsp olive oil, grilled chicken breast, basmati rice)..."
                   rows={3}
                   autoFocus
-                  className="w-full p-3 text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:border-border-focus text-foreground placeholder:text-muted-foreground/60 resize-none"
+                  className="w-full p-3 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:border-border-focus text-foreground placeholder:text-muted-foreground/60 resize-none"
                 />
                 <p className="text-[10px] text-muted-foreground">
                   The AI combines your notes with the photo so hidden oils, sauces, and ingredients aren&apos;t guessed wrong.
@@ -928,8 +927,8 @@ export function AiMealScannerSheet({
             /* STAGE 3: Post-Scan Interactive HITL Review */
             <div className="pt-3 flex-1 flex flex-col min-h-0">
               {/* Summary Totals Banner */}
-              <div className="bg-surface-sub rounded-2xl p-3 border border-border mb-3 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
+              <div className="bg-surface-sub rounded-2xl p-3 border border-border mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
                   {aiDraft?.imageDataUrl && (
                     <img
                       src={aiDraft.imageDataUrl}
@@ -937,7 +936,7 @@ export function AiMealScannerSheet({
                       className="w-12 h-12 rounded-xl object-cover border border-border shrink-0"
                     />
                   )}
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-baseline gap-1">
                       <span
                         data-testid="hitl-total-calories"
@@ -951,7 +950,7 @@ export function AiMealScannerSheet({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5 text-right text-xs tabular-nums text-muted-foreground">
+                <div className="grid grid-cols-4 sm:flex sm:items-center gap-2 sm:gap-2.5 text-center sm:text-right text-xs tabular-nums text-muted-foreground border-t sm:border-t-0 border-border/50 pt-2 sm:pt-0">
                   <div>
                     <span className="block font-bold text-[var(--macro-protein)]">{Math.round(totalProtein * 10) / 10}g</span>
                     <span className="text-[10px] uppercase">Prot</span>
@@ -980,30 +979,37 @@ export function AiMealScannerSheet({
                   className="w-full px-3 py-2 flex items-center justify-between text-[11px] font-medium text-muted-foreground hover:text-foreground"
                 >
                   <span>Estimated Micronutrients (12)</span>
-                  {showMicros ? (
-                    <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
-                  ) : (
-                    <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
-                  )}
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                      showMicros ? 'rotate-180 text-foreground' : ''
+                    }`}
+                    aria-hidden="true"
+                  />
                 </button>
-                {showMicros && (
-                  <div
-                    data-testid="hitl-micronutrients-grid"
-                    className="px-3 pb-2.5 pt-1 border-t border-border/60 grid grid-cols-3 gap-x-3 gap-y-1.5 text-[11px] tabular-nums"
-                  >
-                    {Object.values(RDA_MICRONUTRIENT_METADATA).map((meta) => {
-                      const val = Math.round((totalMicros[meta.key] ?? 0) * 10) / 10;
-                      return (
-                        <div key={meta.key} className="flex items-center justify-between gap-1">
-                          <span className="text-muted-foreground truncate">{meta.name}</span>
-                          <span className="font-semibold text-foreground shrink-0">
-                            {val}{meta.unit}
-                          </span>
-                        </div>
-                      );
-                    })}
+                <div
+                  className="accordion-grid"
+                  data-open={showMicros ? 'true' : 'false'}
+                  aria-hidden={!showMicros}
+                >
+                  <div className="accordion-inner">
+                    <div
+                      data-testid="hitl-micronutrients-grid"
+                      className="px-3 pb-2.5 pt-1.5 border-t border-border/60 grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1.5 text-[11px] tabular-nums"
+                    >
+                      {Object.values(RDA_MICRONUTRIENT_METADATA).map((meta) => {
+                        const val = Math.round((totalMicros[meta.key] ?? 0) * 10) / 10;
+                        return (
+                          <div key={meta.key} className="flex items-center justify-between gap-1">
+                            <span className="text-muted-foreground truncate">{meta.name}</span>
+                            <span className="font-semibold text-foreground shrink-0">
+                              {val}{meta.unit}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Refine Error Banner */}
@@ -1020,7 +1026,7 @@ export function AiMealScannerSheet({
               )}
 
               {/* Ingredient Rows List */}
-              <div className="flex-1 overflow-y-auto space-y-2.5 pr-0.5">
+              <div className="flex-1 overflow-y-auto overscroll-contain space-y-2.5 pr-0.5">
                 {aiDraft?.items.map((item) => (
                   <HitlIngredientRow
                     key={item.id}
@@ -1056,7 +1062,7 @@ export function AiMealScannerSheet({
                     onChange={(e) => setRefineInstruction(e.target.value)}
                     placeholder="E.g., remove the cheese, make the chicken 200g..."
                     disabled={isRefining}
-                    className="flex-1 px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground/60"
+                    className="flex-1 px-3 py-2 text-base sm:text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground/60"
                   />
                   <button
                     type="submit"

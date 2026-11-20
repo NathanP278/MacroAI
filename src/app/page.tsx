@@ -296,8 +296,8 @@ export default function HomePage() {
           onTouchEnd={handleHeaderTouchEnd}
           className="flex items-end justify-between gap-3"
         >
-          <div>
-            <p className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground truncate">
               {dateInfo.kicker}
             </p>
             <div className="flex items-baseline gap-2.5 mt-0.5">
@@ -340,232 +340,249 @@ export default function HomePage() {
           </div>
         </header>
 
-        {/* Top Responsive Bento Workspace: Hero (left) + Insights & Habits (right on tablet/laptop) */}
-        <div
-          key={`bento-${activeDate}`}
-          className={`grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 lg:items-stretch ${dateSlideClass || 'animate-card-enter'}`}
-        >
-          <div className="lg:col-span-5 flex">
-            <MacroBentoGrid
-              summary={summary}
-              weeklyDays={weeklyDays}
-              onSelectDate={setActiveDate}
-              className="w-full"
-            />
-          </div>
-
-          <div className="lg:col-span-7">
-            <HabitsAnalyticsGrid
-              summary={summary}
-              weeklyDays={weeklyDays}
-              thirtyDayDots={thirtyDayDots}
-              onSelectDate={setActiveDate}
-            />
-          </div>
-        </div>
-
-        {/* Bottom Workspace: Logged Entries + Micronutrient Targets */}
-        <div
-          className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 items-start animate-card-enter"
-          style={{ animationDelay: '45ms' }}
-        >
-          {/* Logged Entries Section */}
-          <section aria-labelledby="logged-entries-heading" className="lg:col-span-7 space-y-3">
-            <div className="flex items-center justify-between gap-2 px-0.5">
-              <div className="flex items-baseline gap-2">
-                <h2
-                  id="logged-entries-heading"
-                  className="text-base font-bold tracking-tight text-foreground"
-                >
-                  Logged Entries
-                </h2>
-                {sortedLogs.length > 0 && (
-                  <span className="text-xs font-medium text-muted-foreground tabular-nums">
-                    {sortedLogs.length} {sortedLogs.length === 1 ? 'item' : 'items'}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => openSheet('search')}
-                  aria-label="Add food"
-                  className="touch-target macro-spring active:scale-95 flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-sub hover:bg-foreground hover:text-background text-xs font-semibold text-foreground"
-                >
-                  <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-                  <span>Add</span>
-                </button>
-                <Link
-                  href="/log"
-                  className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  See All
-                </Link>
-              </div>
+        <div style={{ viewTransitionName: 'date-stage' }} className="space-y-5 sm:space-y-6">
+          {/* Top Responsive Bento Workspace: Hero (left) + Insights & Habits (right on tablet/laptop) */}
+          <div
+            key={`bento-${activeDate}`}
+            className={`grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 md:items-stretch ${dateSlideClass || 'animate-card-enter'}`}
+          >
+            <div className="md:col-span-6 lg:col-span-5 flex">
+              <MacroBentoGrid
+                summary={summary}
+                weeklyDays={weeklyDays}
+                onSelectDate={setActiveDate}
+                className="w-full"
+              />
             </div>
 
-            {isLoadingLogs ? (
-              <FoodRowSkeleton count={3} />
-            ) : sortedLogs.length > 0 ? (
-              <ul className="rounded-2xl bg-card border border-border/50 overflow-hidden divide-y divide-border/60">
-                {sortedLogs.map((log, idx) => {
-                  const entryTime = formatEntryTime(log.createdAt);
-                  const isExpanded = expandedEntryId === log.id;
-                  const micros = log.nutritionSnapshot?.micros;
+            <div className="md:col-span-6 lg:col-span-7">
+              <HabitsAnalyticsGrid
+                summary={summary}
+                weeklyDays={weeklyDays}
+                thirtyDayDots={thirtyDayDots}
+                onSelectDate={setActiveDate}
+              />
+            </div>
+          </div>
 
-                  return (
-                    <li
-                      key={log.id}
-                      style={{ '--stagger-index': idx } as React.CSSProperties}
-                      className="stagger-item hover:bg-surface-sub/40 transition-colors"
-                    >
-                      <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-[18px] sm:py-3.5">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setExpandedEntryId((prev) =>
-                              prev === log.id ? null : log.id
-                            )
-                          }
-                          aria-expanded={isExpanded}
-                          className="min-w-0 flex-1 text-left group"
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm font-semibold text-foreground truncate">
-                              {log.name}
-                            </span>
-                            <ChevronDown
-                              className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-150 ${
-                                isExpanded ? 'rotate-180 text-foreground' : 'opacity-60 group-hover:opacity-100'
-                              }`}
-                              aria-hidden="true"
-                            />
-                          </div>
-                          <div className="text-xs text-muted-foreground tabular-nums mt-0.5 truncate">
-                            {formatEntryAmount(log.amount)} {log.unit}
-                            {entryTime ? ` · ${entryTime}` : ''}
-                          </div>
-                        </button>
+          {/* Bottom Workspace: Logged Entries + Micronutrient Targets */}
+          <div
+            className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 items-start animate-card-enter"
+            style={{ animationDelay: '45ms' }}
+          >
+            {/* Logged Entries Section */}
+            <section aria-labelledby="logged-entries-heading" className="md:col-span-7 space-y-3">
+              <div className="flex items-center justify-between gap-2 px-0.5">
+                <div className="flex items-baseline gap-2">
+                  <h2
+                    id="logged-entries-heading"
+                    className="text-base font-bold tracking-tight text-foreground"
+                  >
+                    Logged Entries
+                  </h2>
+                  {sortedLogs.length > 0 && (
+                    <span className="text-xs font-medium text-muted-foreground tabular-nums">
+                      {sortedLogs.length} {sortedLogs.length === 1 ? 'item' : 'items'}
+                    </span>
+                  )}
+                </div>
 
-                        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-                          <div className="text-right tabular-nums">
-                            <div
-                              className="text-sm font-bold"
-                              style={{ color: 'var(--macro-calories)' }}
-                            >
-                              {Math.round(log.nutritionSnapshot?.calories ?? 0)} kcal
-                            </div>
-                            <div className="text-[11px] text-muted-foreground">
-                              {Math.round(log.nutritionSnapshot?.protein ?? 0)}P ·{' '}
-                              {Math.round(log.nutritionSnapshot?.carbs ?? 0)}C ·{' '}
-                              {Math.round(log.nutritionSnapshot?.fat ?? 0)}F
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => void handleDeleteEntry(log)}
-                            aria-label={`Delete ${log.name}`}
-                            className="touch-target tactile-press w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {isExpanded && (
-                        <div className="px-4 pb-3 pt-1 sm:px-[18px] flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground border-t border-border/40 bg-surface-sub/35">
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
-                            <span>
-                              Fiber:{' '}
-                              <strong className="text-foreground">
-                                {Math.round((log.nutritionSnapshot?.fiber ?? 0) * 10) / 10}g
-                              </strong>
-                            </span>
-                            {micros?.sodiumMg !== undefined && (
-                              <span>
-                                Sodium:{' '}
-                                <strong className="text-foreground">
-                                  {Math.round(micros.sodiumMg)}mg
-                                </strong>
-                              </span>
-                            )}
-                            {micros?.potassiumMg !== undefined && (
-                              <span>
-                                Potassium:{' '}
-                                <strong className="text-foreground">
-                                  {Math.round(micros.potassiumMg)}mg
-                                </strong>
-                              </span>
-                            )}
-                            <span className="uppercase tracking-wider text-[10px]">
-                              {log.source.replace('_', ' ')}
-                            </span>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => void handleDuplicateEntry(log)}
-                            className="tactile-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-card border border-border text-foreground font-medium hover:bg-surface-elevated"
-                          >
-                            <CopyPlus className="w-3 h-3" aria-hidden="true" />
-                            <span>Log Again</span>
-                          </button>
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <div className="rounded-2xl bg-card border border-border/50 p-6 sm:p-8 text-center">
-                <svg
-                  viewBox="0 0 64 64"
-                  className="w-12 h-12 mx-auto mb-3 text-muted-foreground/75"
-                  aria-hidden="true"
-                >
-                  <circle
-                    cx="32"
-                    cy="34"
-                    r="20"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeDasharray="84 126"
-                    strokeLinecap="round"
-                    transform="rotate(150 32 34)"
-                  />
-                  <circle
-                    cx="32"
-                    cy="34"
-                    r="11"
-                    fill="none"
-                    stroke="var(--macro-calories)"
-                    strokeWidth="2"
-                    strokeOpacity="0.65"
-                  />
-                  <circle cx="32" cy="34" r="2.5" fill="var(--macro-calories)" />
-                </svg>
-                <p className="text-sm font-semibold text-foreground">No entries logged yet</p>
-                <p className="text-xs text-muted-foreground mt-1 max-w-[34ch] mx-auto">
-                  Search offline staples, scan a barcode, or snap a meal photo to log your day.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => openSheet('search')}
-                  className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90 tactile-press"
-                >
-                  <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-                  <span>Log Food</span>
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => openSheet('search')}
+                    aria-label="Add food"
+                    className="touch-target tactile-press flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-sub hover:bg-foreground hover:text-background text-xs font-semibold text-foreground"
+                  >
+                    <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Add</span>
+                  </button>
+                  <Link
+                    href="/log"
+                    className="touch-target py-1 px-1.5 -mr-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    See All
+                  </Link>
+                </div>
               </div>
-            )}
-          </section>
 
-          {/* Micronutrient Targets Panel */}
-          <div className="lg:col-span-5 lg:sticky lg:top-[max(1.5rem,env(safe-area-inset-top))]">
-            <MicronutrientPanel micros={summary.micros} />
+              {isLoadingLogs ? (
+                <FoodRowSkeleton count={3} />
+              ) : sortedLogs.length > 0 ? (
+                <ul className="rounded-2xl bg-card border border-border/50 overflow-hidden divide-y divide-border/60">
+                  {sortedLogs.map((log, idx) => {
+                    const entryTime = formatEntryTime(log.createdAt);
+                    const isExpanded = expandedEntryId === log.id;
+                    const micros = log.nutritionSnapshot?.micros;
+
+                    return (
+                      <li
+                        key={log.id}
+                        style={{ '--stagger-index': idx } as React.CSSProperties}
+                        className="stagger-item hover:bg-surface-sub/40 transition-colors"
+                      >
+                        <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-[18px] sm:py-3.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedEntryId((prev) =>
+                                prev === log.id ? null : log.id
+                              )
+                            }
+                            aria-expanded={isExpanded}
+                            className="min-w-0 flex-1 text-left group"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-semibold text-foreground truncate">
+                                {log.name}
+                              </span>
+                              <ChevronDown
+                                className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-150 ${
+                                  isExpanded ? 'rotate-180 text-foreground' : 'opacity-60 group-hover:opacity-100'
+                                }`}
+                                aria-hidden="true"
+                              />
+                            </div>
+                            <div className="text-xs text-muted-foreground tabular-nums mt-0.5 truncate">
+                              {formatEntryAmount(log.amount)} {log.unit}
+                              {entryTime ? ` · ${entryTime}` : ''}
+                            </div>
+                          </button>
+
+                          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+                            <div className="text-right tabular-nums">
+                              <div
+                                className="text-sm font-bold"
+                                style={{ color: 'var(--macro-calories)' }}
+                              >
+                                {Math.round(log.nutritionSnapshot?.calories ?? 0)} kcal
+                              </div>
+                              <div className="text-[11px] text-muted-foreground">
+                                <span className="text-[var(--macro-protein)]">
+                                  {Math.round(log.nutritionSnapshot?.protein ?? 0)}P
+                                </span>{' '}
+                                ·{' '}
+                                <span className="text-[var(--macro-carbs)]">
+                                  {Math.round(log.nutritionSnapshot?.carbs ?? 0)}C
+                                </span>{' '}
+                                ·{' '}
+                                <span className="text-[var(--macro-fat)]">
+                                  {Math.round(log.nutritionSnapshot?.fat ?? 0)}F
+                                </span>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteEntry(log)}
+                              aria-label={`Delete ${log.name}`}
+                              className="touch-target tactile-press w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div
+                          className="accordion-grid"
+                          data-open={isExpanded ? 'true' : 'false'}
+                          aria-hidden={!isExpanded}
+                        >
+                          <div className="accordion-inner">
+                            <div className="px-4 pb-3 pt-1.5 sm:px-[18px] flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground border-t border-border/40 bg-surface-sub/35">
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
+                                <span>
+                                  Fiber:{' '}
+                                  <strong className="text-foreground">
+                                    {Math.round((log.nutritionSnapshot?.fiber ?? 0) * 10) / 10}g
+                                  </strong>
+                                </span>
+                                {micros?.sodiumMg !== undefined && (
+                                  <span>
+                                    Sodium:{' '}
+                                    <strong className="text-foreground">
+                                      {Math.round(micros.sodiumMg)}mg
+                                    </strong>
+                                  </span>
+                                )}
+                                {micros?.potassiumMg !== undefined && (
+                                  <span>
+                                    Potassium:{' '}
+                                    <strong className="text-foreground">
+                                      {Math.round(micros.potassiumMg)}mg
+                                    </strong>
+                                  </span>
+                                )}
+                                <span className="uppercase tracking-wider text-[10px]">
+                                  {log.source.replace('_', ' ')}
+                                </span>
+                              </div>
+
+                              <button
+                                type="button"
+                                tabIndex={isExpanded ? 0 : -1}
+                                onClick={() => void handleDuplicateEntry(log)}
+                                className="touch-target tactile-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-card border border-border text-foreground font-medium hover:bg-surface-elevated"
+                              >
+                                <CopyPlus className="w-3 h-3" aria-hidden="true" />
+                                <span>Log Again</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <div className="rounded-2xl bg-card border border-border/50 p-6 sm:p-8 text-center">
+                  <svg
+                    viewBox="0 0 64 64"
+                    className="w-12 h-12 mx-auto mb-3 text-muted-foreground/75"
+                    aria-hidden="true"
+                  >
+                    <circle
+                      cx="32"
+                      cy="34"
+                      r="20"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeDasharray="84 126"
+                      strokeLinecap="round"
+                      transform="rotate(150 32 34)"
+                    />
+                    <circle
+                      cx="32"
+                      cy="34"
+                      r="11"
+                      fill="none"
+                      stroke="var(--macro-calories)"
+                      strokeWidth="2"
+                      strokeOpacity="0.65"
+                    />
+                    <circle cx="32" cy="34" r="2.5" fill="var(--macro-calories)" />
+                  </svg>
+                  <p className="text-sm font-semibold text-foreground">No entries logged yet</p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-[34ch] mx-auto">
+                    Search offline staples, scan a barcode, or snap a meal photo to log your day.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openSheet('search')}
+                    className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90 tactile-press"
+                  >
+                    <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Log Food</span>
+                  </button>
+                </div>
+              )}
+            </section>
+
+            {/* Micronutrient Targets Panel */}
+            <div className="md:col-span-5 md:sticky md:top-[max(1.5rem,env(safe-area-inset-top))]">
+              <MicronutrientPanel micros={summary.micros} />
+            </div>
           </div>
         </div>
       </div>

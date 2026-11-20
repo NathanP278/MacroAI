@@ -221,16 +221,16 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
       aria-modal="true"
       aria-label="Quick Add Macros"
       data-testid="quick-add-drawer"
-      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs transition-opacity"
+      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-6 bg-black/70 backdrop-blur-xs animate-backdrop-in"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] animate-sheet-in"
+        className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 animate-sheet-in sm:animate-modal-in max-h-[90dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3" aria-hidden="true" />
+        <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0 sm:hidden" aria-hidden="true" />
         {/* Drawer Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-border">
+        <div className="shrink-0 flex items-center justify-between pb-3 border-b border-border">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-[var(--macro-fat)]/15 flex items-center justify-center text-[var(--macro-fat)]">
               <Zap className="w-4 h-4" aria-hidden="true" />
@@ -265,7 +265,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="pt-4 space-y-4">
+        <form onSubmit={handleSubmit} className="pt-4 space-y-4 flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div>
             <label htmlFor="quick-add-name" className="block text-[11px] font-medium text-muted-foreground mb-1">
               Description (Optional)
@@ -278,7 +278,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Protein shake, Greek yogurt"
-              className="w-full px-3 py-2 text-xs rounded-xl bg-surface-sub border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground/50 transition-shadow"
+              className="w-full px-3 py-2 text-base sm:text-sm rounded-xl bg-surface-sub border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground/50 transition-shadow"
             />
           </div>
 
@@ -310,7 +310,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
                 value={calories}
                 onChange={(e) => handleCaloriesChange(e.target.value)}
                 onBlur={() => setTouched((prev) => ({ ...prev, calories: true }))}
-                className="w-full px-3 py-2 text-sm font-semibold tabular-nums rounded-xl bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+                className="w-full px-3 py-2 text-base sm:text-sm font-semibold tabular-nums rounded-xl bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
               />
             </div>
             {touched.calories && parseFloat(calories) < 0 && (
@@ -341,7 +341,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
                   onChange={(e) => handleMacroChange('p', e.target.value)}
                   onBlur={() => setTouched((prev) => ({ ...prev, protein: true }))}
                   placeholder="0"
-                  className="w-full px-2 py-1.5 text-xs font-semibold tabular-nums rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+                  className="w-full px-2 py-1.5 text-base sm:text-xs font-semibold tabular-nums rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
                 />
               </div>
 
@@ -358,7 +358,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
                   onChange={(e) => handleMacroChange('c', e.target.value)}
                   onBlur={() => setTouched((prev) => ({ ...prev, carbs: true }))}
                   placeholder="0"
-                  className="w-full px-2 py-1.5 text-xs font-semibold tabular-nums rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+                  className="w-full px-2 py-1.5 text-base sm:text-xs font-semibold tabular-nums rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
                 />
               </div>
 
@@ -375,7 +375,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
                   onChange={(e) => handleMacroChange('f', e.target.value)}
                   onBlur={() => setTouched((prev) => ({ ...prev, fat: true }))}
                   placeholder="0"
-                  className="w-full px-2 py-1.5 text-xs font-semibold tabular-nums rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+                  className="w-full px-2 py-1.5 text-base sm:text-xs font-semibold tabular-nums rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
                 />
               </div>
             </div>
@@ -403,7 +403,7 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
                 onChange={(e) => setFiber(e.target.value)}
                 onBlur={() => setTouched((prev) => ({ ...prev, fiber: true }))}
                 placeholder="0"
-                className="w-24 px-2 py-1 text-xs tabular-nums text-right rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
+                className="w-24 px-2 py-1 text-base sm:text-xs tabular-nums text-right rounded-lg bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
               />
             </div>
             {touched.fiber && parseFloat(fiber) < 0 && (

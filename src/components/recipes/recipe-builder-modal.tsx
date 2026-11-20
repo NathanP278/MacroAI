@@ -485,7 +485,7 @@ export function RecipeBuilderModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="recipe-builder-title"
-      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-4 pt-[max(1rem,env(safe-area-inset-top))] bg-black/70 backdrop-blur-xs transition-opacity"
+      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-4 pt-[max(1rem,env(safe-area-inset-top))] bg-black/70 backdrop-blur-xs animate-backdrop-in"
       onClick={onClose}
     >
       <div
@@ -672,7 +672,7 @@ export function RecipeBuilderModal({
                         step="any"
                         value={ing.amountStr !== undefined ? ing.amountStr : ing.amount}
                         onChange={(e) => handleUpdateIngredientAmount(idx, e.target.value)}
-                        className="w-16 bg-card rounded-lg px-2 py-1 text-center tabular-nums text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
+                        className="w-16 bg-card rounded-lg px-2 py-1 text-center tabular-nums text-base sm:text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
                       />
                       <span className="text-muted-foreground text-[11px]">
                         {ing.unit}
