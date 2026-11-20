@@ -7,6 +7,7 @@ import { BackupPanel } from "@/components/settings/backup-panel";
 import { GoalsCalculatorForm } from "@/components/settings/goals-calculator-form";
 import { AiHealthStatusCard } from "@/components/settings/ai-health-status-card";
 import { CentralDbStatusCard } from "@/components/settings/central-db-status-card";
+import { AppleHealthShortcutCard } from "@/components/settings/apple-health-shortcut-card";
 import { Moon, ShieldCheck, Database } from "lucide-react";
 
 export default function SettingsPage() {
@@ -99,6 +100,9 @@ export default function SettingsPage() {
 
             {/* AI Vision & OCR Service */}
             <AiHealthStatusCard />
+
+            {/* Apple Health iOS Shortcut Bridge */}
+            <AppleHealthShortcutCard />
 
             {/* Data Backup & Restore */}
             <BackupPanel />

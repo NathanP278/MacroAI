@@ -14,6 +14,7 @@ import { EditLogEntryDrawer } from "@/components/logging/edit-log-entry-drawer";
 import { BarcodeScannerDrawer } from "@/components/scanner/barcode-scanner-drawer";
 import { AiMealScannerSheet } from "@/components/scanner/ai-meal-scanner-sheet";
 import { AiMealIdeasDrawer } from "@/components/scanner/ai-meal-ideas-drawer";
+import { WeighInDrawer } from "@/components/weight/weigh-in-drawer";
 import { useLoggerStore } from "@/stores/logger-store";
 import { ensureDefaultUserGoals } from "@/lib/nutrition/goals";
 import { db } from "@/lib/db/macroai-db";
@@ -274,6 +275,13 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
         <AiMealIdeasDrawer
           open={activeSheet === "meal-ideas"}
           date={activeDate}
+          onClose={closeSheet}
+        />
+
+        {/* Weigh-In Drawer */}
+        <WeighInDrawer
+          open={activeSheet === "weight"}
+          defaultDate={activeDate}
           onClose={closeSheet}
         />
 
