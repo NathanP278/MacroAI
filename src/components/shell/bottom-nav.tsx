@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AnimatePresence, motion } from "motion/react";
 import {
   LayoutGrid,
   Apple,
@@ -14,7 +15,13 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useLoggerStore } from "@/stores/logger-store";
-import { triggerHaptic } from "@/lib/motion";
+import {
+  EASE_EXPRESSIVE,
+  SPRING_PILL,
+  SPRING_SNAPPY,
+  isTestEnvironment,
+  triggerHaptic,
+} from "@/lib/motion";
 import type { QuickActionType } from "./quick-action-dock";
 
 export interface BottomNavProps {
@@ -59,74 +66,83 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
       className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none lg:hidden"
     >
       {/* Persistent Quick Search Strip on Dashboard & Food Log */}
-      {showQuickSearchBar && onDirectAction && (
-        <div className="bg-gradient-to-t from-background/90 via-background/55 to-transparent pt-5">
-          <div className="max-w-2xl mx-auto pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:px-6 pb-2.5 pointer-events-auto">
-            <div className="surface-floating-bar hover:border-border-focus transition-colors rounded-2xl h-12 px-3 flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic(8);
-                onDirectAction("search");
-              }}
-              aria-label="Search for a food"
-              className="tactile-press flex-1 flex items-center gap-2.5 text-left text-muted-foreground hover:text-foreground transition-colors h-full min-w-0 group px-1"
-            >
-              <Search
-                className="w-4 h-4 shrink-0 transition-transform duration-150 group-hover:scale-105"
-                aria-hidden="true"
-              />
-              <span className="text-sm font-medium truncate">
-                Search for a food
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic(8);
-                setCommandPaletteOpen(true);
-              }}
-              aria-label="Open command palette"
-              className="hidden sm:inline-flex tactile-press items-center gap-1 px-2 py-1 rounded-lg bg-surface-sub border border-border text-[11px] font-mono text-muted-foreground hover:text-foreground shrink-0"
-            >
-              <span>⌘K</span>
-            </button>
-
-            <div className="flex items-center gap-1 shrink-0">
+      <AnimatePresence initial={false}>
+        {showQuickSearchBar && onDirectAction && (
+          <motion.div
+            key="quick-search-strip"
+            initial={isTestEnvironment() ? false : { opacity: 0, y: 18, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={isTestEnvironment() ? undefined : { opacity: 0, y: 14, scale: 0.96 }}
+            transition={{ duration: 0.34, ease: EASE_EXPRESSIVE }}
+            className="bg-gradient-to-t from-background/90 via-background/55 to-transparent pt-5"
+          >
+            <div className="max-w-2xl mx-auto pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:px-6 pb-2.5 pointer-events-auto">
+              <div className="surface-floating-bar hover:border-border-focus transition-colors rounded-2xl h-12 px-3 flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => {
                   triggerHaptic(8);
-                  onDirectAction("barcode");
+                  onDirectAction("search");
                 }}
-                aria-label="Open barcode camera"
-                className="touch-target tactile-press min-w-[44px] min-h-[44px] sm:min-w-0 sm:px-2.5 sm:h-9 rounded-xl flex items-center justify-center gap-1.5 text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+                aria-label="Search for a food"
+                className="tactile-press flex-1 flex items-center gap-2.5 text-left text-muted-foreground hover:text-foreground transition-colors h-full min-w-0 group px-1"
               >
-                <ScanBarcode className="w-4 h-4" aria-hidden="true" />
-                <span className="hidden sm:inline text-[11px] font-medium">
-                  Barcode
+                <Search
+                  className="w-4 h-4 shrink-0 transition-transform duration-200 group-hover:scale-110"
+                  aria-hidden="true"
+                />
+                <span className="text-sm font-medium truncate">
+                  Search for a food
                 </span>
               </button>
+
               <button
                 type="button"
                 onClick={() => {
                   triggerHaptic(8);
-                  onDirectAction("ai-scan");
+                  setCommandPaletteOpen(true);
                 }}
-                aria-label="Open photo scanner"
-                className="touch-target tactile-press min-w-[44px] min-h-[44px] sm:min-w-0 sm:px-2.5 sm:h-9 rounded-xl flex items-center justify-center gap-1.5 text-[var(--macro-calories)] hover:bg-[var(--macro-calories)]/12"
+                aria-label="Open command palette"
+                className="hidden sm:inline-flex tactile-press items-center gap-1 px-2 py-1 rounded-lg bg-surface-sub border border-border text-[11px] font-mono text-muted-foreground hover:text-foreground shrink-0"
               >
-                <Sparkles className="w-4 h-4" aria-hidden="true" />
-                <span className="hidden sm:inline text-[11px] font-semibold">
-                  AI Scan
-                </span>
+                <span>⌘K</span>
               </button>
+
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic(8);
+                    onDirectAction("barcode");
+                  }}
+                  aria-label="Open barcode camera"
+                  className="touch-target tactile-press min-w-[44px] min-h-[44px] sm:min-w-0 sm:px-2.5 sm:h-9 rounded-xl flex items-center justify-center gap-1.5 text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+                >
+                  <ScanBarcode className="w-4 h-4" aria-hidden="true" />
+                  <span className="hidden sm:inline text-[11px] font-medium">
+                    Barcode
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic(8);
+                    onDirectAction("ai-scan");
+                  }}
+                  aria-label="Open photo scanner"
+                  className="touch-target tactile-press min-w-[44px] min-h-[44px] sm:min-w-0 sm:px-2.5 sm:h-9 rounded-xl flex items-center justify-center gap-1.5 text-[var(--macro-calories)] hover:bg-[var(--macro-calories)]/12"
+                >
+                  <Sparkles className="w-4 h-4" aria-hidden="true" />
+                  <span className="hidden sm:inline text-[11px] font-semibold">
+                    AI Scan
+                  </span>
+                </button>
+              </div>
             </div>
-          </div>
-          </div>
-        </div>
-      )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Floating Smoked Liquid Glass Navigation Capsule */}
       <div className="bg-gradient-to-t from-background/90 via-background/45 to-transparent pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-1 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:px-6">
@@ -153,17 +169,19 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                   }`}
                   aria-current={active ? "page" : undefined}
                 >
-                  <span
-                    className={`flex items-center justify-center w-11 h-7 rounded-full mb-0.5 transition-all duration-200 ${
-                      active
-                        ? "bg-foreground/12 border border-border-focus shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]"
-                        : "bg-transparent border border-transparent"
-                    }`}
-                  >
+                  <span className="relative flex items-center justify-center w-11 h-7 rounded-full mb-0.5">
+                    {active && (
+                      <motion.span
+                        layoutId="bottom-nav-active-pill"
+                        transition={SPRING_PILL}
+                        aria-hidden="true"
+                        className="absolute inset-0 rounded-full bg-foreground/12 border border-border-focus shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]"
+                      />
+                    )}
                     <Icon
                       aria-hidden="true"
-                      className={`w-[19px] h-[19px] transition-transform duration-200 ${
-                        active ? "stroke-[2.25] scale-105" : "stroke-[1.75]"
+                      className={`relative z-10 w-[19px] h-[19px] transition-transform duration-200 ${
+                        active ? "stroke-[2.25] scale-110" : "stroke-[1.75]"
                       }`}
                     />
                   </span>
@@ -177,17 +195,20 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
 
           {/* Crisp White/Foreground Center '+' Action Pill */}
           <div className="px-2 sm:px-4 shrink-0">
-            <button
+            <motion.button
               type="button"
               onClick={onOpenQuickActions}
               aria-label="Open quick actions"
-              className="group touch-target tactile-press w-11 h-11 rounded-full bg-foreground text-background hover:ring-4 hover:ring-foreground/10 hover:shadow-[0_6px_20px_rgba(0,0,0,0.34)] flex items-center justify-center shadow-[0_4px_16px_rgba(0,0,0,0.28)] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-[box-shadow,transform] duration-200"
+              whileHover={{ scale: 1.08, y: -2 }}
+              whileTap={{ scale: 0.9 }}
+              transition={SPRING_SNAPPY}
+              className="group touch-target w-11 h-11 rounded-full bg-foreground text-background hover:ring-4 hover:ring-foreground/15 hover:shadow-[0_8px_24px_rgba(0,0,0,0.42)] flex items-center justify-center shadow-[0_4px_16px_rgba(0,0,0,0.28)] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-shadow duration-200"
             >
               <Plus
-                className="w-5 h-5 stroke-[2.5] transition-transform duration-200 group-hover:scale-110 group-hover:rotate-90"
+                className="w-5 h-5 stroke-[2.5] transition-transform duration-300 group-hover:rotate-90"
                 aria-hidden="true"
               />
-            </button>
+            </motion.button>
           </div>
 
           {/* Right Nav items */}
@@ -207,17 +228,19 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                   }`}
                   aria-current={active ? "page" : undefined}
                 >
-                  <span
-                    className={`flex items-center justify-center w-11 h-7 rounded-full mb-0.5 transition-all duration-200 ${
-                      active
-                        ? "bg-foreground/12 border border-border-focus shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]"
-                        : "bg-transparent border border-transparent"
-                    }`}
-                  >
+                  <span className="relative flex items-center justify-center w-11 h-7 rounded-full mb-0.5">
+                    {active && (
+                      <motion.span
+                        layoutId="bottom-nav-active-pill"
+                        transition={SPRING_PILL}
+                        aria-hidden="true"
+                        className="absolute inset-0 rounded-full bg-foreground/12 border border-border-focus shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]"
+                      />
+                    )}
                     <Icon
                       aria-hidden="true"
-                      className={`w-[19px] h-[19px] transition-transform duration-200 ${
-                        active ? "stroke-[2.25] scale-105" : "stroke-[1.75]"
+                      className={`relative z-10 w-[19px] h-[19px] transition-transform duration-200 ${
+                        active ? "stroke-[2.25] scale-110" : "stroke-[1.75]"
                       }`}
                     />
                   </span>

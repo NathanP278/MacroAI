@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
+import { AnimatePresence } from "motion/react";
 import { Lock, ShieldCheck, X } from "lucide-react";
 import { BottomNav } from "./bottom-nav";
 import { DesktopSidebar } from "./desktop-sidebar";
@@ -9,6 +10,11 @@ import { QuickActionDock, QuickActionType } from "./quick-action-dock";
 import { UndoToast } from "./undo-toast";
 import { CommandPalette } from "./command-palette";
 import { SyncUnlockCard } from "@/components/auth/sync-unlock-modal";
+import {
+  MotionModalOverlay,
+  PageTransitionStage,
+} from "@/components/motion/motion-primitives";
+import { useRouteDirection } from "@/components/motion/route-direction-context";
 import { QuickAddDrawer } from "@/components/logging/quick-add-drawer";
 import { FoodSearchDrawer } from "@/components/logging/food-search-drawer";
 import { EditLogEntryDrawer } from "@/components/logging/edit-log-entry-drawer";
@@ -48,87 +54,79 @@ function SyncAuthModal() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isDismissed]);
 
-  if (isDismissed) {
-    return null;
-  }
-
   const handleContinueLocal = () => {
     triggerHaptic(8);
     setIsDismissed(true);
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Sign in to Cloud Sync & AI"
-      data-testid="sync-auth-modal"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 sm:p-6 bg-black/72 backdrop-blur-md animate-backdrop-in"
-      onClick={handleContinueLocal}
+    <MotionModalOverlay
+      open={!isDismissed}
+      onClose={handleContinueLocal}
+      ariaLabel="Sign in to Cloud Sync & AI"
+      dataTestId="sync-auth-modal"
+      align="center"
+      panelRef={modalRef}
+      panelClassName="w-full max-w-md surface-elevated-sheet rounded-3xl p-5 sm:p-6 space-y-4"
     >
-      <div
-        ref={modalRef}
-        className="w-full max-w-md surface-elevated-sheet rounded-3xl p-5 sm:p-6 space-y-4 animate-sheet-in sm:animate-modal-in"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-[var(--macro-calories)]/15 border border-[var(--macro-calories)]/30 flex items-center justify-center text-[var(--macro-calories)] shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
-              <Lock className="w-4.5 h-4.5" aria-hidden="true" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-base font-bold tracking-tight text-foreground">
-                Sign in to Cloud Sync
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Optional cross-device sync &amp; AI meal scanning
-              </p>
-            </div>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-2xl bg-[var(--macro-calories)]/15 border border-[var(--macro-calories)]/30 flex items-center justify-center text-[var(--macro-calories)] shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
+            <Lock className="w-4.5 h-4.5" aria-hidden="true" />
           </div>
-
-          <button
-            type="button"
-            onClick={handleContinueLocal}
-            aria-label="Close cloud sync sign in"
-            className="touch-target tactile-press w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub shrink-0"
-          >
-            <X className="w-4 h-4" aria-hidden="true" />
-          </button>
+          <div className="min-w-0">
+            <h2 className="text-base font-bold tracking-tight text-foreground">
+              Sign in to Cloud Sync
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Optional cross-device sync &amp; AI meal scanning
+            </p>
+          </div>
         </div>
 
-        {/* Passphrase Unlock Form */}
-        <SyncUnlockCard
-          compact
-          onUnlocked={() => {
-            if (isCloudSyncEnabled()) {
-              void syncWithCentralDb(db).catch(() => {});
-            }
-          }}
-        />
-
-        {/* Local-first zero-guilt exit */}
-        <div className="pt-1 flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={handleContinueLocal}
-            className="touch-target tactile-press w-full py-2.5 px-4 rounded-full bg-surface-sub border border-border hover:border-border-focus text-xs font-semibold text-foreground flex items-center justify-center gap-1.5"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-[var(--macro-carbs)]" aria-hidden="true" />
-            <span>Continue in Local Mode</span>
-          </button>
-          <p className="text-[11px] text-center text-muted-foreground">
-            Your meals, recipes, and weigh-ins stay 100% stored offline on this device. You can unlock anytime in Settings.
-          </p>
-        </div>
+        <button
+          type="button"
+          onClick={handleContinueLocal}
+          aria-label="Close cloud sync sign in"
+          className="touch-target tactile-press w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub shrink-0"
+        >
+          <X className="w-4 h-4" aria-hidden="true" />
+        </button>
       </div>
-    </div>
+
+      {/* Passphrase Unlock Form */}
+      <SyncUnlockCard
+        compact
+        onUnlocked={() => {
+          if (isCloudSyncEnabled()) {
+            void syncWithCentralDb(db).catch(() => {});
+          }
+        }}
+      />
+
+      {/* Local-first zero-guilt exit */}
+      <div className="pt-1 flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={handleContinueLocal}
+          className="touch-target tactile-press w-full py-2.5 px-4 rounded-full bg-surface-sub border border-border hover:border-border-focus text-xs font-semibold text-foreground flex items-center justify-center gap-1.5"
+        >
+          <ShieldCheck className="w-3.5 h-3.5 text-[var(--macro-carbs)]" aria-hidden="true" />
+          <span>Continue in Local Mode</span>
+        </button>
+        <p className="text-[11px] text-center text-muted-foreground">
+          Your meals, recipes, and weigh-ins stay 100% stored offline on this device. You can unlock anytime in Settings.
+        </p>
+      </div>
+    </MotionModalOverlay>
   );
 }
 
 export function AppShell({ children, onQuickAction }: AppShellProps) {
   const [isDockOpen, setIsDockOpen] = useState(false);
   const pathname = usePathname() ?? "/";
+  const { direction: routeDirection } = useRouteDirection();
   const hasQuickSearchBar =
     pathname === "/" || pathname === "/log" || pathname.startsWith("/log/");
   const activeSheet = useLoggerStore((s) => s.activeSheet);
@@ -247,9 +245,15 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
       >
         {syncAuthLocked && <SyncAuthModal />}
 
-        <main className="flex-1 flex flex-col w-full animate-page-enter">
-          {children}
-        </main>
+        <AnimatePresence mode="wait" initial={false}>
+          <PageTransitionStage
+            routeKey={pathname}
+            direction={routeDirection}
+            className="flex-1 flex flex-col w-full"
+          >
+            {children}
+          </PageTransitionStage>
+        </AnimatePresence>
 
         {/* Floating Undo Toast */}
         <UndoToast />
@@ -266,13 +270,12 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
           onDirectAction={handleAction}
         />
 
-        {/* Quick action overlay dock */}
-        {isDockOpen && (
-          <QuickActionDock
-            onAction={handleAction}
-            onClose={() => setIsDockOpen(false)}
-          />
-        )}
+        {/* Quick action overlay dock (AnimatePresence inside QuickActionDock) */}
+        <QuickActionDock
+          open={isDockOpen}
+          onAction={handleAction}
+          onClose={() => setIsDockOpen(false)}
+        />
 
         {/* Quick Add Macros Drawer */}
         <QuickAddDrawer

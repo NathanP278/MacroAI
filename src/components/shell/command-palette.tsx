@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "motion/react";
 import {
   Calendar,
   ChevronLeft,
@@ -28,7 +29,14 @@ import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { db } from "@/lib/db/macroai-db";
 import { copyLogsFromDate, offsetIsoDate } from "@/lib/recipes/recipe-builder";
 import { searchStaples } from "@/lib/foods/staples-search";
-import { runViewTransition, triggerHaptic } from "@/lib/motion";
+import {
+  EASE_EXPRESSIVE,
+  SPRING_PILL,
+  SPRING_SHEET,
+  isTestEnvironment,
+  runViewTransition,
+  triggerHaptic,
+} from "@/lib/motion";
 import type { FoodItem } from "@/types/nutrition";
 
 function getTodayIsoDate(): string {
@@ -73,9 +81,11 @@ export function CommandPalette() {
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, [setOpen]);
 
-  if (!isOpen) return null;
-
-  return <CommandPaletteDialog />;
+  return (
+    <AnimatePresence>
+      {isOpen && <CommandPaletteDialog key="command-palette-dialog" />}
+    </AnimatePresence>
+  );
 }
 
 function CommandPaletteDialog() {
@@ -400,18 +410,28 @@ function CommandPaletteDialog() {
     }
   };
 
+  const isTest = isTestEnvironment();
+
   return (
-    <div
+    <motion.div
       role="dialog"
       aria-modal="true"
       aria-label="Command Palette"
       data-testid="command-palette"
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[min(12dvh,5.5rem)] px-4 bg-black/60 backdrop-blur-sm animate-backdrop-in"
+      initial={isTest ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={isTest ? undefined : { opacity: 0 }}
+      transition={{ duration: 0.24, ease: EASE_EXPRESSIVE }}
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[min(12dvh,5.5rem)] px-4 bg-black/60 backdrop-blur-md"
       onClick={() => setOpen(false)}
     >
-      <div
+      <motion.div
         ref={dialogRef}
-        className="w-full max-w-lg surface-elevated-sheet concentric-outer overflow-hidden animate-modal-in"
+        initial={isTest ? false : { opacity: 0, y: -24, scale: 0.94 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={isTest ? undefined : { opacity: 0, y: -16, scale: 0.95 }}
+        transition={SPRING_SHEET}
+        className="w-full max-w-lg surface-elevated-sheet concentric-outer overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input Header */}
@@ -471,15 +491,23 @@ function CommandPaletteDialog() {
               const prevSection = idx > 0 ? actions[idx - 1].section : null;
               const showSectionHeader = action.section !== prevSection;
 
-              const rowClasses = `tactile-press w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
+              const rowClasses = `relative tactile-press w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
                 isHighlighted
-                  ? "bg-surface-sub text-foreground"
-                  : "text-foreground/90 hover:bg-surface-sub/60"
+                  ? "text-foreground"
+                  : "text-foreground/90 hover:bg-surface-sub/45"
               }`;
 
               const inner = (
                 <>
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  {isHighlighted && (
+                    <motion.span
+                      layoutId={isTest ? undefined : "cmd-palette-active-row"}
+                      transition={SPRING_PILL}
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 rounded-xl bg-surface-sub border border-border-focus/50"
+                    />
+                  )}
+                  <div className="relative z-10 flex items-center gap-2.5 min-w-0">
                     <span className="w-7 h-7 rounded-lg bg-card border border-border flex items-center justify-center shrink-0 text-muted-foreground">
                       <Icon className="w-3.5 h-3.5" aria-hidden="true" />
                     </span>
@@ -487,7 +515,7 @@ function CommandPaletteDialog() {
                       {action.label}
                     </span>
                   </div>
-                  <span className="text-[11px] text-muted-foreground tabular-nums truncate max-w-[46%]">
+                  <span className="relative z-10 text-[11px] text-muted-foreground tabular-nums truncate max-w-[46%]">
                     {action.hint}
                   </span>
                 </>
@@ -546,7 +574,7 @@ function CommandPaletteDialog() {
           <span>Use &uarr; &darr; to navigate, Enter to run</span>
           <span>Cmd / Ctrl + K</span>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

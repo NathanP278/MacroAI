@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion } from "motion/react";
 import {
   LayoutGrid,
   Apple,
@@ -15,7 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useLoggerStore } from "@/stores/logger-store";
-import { triggerHaptic } from "@/lib/motion";
+import { SPRING_PILL, SPRING_SNAPPY, triggerHaptic } from "@/lib/motion";
 import type { QuickActionType } from "./quick-action-dock";
 
 export interface DesktopSidebarProps {
@@ -75,6 +76,7 @@ export function DesktopSidebar({
     <aside
       data-testid="desktop-sidebar"
       aria-label="Primary Navigation"
+      style={{ viewTransitionName: "desktop-sidebar" }}
       className="hidden lg:flex lg:flex-col lg:w-[220px] lg:shrink-0 lg:sticky lg:top-0 lg:h-dvh border-r border-border/50 bg-card/50 backdrop-blur-xl px-3.5 py-5 justify-between gap-5"
     >
       <div className="space-y-5">
@@ -82,9 +84,9 @@ export function DesktopSidebar({
         <Link
           href="/"
           onClick={() => triggerHaptic(6)}
-          className="flex items-center gap-2.5 px-2 py-1 rounded-xl hover:bg-surface-sub/60 transition-colors"
+          className="group flex items-center gap-2.5 px-2 py-1 rounded-xl hover:bg-surface-sub/60 transition-colors"
         >
-          <span className="w-7 h-7 rounded-lg bg-foreground text-background flex items-center justify-center text-xs font-bold tracking-tight shrink-0">
+          <span className="w-7 h-7 rounded-lg bg-foreground text-background flex items-center justify-center text-xs font-bold tracking-tight shrink-0 transition-transform duration-300 group-hover:scale-108">
             M
           </span>
           <div className="min-w-0">
@@ -99,27 +101,33 @@ export function DesktopSidebar({
 
         {/* Primary Log & Search Controls */}
         <div className="space-y-2">
-          <button
+          <motion.button
             type="button"
             onClick={() => {
               triggerHaptic(10);
               onOpenQuickActions();
             }}
+            whileHover={{ scale: 1.03, y: -1.5 }}
+            whileTap={{ scale: 0.94 }}
+            transition={SPRING_SNAPPY}
             aria-label="Open quick actions"
-            className="tactile-press w-full h-10 px-3.5 rounded-full bg-foreground text-background hover:opacity-92 text-xs font-semibold flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(0,0,0,0.24)] transition-opacity"
+            className="group w-full h-10 px-3.5 rounded-full bg-foreground text-background hover:opacity-95 text-xs font-semibold flex items-center justify-center gap-2 shadow-[0_4px_16px_rgba(0,0,0,0.28)] transition-opacity"
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
+            <Plus className="w-4 h-4 stroke-[2.5] transition-transform duration-300 group-hover:rotate-90" aria-hidden="true" />
             <span>Log Food</span>
-          </button>
+          </motion.button>
 
-          <button
+          <motion.button
             type="button"
             onClick={() => {
               triggerHaptic(8);
               onDirectAction("search");
             }}
+            whileHover={{ scale: 1.02, y: -1 }}
+            whileTap={{ scale: 0.96 }}
+            transition={SPRING_SNAPPY}
             aria-label="Search for a food"
-            className="tactile-press w-full h-9 px-2.5 rounded-xl bg-surface-sub/80 border border-border/60 hover:border-border-focus text-muted-foreground hover:text-foreground text-xs flex items-center gap-2 transition-colors"
+            className="w-full h-9 px-2.5 rounded-xl bg-surface-sub/80 border border-border/60 hover:border-border-focus text-muted-foreground hover:text-foreground text-xs flex items-center gap-2 transition-colors"
           >
             <Search className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
             <span className="flex-1 text-left truncate font-medium">Search foods</span>
@@ -133,37 +141,43 @@ export function DesktopSidebar({
             >
               ⌘K
             </kbd>
-          </button>
+          </motion.button>
 
           <div className="grid grid-cols-2 gap-1.5">
-            <button
+            <motion.button
               type="button"
               onClick={() => {
                 triggerHaptic(8);
                 onDirectAction("barcode");
               }}
+              whileHover={{ scale: 1.03, y: -1 }}
+              whileTap={{ scale: 0.94 }}
+              transition={SPRING_SNAPPY}
               aria-label="Open barcode camera"
-              className="tactile-press h-8 px-2 rounded-xl bg-surface-sub/55 border border-border/40 hover:border-border-focus hover:bg-surface-sub text-muted-foreground hover:text-foreground text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors"
+              className="h-8 px-2 rounded-xl bg-surface-sub/55 border border-border/40 hover:border-border-focus hover:bg-surface-sub text-muted-foreground hover:text-foreground text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors"
             >
               <ScanBarcode className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
               <span>Barcode</span>
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               type="button"
               onClick={() => {
                 triggerHaptic(8);
                 onDirectAction("ai-scan");
               }}
+              whileHover={{ scale: 1.03, y: -1 }}
+              whileTap={{ scale: 0.94 }}
+              transition={SPRING_SNAPPY}
               aria-label="Open photo scanner"
-              className="tactile-press h-8 px-2 rounded-xl bg-[var(--macro-calories)]/10 border border-[var(--macro-calories)]/25 hover:bg-[var(--macro-calories)]/16 text-[var(--macro-calories)] text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors"
+              className="h-8 px-2 rounded-xl bg-[var(--macro-calories)]/10 border border-[var(--macro-calories)]/25 hover:bg-[var(--macro-calories)]/18 text-[var(--macro-calories)] text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors"
             >
               <Sparkles className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
               <span>AI Scan</span>
-            </button>
+            </motion.button>
           </div>
         </div>
 
-        {/* Navigation Links */}
+        {/* Navigation Links with Shared-Element Gliding Active Pill */}
         <nav aria-label="Sidebar Navigation" className="space-y-1">
           {SIDEBAR_ITEMS.map((item) => {
             const Icon = item.icon;
@@ -174,19 +188,27 @@ export function DesktopSidebar({
                 href={item.href}
                 onClick={() => triggerHaptic(6)}
                 aria-current={active ? "page" : undefined}
-                className={`tactile-press flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-colors ${
+                className={`relative tactile-press flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-colors ${
                   active
-                    ? "bg-foreground/10 border border-border-focus text-foreground font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
-                    : "border border-transparent text-muted-foreground hover:text-foreground hover:bg-surface-sub/60 font-medium"
+                    ? "text-foreground font-semibold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-surface-sub/55 font-medium"
                 }`}
               >
+                {active && (
+                  <motion.span
+                    layoutId="desktop-sidebar-active-pill"
+                    transition={SPRING_PILL}
+                    aria-hidden="true"
+                    className="absolute inset-0 rounded-xl bg-foreground/10 border border-border-focus shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]"
+                  />
+                )}
                 <Icon
                   aria-hidden="true"
-                  className={`w-[18px] h-[18px] shrink-0 ${
-                    active ? "stroke-[2.25]" : "stroke-[1.75]"
+                  className={`relative z-10 w-[18px] h-[18px] shrink-0 transition-transform duration-200 ${
+                    active ? "stroke-[2.25] scale-105" : "stroke-[1.75]"
                   }`}
                 />
-                <span className="truncate">{item.label}</span>
+                <span className="relative z-10 truncate">{item.label}</span>
               </Link>
             );
           })}
@@ -194,17 +216,20 @@ export function DesktopSidebar({
       </div>
 
       {/* Command Palette Shortcut Footer */}
-      <button
+      <motion.button
         type="button"
         onClick={() => {
           triggerHaptic(6);
           setCommandPaletteOpen(true);
         }}
-        className="tactile-press w-full px-3 py-2 rounded-xl bg-surface-sub/50 border border-border/40 hover:border-border-focus text-[11px] text-muted-foreground hover:text-foreground flex items-center justify-between transition-colors"
+        whileHover={{ scale: 1.02, y: -1 }}
+        whileTap={{ scale: 0.96 }}
+        transition={SPRING_SNAPPY}
+        className="w-full px-3 py-2 rounded-xl bg-surface-sub/50 border border-border/40 hover:border-border-focus text-[11px] text-muted-foreground hover:text-foreground flex items-center justify-between transition-colors"
       >
         <span>Command Menu</span>
         <span className="font-mono text-[10px]">⌘K</span>
-      </button>
+      </motion.button>
     </aside>
   );
 }

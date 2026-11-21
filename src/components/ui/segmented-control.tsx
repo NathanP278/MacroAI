@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useId } from "react";
+import { motion } from "motion/react";
+import { SPRING_PILL, isTestEnvironment } from "@/lib/motion";
 
 export interface SegmentedOption<T extends string> {
   value: T;
@@ -25,16 +27,9 @@ export interface SegmentedControlProps<T extends string> {
   thumbClassName?: string;
 }
 
-interface ThumbRect {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-}
-
 /**
- * Monochrome sliding-pill segmented control supporting both `tablist` and `group`
- * ARIA semantics, ResizeObserver alignment, and reduced-motion/jsdom fallbacks.
+ * Monochrome spring-gliding segmented control powered by Motion `layoutId`.
+ * Supports both `tablist` and `group` ARIA semantics, plus reduced-motion & jsdom safety.
  */
 export function SegmentedControl<T extends string>({
   options,
@@ -49,94 +44,20 @@ export function SegmentedControl<T extends string>({
   inactiveClassName = "text-muted-foreground hover:text-foreground font-medium",
   thumbClassName = "bg-foreground",
 }: SegmentedControlProps<T>) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const [thumbRect, setThumbRect] = useState<ThumbRect | null>(null);
-  const [animateThumb, setAnimateThumb] = useState(false);
-
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    const activeButton = buttonRefs.current[value];
-    if (!container || !activeButton) return;
-
-    let rafId: number | null = null;
-    const measure = () => {
-      const width = activeButton.offsetWidth;
-      const height = activeButton.offsetHeight;
-      if (width > 0 && height > 0) {
-        const next: ThumbRect = {
-          left: activeButton.offsetLeft,
-          top: activeButton.offsetTop,
-          width,
-          height,
-        };
-        setThumbRect((prev) => {
-          if (
-            prev &&
-            prev.left === next.left &&
-            prev.top === next.top &&
-            prev.width === next.width &&
-            prev.height === next.height
-          ) {
-            return prev;
-          }
-          return next;
-        });
-        rafId = window.requestAnimationFrame(() => {
-          setAnimateThumb(true);
-        });
-      }
-    };
-
-    measure();
-
-    if (typeof ResizeObserver === "undefined") {
-      return () => {
-        if (rafId !== null) window.cancelAnimationFrame(rafId);
-      };
-    }
-
-    const observer = new ResizeObserver(() => {
-      measure();
-    });
-    observer.observe(container);
-    observer.observe(activeButton);
-
-    return () => {
-      observer.disconnect();
-      if (rafId !== null) window.cancelAnimationFrame(rafId);
-    };
-  }, [value, options]);
-
-  const activeOption = options.find((opt) => opt.value === value);
-  const resolvedThumbClass = activeOption?.activeThumbClassName ?? thumbClassName;
-  const hasMeasuredThumb = Boolean(thumbRect && thumbRect.width > 0 && thumbRect.height > 0);
+  const controlId = useId();
+  const isTest = isTestEnvironment();
 
   return (
     <div
-      ref={containerRef}
       role={role}
       aria-label={ariaLabel}
       data-testid={dataTestId}
       className={`relative inline-flex items-center rounded-full border border-border/80 shadow-[var(--shadow-glass-pill)] backdrop-blur-md ${className}`}
     >
-      {hasMeasuredThumb && thumbRect && (
-        <span
-          aria-hidden="true"
-          className={`motion-reduce:hidden pointer-events-none absolute left-0 top-0 rounded-full liquid-glass-active-pill ${
-            animateThumb ? "segmented-thumb" : ""
-          } ${resolvedThumbClass}`}
-          style={{
-            width: `${thumbRect.width}px`,
-            height: `${thumbRect.height}px`,
-            transform: `translate3d(${thumbRect.left}px, ${thumbRect.top}px, 0)`,
-          }}
-        />
-      )}
-
       {options.map((opt) => {
         const isSelected = opt.value === value;
         const Icon = opt.icon;
+        const resolvedThumbClass = opt.activeThumbClassName ?? thumbClassName;
         const a11yProps =
           role === "tablist"
             ? { role: "tab" as const, "aria-selected": isSelected }
@@ -145,28 +66,21 @@ export function SegmentedControl<T extends string>({
         return (
           <button
             key={opt.value}
-            ref={(el) => {
-              buttonRefs.current[opt.value] = el;
-            }}
             id={opt.id}
             type="button"
             aria-label={opt.ariaLabel}
             onClick={() => onChange(opt.value)}
             {...a11yProps}
-            className={`relative z-10 touch-target tactile-press inline-flex items-center justify-center gap-1.5 rounded-full whitespace-nowrap min-h-[36px] sm:min-h-0 transition-colors duration-150 ${buttonClassName} ${
-              isSelected
-                ? `${activeClassName} ${
-                    !hasMeasuredThumb ? `${resolvedThumbClass} shadow-xs` : ""
-                  }`
-                : inactiveClassName
+            className={`relative z-10 touch-target tactile-press inline-flex items-center justify-center gap-1.5 rounded-full whitespace-nowrap min-h-[36px] sm:min-h-0 transition-colors duration-200 ${buttonClassName} ${
+              isSelected ? activeClassName : inactiveClassName
             }`}
           >
-            {hasMeasuredThumb && (
-              <span
+            {isSelected && (
+              <motion.span
+                layoutId={isTest ? undefined : `segmented-thumb-${controlId}`}
+                transition={SPRING_PILL}
                 aria-hidden="true"
-                className={`hidden motion-reduce:block pointer-events-none absolute inset-0 rounded-full shadow-xs segmented-pill-reduce ${
-                  opt.activeThumbClassName ?? thumbClassName
-                } ${isSelected ? "opacity-100" : "opacity-0"}`}
+                className={`pointer-events-none absolute inset-0 rounded-full liquid-glass-active-pill ${resolvedThumbClass}`}
               />
             )}
             {Icon && <Icon className="relative z-10 w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
