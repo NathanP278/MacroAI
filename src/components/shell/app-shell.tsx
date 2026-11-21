@@ -72,7 +72,7 @@ function SyncAuthModal() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-2xl bg-[var(--macro-calories)]/15 border border-[var(--macro-calories)]/30 flex items-center justify-center text-[var(--macro-calories)] shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
+          <div className="w-10 h-10 rounded-full liquid-pill-glass flex items-center justify-center text-foreground shrink-0">
             <Lock className="w-4.5 h-4.5" aria-hidden="true" />
           </div>
           <div className="min-w-0">
@@ -110,9 +110,9 @@ function SyncAuthModal() {
         <button
           type="button"
           onClick={handleContinueLocal}
-          className="touch-target tactile-press w-full py-2.5 px-4 rounded-full bg-surface-sub border border-border hover:border-border-focus text-xs font-semibold text-foreground flex items-center justify-center gap-1.5"
+          className="touch-target w-full py-2.5 px-4 rounded-full liquid-pill-glass text-xs font-semibold text-foreground flex items-center justify-center gap-1.5"
         >
-          <ShieldCheck className="w-3.5 h-3.5 text-[var(--macro-carbs)]" aria-hidden="true" />
+          <ShieldCheck className="w-3.5 h-3.5 text-foreground/80" aria-hidden="true" />
           <span>Continue in Local Mode</span>
         </button>
         <p className="text-[11px] text-center text-muted-foreground">

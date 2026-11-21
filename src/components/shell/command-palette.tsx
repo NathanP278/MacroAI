@@ -435,43 +435,45 @@ function CommandPaletteDialog() {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input Header */}
-        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border">
-          <Search
-            className="w-4 h-4 text-muted-foreground shrink-0"
-            aria-hidden="true"
-          />
-          <input
-            ref={inputRef}
-            type="text"
-            role="combobox"
-            aria-expanded="true"
-            aria-controls="command-palette-list"
-            aria-activedescendant={
-              actions[safeActiveIndex]
-                ? `cmd-opt-${actions[safeActiveIndex].id}`
-                : undefined
-            }
-            aria-label="Search commands or staple foods"
-            placeholder="Type a command, route, or food..."
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setActiveIndex(0);
-            }}
-            onKeyDown={handleInputKeyDown}
-            className="flex-1 bg-transparent text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-          />
-          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground bg-surface-sub border border-border rounded">
-            Esc
-          </kbd>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            aria-label="Close command palette"
-            className="touch-target tactile-press p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
-          >
-            <X className="w-4 h-4" aria-hidden="true" />
-          </button>
+        <div className="p-3 border-b border-border">
+          <div className="liquid-input-well rounded-full flex items-center gap-2.5 px-3.5 py-2">
+            <Search
+              className="w-4 h-4 text-muted-foreground shrink-0"
+              aria-hidden="true"
+            />
+            <input
+              ref={inputRef}
+              type="text"
+              role="combobox"
+              aria-expanded="true"
+              aria-controls="command-palette-list"
+              aria-activedescendant={
+                actions[safeActiveIndex]
+                  ? `cmd-opt-${actions[safeActiveIndex].id}`
+                  : undefined
+              }
+              aria-label="Search commands or staple foods"
+              placeholder="Type a command, route, or food..."
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setActiveIndex(0);
+              }}
+              onKeyDown={handleInputKeyDown}
+              className="flex-1 bg-transparent text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+            />
+            <kbd className="hidden sm:inline-flex items-center px-2 py-0.5 text-[10px] font-mono text-muted-foreground liquid-pill-glass rounded-full">
+              Esc
+            </kbd>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Close command palette"
+              className="touch-target tactile-press p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+            >
+              <X className="w-4 h-4" aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         {/* Results List */}

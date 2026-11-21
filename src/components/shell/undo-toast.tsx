@@ -153,7 +153,7 @@ export function UndoToast() {
                   type="button"
                   onClick={() => void handleUndo()}
                   aria-label="Undo"
-                  className="touch-target tactile-press inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90"
+                  className="touch-target inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full liquid-pill-primary text-xs font-semibold"
                 >
                   <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>Undo</span>
@@ -172,7 +172,7 @@ export function UndoToast() {
               <div
                 key={undoToast.id}
                 aria-hidden="true"
-                className="undo-toast-bar absolute bottom-0 left-0 right-0 h-[2px] bg-[var(--macro-calories)]/85 pointer-events-none"
+                className="undo-toast-bar absolute bottom-0 left-0 right-0 h-[2px] bg-foreground/60 pointer-events-none"
               />
             </div>
           </motion.div>

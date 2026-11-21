@@ -47,32 +47,28 @@ const ACTION_ITEMS: ActionItem[] = [
     label: "AI Meal Scan",
     sublabel: "Photo or description estimate",
     icon: Sparkles,
-    accentColor:
-      "text-[var(--macro-calories)] bg-[var(--macro-calories)]/12 border-[var(--macro-calories)]/25",
+    accentColor: "text-foreground liquid-pill-glass",
   },
   {
     id: "barcode",
     label: "Barcode Scan",
     sublabel: "Instant packaged food lookup",
     icon: ScanBarcode,
-    accentColor:
-      "text-[var(--macro-protein)] bg-[var(--macro-protein)]/12 border-[var(--macro-protein)]/25",
+    accentColor: "text-foreground liquid-pill-glass",
   },
   {
     id: "search",
     label: "Quick Search",
     sublabel: "Verified USDA & custom foods",
     icon: Search,
-    accentColor:
-      "text-[var(--macro-carbs)] bg-[var(--macro-carbs)]/12 border-[var(--macro-carbs)]/25",
+    accentColor: "text-foreground liquid-pill-glass",
   },
   {
     id: "quick-add",
     label: "Quick Add Macros",
     sublabel: "Direct calories and macro entry",
     icon: Zap,
-    accentColor:
-      "text-[var(--macro-fat)] bg-[var(--macro-fat)]/12 border-[var(--macro-fat)]/25",
+    accentColor: "text-foreground liquid-pill-glass",
   },
 ];
 
@@ -140,12 +136,9 @@ export function QuickActionDock({
       />
       {/* Header */}
       <div className="flex items-center justify-between pb-3.5 sm:pb-4 border-b border-border">
-        <div className="flex items-center gap-2">
-          <div className="w-1.5 h-4 bg-[var(--macro-calories)] rounded-full" />
-          <h2 className="text-sm font-semibold tracking-tight text-foreground">
-            Log Food &amp; Nutrients
-          </h2>
-        </div>
+        <h2 className="text-sm font-semibold tracking-tight text-foreground">
+          Log Food &amp; Nutrients
+        </h2>
         <button
           type="button"
           onClick={onClose}
@@ -222,8 +215,8 @@ export function QuickActionDock({
           className="touch-target w-full flex items-center justify-between gap-3 px-3.5 py-3 rounded-2xl bg-surface-sub hover:bg-accent border border-border hover:border-border-focus text-left group transition-colors"
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center border text-[var(--macro-fiber)] bg-[var(--macro-fiber)]/12 border-[var(--macro-fiber)]/25 shrink-0 transition-transform duration-200 group-hover:scale-110">
-              <Scale className="w-5 h-5" aria-hidden="true" />
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-foreground liquid-pill-glass shrink-0 transition-transform duration-200 group-hover:scale-105">
+              <Scale className="w-4.5 h-4.5" aria-hidden="true" />
             </div>
             <div className="min-w-0">
               <span className="block text-xs font-semibold text-foreground tracking-tight">

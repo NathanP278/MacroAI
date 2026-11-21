@@ -63,7 +63,7 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
   return (
     <div
       style={{ viewTransitionName: "bottom-chrome" }}
-      className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none lg:hidden"
+      className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none lg:hidden bg-gradient-to-t from-background/92 via-background/55 to-transparent pt-5"
     >
       {/* Persistent Quick Search Strip on Dashboard & Food Log */}
       <AnimatePresence initial={false}>
@@ -74,10 +74,9 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={isTestEnvironment() ? undefined : { opacity: 0, y: 14, scale: 0.96 }}
             transition={{ duration: 0.34, ease: EASE_EXPRESSIVE }}
-            className="bg-gradient-to-t from-background/90 via-background/55 to-transparent pt-5"
           >
             <div className="max-w-2xl mx-auto pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:px-6 pb-2.5 pointer-events-auto">
-              <div className="surface-floating-bar hover:border-border-focus transition-colors rounded-2xl h-12 px-3 flex items-center gap-1.5">
+              <div className="liquid-input-well surface-floating-bar rounded-full h-12 px-3 flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => {
@@ -85,7 +84,7 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                   onDirectAction("search");
                 }}
                 aria-label="Search for a food"
-                className="tactile-press flex-1 flex items-center gap-2.5 text-left text-muted-foreground hover:text-foreground transition-colors h-full min-w-0 group px-1"
+                className="tactile-press flex-1 flex items-center gap-2.5 text-left text-muted-foreground hover:text-foreground transition-colors h-full min-w-0 group px-1.5"
               >
                 <Search
                   className="w-4 h-4 shrink-0 transition-transform duration-200 group-hover:scale-110"
@@ -103,7 +102,7 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                   setCommandPaletteOpen(true);
                 }}
                 aria-label="Open command palette"
-                className="hidden sm:inline-flex tactile-press items-center gap-1 px-2 py-1 rounded-lg bg-surface-sub border border-border text-[11px] font-mono text-muted-foreground hover:text-foreground shrink-0"
+                className="hidden sm:inline-flex tactile-press items-center gap-1 px-2.5 py-1 rounded-full liquid-pill-glass text-[11px] font-mono text-muted-foreground hover:text-foreground shrink-0"
               >
                 <span>⌘K</span>
               </button>
@@ -116,7 +115,7 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                     onDirectAction("barcode");
                   }}
                   aria-label="Open barcode camera"
-                  className="touch-target tactile-press min-w-[44px] min-h-[44px] sm:min-w-0 sm:px-2.5 sm:h-9 rounded-xl flex items-center justify-center gap-1.5 text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+                  className="touch-target tactile-press min-w-[44px] min-h-[44px] sm:min-w-0 sm:px-3 sm:h-8 rounded-full flex items-center justify-center gap-1.5 text-muted-foreground hover:text-foreground hover:bg-surface-sub"
                 >
                   <ScanBarcode className="w-4 h-4" aria-hidden="true" />
                   <span className="hidden sm:inline text-[11px] font-medium">
@@ -130,7 +129,7 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                     onDirectAction("ai-scan");
                   }}
                   aria-label="Open photo scanner"
-                  className="touch-target tactile-press min-w-[44px] min-h-[44px] sm:min-w-0 sm:px-2.5 sm:h-9 rounded-xl flex items-center justify-center gap-1.5 text-[var(--macro-calories)] hover:bg-[var(--macro-calories)]/12"
+                  className="touch-target tactile-press min-w-[44px] min-h-[44px] sm:min-w-0 sm:px-3 sm:h-8 rounded-full flex items-center justify-center gap-1.5 text-foreground hover:bg-surface-sub"
                 >
                   <Sparkles className="w-4 h-4" aria-hidden="true" />
                   <span className="hidden sm:inline text-[11px] font-semibold">
@@ -145,13 +144,13 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
       </AnimatePresence>
 
       {/* Floating Smoked Liquid Glass Navigation Capsule */}
-      <div className="bg-gradient-to-t from-background/90 via-background/45 to-transparent pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-1 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:px-6">
+      <div className="pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-1 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:px-6">
         <nav
           data-testid="bottom-nav"
           aria-label="Bottom Navigation"
-          className="pointer-events-auto max-w-2xl mx-auto bg-surface-card border border-border surface-floating-bar rounded-[28px]"
+          className="pointer-events-auto max-w-2xl mx-auto bg-surface-card border border-border surface-floating-bar rounded-full"
         >
-          <div className="h-[62px] px-2 sm:px-4 flex items-center justify-between gap-1">
+          <div className="h-[62px] px-2.5 sm:px-4 flex items-center justify-between gap-1">
           {/* Left Nav items */}
           <div className="flex items-center gap-0.5 flex-1 justify-around min-w-0">
             {NAV_ITEMS_LEFT.map((item) => {
@@ -162,20 +161,20 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                   key={item.href}
                   href={item.href}
                   onClick={() => triggerHaptic(8)}
-                  className={`touch-target tactile-press relative flex flex-col items-center justify-center flex-1 min-w-0 min-h-[44px] py-1.5 rounded-xl ${
+                  className={`touch-target tactile-press relative flex flex-col items-center justify-center flex-1 min-w-0 min-h-[44px] py-1.5 rounded-full ${
                     active
                       ? "text-foreground font-semibold"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                   aria-current={active ? "page" : undefined}
                 >
-                  <span className="relative flex items-center justify-center w-11 h-7 rounded-full mb-0.5">
+                  <span className="relative flex items-center justify-center w-12 h-7 rounded-full mb-0.5">
                     {active && (
                       <motion.span
                         layoutId="bottom-nav-active-pill"
                         transition={SPRING_PILL}
                         aria-hidden="true"
-                        className="absolute inset-0 rounded-full bg-foreground/12 border border-border-focus shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]"
+                        className="absolute inset-0 rounded-full bg-foreground/14 border border-border-focus liquid-glass-active-pill"
                       />
                     )}
                     <Icon
@@ -193,16 +192,16 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
             })}
           </div>
 
-          {/* Crisp White/Foreground Center '+' Action Pill */}
+          {/* Volumetric Neutral Liquid Glass Center '+' Action Pill */}
           <div className="px-2 sm:px-4 shrink-0">
             <motion.button
               type="button"
               onClick={onOpenQuickActions}
               aria-label="Open quick actions"
-              whileHover={{ scale: 1.08, y: -2 }}
-              whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.05, y: -1.5 }}
+              whileTap={{ scale: 0.93 }}
               transition={SPRING_SNAPPY}
-              className="group touch-target w-11 h-11 rounded-full bg-foreground text-background hover:ring-4 hover:ring-foreground/15 hover:shadow-[0_8px_24px_rgba(0,0,0,0.42)] flex items-center justify-center shadow-[0_4px_16px_rgba(0,0,0,0.28)] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-shadow duration-200"
+              className="group touch-target w-11 h-11 rounded-full liquid-pill-primary flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
             >
               <Plus
                 className="w-5 h-5 stroke-[2.5] transition-transform duration-300 group-hover:rotate-90"
@@ -221,20 +220,20 @@ export function BottomNav({ onOpenQuickActions, onDirectAction }: BottomNavProps
                   key={item.href}
                   href={item.href}
                   onClick={() => triggerHaptic(8)}
-                  className={`touch-target tactile-press relative flex flex-col items-center justify-center flex-1 min-w-0 min-h-[44px] py-1.5 rounded-xl ${
+                  className={`touch-target tactile-press relative flex flex-col items-center justify-center flex-1 min-w-0 min-h-[44px] py-1.5 rounded-full ${
                     active
                       ? "text-foreground font-semibold"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                   aria-current={active ? "page" : undefined}
                 >
-                  <span className="relative flex items-center justify-center w-11 h-7 rounded-full mb-0.5">
+                  <span className="relative flex items-center justify-center w-12 h-7 rounded-full mb-0.5">
                     {active && (
                       <motion.span
                         layoutId="bottom-nav-active-pill"
                         transition={SPRING_PILL}
                         aria-hidden="true"
-                        className="absolute inset-0 rounded-full bg-foreground/12 border border-border-focus shadow-[inset_0_1px_0_rgba(255,255,255,0.22)]"
+                        className="absolute inset-0 rounded-full bg-foreground/14 border border-border-focus liquid-glass-active-pill"
                       />
                     )}
                     <Icon
