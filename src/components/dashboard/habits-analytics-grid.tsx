@@ -338,92 +338,153 @@ export function HabitsAnalyticsGrid({
             </div>
           </div>
 
-          {/* 7-Day Pace Tile (distinct multi-day horizon — zero duplication with Daily Nutrition) */}
+          {/* 7-Day Pace Tile (high-density multi-day horizon — zero dead space) */}
           <Link
             href="/trends"
-            className="min-w-0 rounded-2xl bg-card border border-border/50 p-3.5 sm:p-4 flex flex-col justify-between gap-3 hover:bg-surface-sub/60 tactile-press macro-card-interactive group"
+            className="min-w-0 rounded-2xl bg-card border border-border/50 p-3.5 sm:p-4 flex flex-col justify-between gap-3.5 hover:bg-surface-sub/60 tactile-press macro-card-interactive group"
           >
-            <div>
-              <div className="text-sm font-semibold text-foreground truncate">
-                7-Day Pace
+            {/* Header + 7D Bank readout */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-foreground truncate">
+                  7-Day Pace
+                </div>
+                <div className="text-xs text-muted-foreground truncate tabular-nums">
+                  {loggedWeeklyCount > 0
+                    ? `${loggedWeeklyCount}/7 days logged`
+                    : 'No days logged yet'}
+                </div>
               </div>
-              <div className="text-xs text-muted-foreground truncate tabular-nums">
-                {loggedWeeklyCount > 0
-                  ? `${loggedWeeklyCount}/7 days logged`
-                  : 'No days logged yet'}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="text-right tabular-nums">
+                  <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground leading-none">
+                    7D Bank
+                  </div>
+                  <div
+                    className="text-sm font-bold whitespace-nowrap mt-0.5 leading-tight"
+                    style={{
+                      color:
+                        weeklyBankDelta > 0
+                          ? 'var(--neutral-over)'
+                          : 'var(--macro-calories)',
+                    }}
+                  >
+                    {weeklyBankDelta > 0
+                      ? `+${weeklyBankDelta.toLocaleString()}`
+                      : weeklyBankDelta < 0
+                        ? `-${Math.abs(weeklyBankDelta).toLocaleString()}`
+                        : '0'}
+                    <span className="text-[10px] font-medium text-muted-foreground ml-0.5">
+                      kcal
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight
+                  className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0"
+                  aria-hidden="true"
+                />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-2 sm:gap-x-3 gap-y-2 tabular-nums">
-              <div className="min-w-0">
-                <div className="text-[11px] font-medium text-muted-foreground">7D Bank</div>
-                <div
-                  className="text-xs sm:text-sm font-bold whitespace-nowrap truncate"
-                  style={{
-                    color:
-                      weeklyBankDelta > 0
-                        ? 'var(--neutral-over)'
-                        : 'var(--macro-calories)',
-                  }}
-                >
-                  {weeklyBankDelta > 0
-                    ? `+${weeklyBankDelta.toLocaleString()}`
-                    : weeklyBankDelta < 0
-                      ? `-${Math.abs(weeklyBankDelta).toLocaleString()}`
-                      : '0'}
-                  <span className="text-[10px] font-medium text-muted-foreground ml-0.5">
-                    kcal
-                  </span>
-                </div>
-              </div>
-              <div className="min-w-0">
-                <div className="text-[11px] font-medium text-muted-foreground">Protein Avg</div>
-                <div
-                  className="text-xs sm:text-sm font-bold whitespace-nowrap truncate"
-                  style={{ color: 'var(--macro-protein)' }}
-                >
-                  {avg7dProtein.toLocaleString()}
-                  <span className="text-[10px] font-medium text-muted-foreground ml-0.5">
-                    g
-                  </span>
-                </div>
-              </div>
-              <div className="min-w-0">
-                <div className="text-[11px] font-medium text-muted-foreground">Fat Avg</div>
-                <div
-                  className="text-xs sm:text-sm font-bold whitespace-nowrap truncate"
-                  style={{ color: 'var(--macro-fat)' }}
-                >
-                  {avg7dFat.toLocaleString()}
-                  <span className="text-[10px] font-medium text-muted-foreground ml-0.5">
-                    g
-                  </span>
-                </div>
-              </div>
-              <div className="min-w-0">
-                <div className="text-[11px] font-medium text-muted-foreground">Carbs Avg</div>
-                <div
-                  className="text-xs sm:text-sm font-bold whitespace-nowrap truncate"
-                  style={{ color: 'var(--macro-carbs)' }}
-                >
-                  {avg7dCarbs.toLocaleString()}
-                  <span className="text-[10px] font-medium text-muted-foreground ml-0.5">
-                    g
-                  </span>
-                </div>
-              </div>
+            {/* 7-Day Daily Calorie Cadence Strip */}
+            <div className="grid grid-cols-7 gap-1.5 items-end pt-0.5">
+              {weeklyDays.map((day) => {
+                const target = Math.max(1, day.caloriesTarget || calTarget);
+                const pct = day.calories > 0 ? Math.min(100, Math.round((day.calories / target) * 100)) : 0;
+                const isOver = day.calories > target;
+                return (
+                  <div key={day.date} className="flex flex-col items-center gap-1 min-w-0">
+                    <div className="w-full h-8 rounded-[4px] bg-surface-sub/80 overflow-hidden flex items-end p-[1px]">
+                      {pct > 0 && (
+                        <div
+                          className="w-full rounded-[3px] transition-all duration-300"
+                          style={{
+                            height: `${Math.max(16, pct)}%`,
+                            backgroundColor: isOver
+                              ? 'var(--neutral-over)'
+                              : 'var(--macro-calories)',
+                          }}
+                        />
+                      )}
+                    </div>
+                    <span
+                      className={`text-[10px] font-medium leading-none ${
+                        day.isSelected ? 'text-foreground font-semibold' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {day.dayLetter}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
 
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-xs text-muted-foreground tabular-nums truncate">
+            {/* 3-Column Macro Averages with Target Bars */}
+            <div className="grid grid-cols-3 gap-2.5 tabular-nums pt-0.5">
+              {[
+                {
+                  label: 'Protein',
+                  avg: avg7dProtein,
+                  target: Math.max(1, summary.protein.target),
+                  color: 'var(--macro-protein)',
+                },
+                {
+                  label: 'Fat',
+                  avg: avg7dFat,
+                  target: Math.max(1, summary.fat.target),
+                  color: 'var(--macro-fat)',
+                },
+                {
+                  label: 'Carbs',
+                  avg: avg7dCarbs,
+                  target: Math.max(1, summary.carbs.target),
+                  color: 'var(--macro-carbs)',
+                },
+              ].map((m) => {
+                const pct = Math.min(100, Math.round((m.avg / m.target) * 100));
+                return (
+                  <div key={m.label} className="min-w-0 space-y-1">
+                    <div className="flex items-baseline justify-between gap-1 text-[11px]">
+                      <span className="font-medium text-muted-foreground truncate">
+                        {m.label}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground/80 shrink-0">
+                        {pct}%
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-surface-sub overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${pct}%`,
+                          backgroundColor: m.color,
+                        }}
+                      />
+                    </div>
+                    <div
+                      className="text-xs font-bold whitespace-nowrap truncate"
+                      style={{ color: m.color }}
+                    >
+                      {m.avg.toLocaleString()}
+                      <span className="text-[10px] font-medium text-muted-foreground ml-0.5">
+                        g avg
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer Pace Summary */}
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50 text-xs tabular-nums">
+              <span className="font-semibold text-foreground truncate">
                 {loggedWeeklyCount > 0
                   ? `${avg7dCalories.toLocaleString()} kcal/day avg`
                   : 'Log meals to track pace'}
               </span>
-              <ChevronRight
-                className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0"
-                aria-hidden="true"
-              />
+              <span className="text-[11px] text-muted-foreground shrink-0">
+                Target {calTarget.toLocaleString()}
+              </span>
             </div>
           </Link>
         </div>
