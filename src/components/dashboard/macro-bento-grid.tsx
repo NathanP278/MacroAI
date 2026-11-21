@@ -1,9 +1,16 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+import { motion } from 'motion/react';
 import type { DailySummary, MacroMetric } from '@/lib/nutrition/daily-summary';
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import { triggerHaptic } from '@/lib/motion';
+import { AnimatedNumber } from '@/components/motion/motion-primitives';
+import {
+  EASE_EXPRESSIVE,
+  SPRING_EXPRESSIVE,
+  isTestEnvironment,
+  triggerHaptic,
+} from '@/lib/motion';
 
 export interface DayNutritionPoint {
   date: string;
@@ -44,29 +51,44 @@ function MacroColumnBar({
   metric,
   fillVar,
   mode,
+  delay = 0,
 }: {
   label: string;
   metric: MacroMetric;
   fillVar: string;
   mode: DisplayMode;
+  delay?: number;
 }) {
+  const clampedPct = Math.min(100, Math.max(0, metric.percent));
+  const isTest = isTestEnvironment();
   return (
     <div className="flex flex-col items-center gap-1.5 min-w-0">
       <span className="text-xs font-medium text-muted-foreground truncate">
         {label}
       </span>
-      <progress
-        className="macro-progress w-full h-1.5 block"
-        max={100}
-        value={Math.min(100, Math.max(0, metric.percent))}
-        aria-label={`${label} progress`}
-        style={
-          {
-            '--progress-bar-fill': fillVar,
-            '--progress-bar-track': 'var(--surface-sub)',
-          } as React.CSSProperties
-        }
-      />
+      <div className="relative w-full h-1.5 rounded-full bg-surface-sub overflow-hidden">
+        <progress
+          className="sr-only"
+          max={100}
+          value={clampedPct}
+          aria-label={`${label} progress`}
+        />
+        <motion.div
+          aria-hidden="true"
+          initial={isTest ? false : { scaleX: 0 }}
+          animate={{ scaleX: clampedPct / 100 }}
+          transition={{
+            duration: 0.65,
+            delay: isTest ? 0 : delay,
+            ease: EASE_EXPRESSIVE,
+          }}
+          style={{
+            transformOrigin: 'left center',
+            backgroundColor: fillVar,
+          }}
+          className="h-full w-full rounded-full"
+        />
+      </div>
       <span className="hero-macro-readout font-semibold tabular-nums text-foreground whitespace-nowrap">
         {formatMacroReadout(metric, mode)}
       </span>
@@ -182,7 +204,14 @@ export function MacroBentoGrid({
             {/* Left Flanking Metric */}
             <div className="text-center min-w-0">
               <div className="hero-flank-value font-bold tabular-nums text-foreground truncate">
-                {leftFlankText}
+                <AnimatedNumber
+                  value={calories.overTarget ? calories.delta : calories.remaining}
+                  format={(n) =>
+                    calories.overTarget
+                      ? `+${Math.round(n).toLocaleString()}`
+                      : Math.round(n).toLocaleString()
+                  }
+                />
               </div>
               <div className="text-xs font-medium text-muted-foreground mt-0.5">
                 {leftFlankLabel}
@@ -210,7 +239,7 @@ export function MacroBentoGrid({
                 />
                 {/* Cornflower Blue Progress Stroke */}
                 {activeSpan > 0 && (
-                  <circle
+                  <motion.circle
                     cx={cx}
                     cy={cy}
                     r={radius}
@@ -218,10 +247,18 @@ export function MacroBentoGrid({
                     stroke="var(--macro-calories)"
                     strokeWidth={strokeWidth}
                     strokeDasharray={`${arcSpan} ${circumference}`}
-                    strokeDashoffset={arcSpan - activeSpan}
+                    initial={
+                      isTestEnvironment()
+                        ? false
+                        : { strokeDashoffset: arcSpan }
+                    }
+                    animate={{ strokeDashoffset: arcSpan - activeSpan }}
+                    transition={{
+                      duration: 0.78,
+                      ease: EASE_EXPRESSIVE,
+                    }}
                     strokeLinecap="round"
                     transform={`rotate(150 ${cx} ${cy})`}
-                    className="macro-arc-transition"
                   />
                 )}
               </svg>
@@ -231,7 +268,20 @@ export function MacroBentoGrid({
                   data-digits={centerPrimaryText.length >= 6 ? 'long' : undefined}
                   className="hero-center-value font-bold tracking-tight tabular-nums text-foreground"
                 >
-                  {centerPrimaryText}
+                  <AnimatedNumber
+                    value={
+                      mode === 'consumed'
+                        ? calories.consumed
+                        : calories.overTarget
+                          ? calories.delta
+                          : calories.remaining
+                    }
+                    format={(n) =>
+                      mode === 'remaining' && calories.overTarget
+                        ? `+${Math.round(n).toLocaleString()}`
+                        : Math.round(n).toLocaleString()
+                    }
+                  />
                 </span>
                 <span className="text-xs font-medium text-muted-foreground mt-0.5">
                   {centerSubLabel}
@@ -242,7 +292,7 @@ export function MacroBentoGrid({
             {/* Right Flanking Metric */}
             <div className="text-center min-w-0">
               <div className="hero-flank-value font-bold tabular-nums text-foreground truncate">
-                {calories.target.toLocaleString()}
+                <AnimatedNumber value={calories.target} />
               </div>
               <div className="text-xs font-medium text-muted-foreground mt-0.5">
                 Target
@@ -257,18 +307,21 @@ export function MacroBentoGrid({
               metric={protein}
               fillVar="var(--macro-protein)"
               mode={mode}
+              delay={0.08}
             />
             <MacroColumnBar
               label="Fat"
               metric={fat}
               fillVar="var(--macro-fat)"
               mode={mode}
+              delay={0.16}
             />
             <MacroColumnBar
               label="Carbs"
               metric={carbs}
               fillVar="var(--macro-carbs)"
               mode={mode}
+              delay={0.24}
             />
           </div>
 

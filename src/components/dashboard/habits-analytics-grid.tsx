@@ -2,9 +2,12 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { motion } from 'motion/react';
 import type { DailySummary } from '@/lib/nutrition/daily-summary';
 import { computeLoggingStreak } from '@/lib/nutrition/analytics';
 import type { DayNutritionPoint } from './macro-bento-grid';
+import { AnimatedNumber } from '@/components/motion/motion-primitives';
+import { EASE_EXPRESSIVE, isTestEnvironment } from '@/lib/motion';
 import { ChevronRight } from 'lucide-react';
 
 export interface LoggedDayDot {
@@ -143,10 +146,13 @@ export function HabitsAnalyticsGrid({
             </div>
 
             <div className="relative w-full h-3.5 rounded-sm bg-surface-sub overflow-hidden">
-              <div
-                className="w-full h-full rounded-sm macro-bar-fill"
+              <motion.div
+                initial={isTestEnvironment() ? false : { scaleX: 0 }}
+                animate={{ scaleX: fillWidthPct / 100 }}
+                transition={{ duration: 0.65, ease: EASE_EXPRESSIVE }}
+                className="w-full h-full rounded-sm"
                 style={{
-                  transform: `scaleX(${fillWidthPct / 100})`,
+                  transformOrigin: 'left center',
                   backgroundColor: 'var(--macro-calories)',
                 }}
               />
@@ -160,11 +166,11 @@ export function HabitsAnalyticsGrid({
 
             <div className="flex items-center justify-between gap-1">
               <span className="text-sm sm:text-base font-bold tabular-nums text-foreground whitespace-nowrap">
-                {summary.calories.consumed.toLocaleString()}{' '}
+                <AnimatedNumber value={summary.calories.consumed} />{' '}
                 <span className="text-xs font-normal text-muted-foreground">kcal</span>
               </span>
               <ChevronRight
-                className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0"
+                className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all duration-200 shrink-0"
                 aria-hidden="true"
               />
             </div>
@@ -178,7 +184,7 @@ export function HabitsAnalyticsGrid({
             </div>
 
             <div className="h-11 grid grid-cols-7 items-end gap-1 sm:gap-1.5 pt-1">
-              {weeklyDays.map((day) => {
+              {weeklyDays.map((day, idx) => {
                 const proCal = day.protein * 4;
                 const fatCal = day.fat * 9;
                 const carbCal = day.carbs * 4;
@@ -204,11 +210,18 @@ export function HabitsAnalyticsGrid({
                         : 'hover:bg-surface-sub/45'
                     }`}
                   >
-                    <div
-                      className={`w-full h-full rounded-[3px] overflow-hidden flex flex-col-reverse macro-bar-fill-y ${
+                    <motion.div
+                      initial={isTestEnvironment() ? false : { scaleY: 0 }}
+                      animate={{ scaleY: totalHeightPct / 100 }}
+                      transition={{
+                        duration: 0.52,
+                        delay: isTestEnvironment() ? 0 : idx * 0.045,
+                        ease: EASE_EXPRESSIVE,
+                      }}
+                      className={`w-full h-full rounded-[3px] overflow-hidden flex flex-col-reverse ${
                         macroSum === 0 ? 'bg-surface-sub opacity-65' : 'group-hover:opacity-90'
                       }`}
-                      style={{ transform: `scaleY(${totalHeightPct / 100})` }}
+                      style={{ transformOrigin: 'bottom center' }}
                     >
                       {macroSum > 0 && (
                         <>
@@ -232,7 +245,7 @@ export function HabitsAnalyticsGrid({
                           />
                         </>
                       )}
-                    </div>
+                    </motion.div>
                   </button>
                 );
               })}

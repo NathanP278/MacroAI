@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { X } from 'lucide-react';
 import { computeNutrientContributors } from '@/lib/nutrition/analytics';
+import { MotionModalOverlay } from '@/components/motion/motion-primitives';
 import type { FoodLogEntry } from '@/types/nutrition';
 
 export interface NutrientContributorsSheetProps {
@@ -51,24 +52,18 @@ export function NutrientContributorsSheet({
     return contributors.reduce((sum, item) => sum + item.amount, 0);
   }, [contributors]);
 
-  if (!open) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Top Contributors: ${nutrientLabel}`}
-      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-6 bg-black/70 backdrop-blur-xs animate-backdrop-in"
-      onClick={onClose}
+    <MotionModalOverlay
+      open={open}
+      onClose={onClose}
+      ariaLabel={`Top Contributors: ${nutrientLabel}`}
+      align="sheet"
+      panelClassName="w-full max-w-md mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 max-h-[85dvh] flex flex-col"
     >
       <div
-        className="w-full max-w-md mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 animate-sheet-in sm:animate-modal-in max-h-[85dvh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div
-          className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0 sm:hidden"
-          aria-hidden="true"
-        />
+        className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0 sm:hidden"
+        aria-hidden="true"
+      />
 
         {/* Header */}
         <div className="shrink-0 flex items-center justify-between gap-3 pb-3 border-b border-border/60">
@@ -144,7 +139,6 @@ export function NutrientContributorsSheet({
             </ul>
           )}
         </div>
-      </div>
-    </div>
+    </MotionModalOverlay>
   );
 }

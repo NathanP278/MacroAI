@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { AnimatePresence, motion } from 'motion/react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, generateId } from '@/lib/db/macroai-db';
 import { useLoggerStore } from '@/stores/logger-store';
@@ -20,7 +21,17 @@ import { AppShell } from '@/components/shell/app-shell';
 import { SettingsHeaderLink } from '@/components/shell/settings-header-link';
 import { DatePickerPopover } from '@/components/log/date-picker-popover';
 import { FoodRowSkeleton } from '@/components/ui/skeleton';
-import { runViewTransition, triggerHaptic } from '@/lib/motion';
+import {
+  PageStagger,
+  ScrollReveal,
+  StaggerItem,
+} from '@/components/motion/motion-primitives';
+import {
+  SPRING_EXPRESSIVE,
+  isTestEnvironment,
+  runViewTransition,
+  triggerHaptic,
+} from '@/lib/motion';
 import type { FoodLogEntry, UserGoals } from '@/types/nutrition';
 import {
   Calendar,
@@ -408,8 +419,9 @@ export default function HomePage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-5 sm:gap-7 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
+      <PageStagger className="flex flex-col gap-5 sm:gap-7 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
         {/* Clean MacroFactor Header (swipeable horizontally on mobile, zero layout shift on day switch) */}
+        <StaggerItem>
         <header
           onTouchStart={handleHeaderTouchStart}
           onTouchEnd={handleHeaderTouchEnd}
@@ -478,10 +490,17 @@ export default function HomePage() {
             <SettingsHeaderLink />
           </div>
         </header>
+        </StaggerItem>
 
         {/* First-Run Target Calibration Banner (dismissible, non-blocking) */}
+        <AnimatePresence>
         {showFirstRunTargetsCard && (
-          <div
+          <motion.div
+            key="first-run-targets-banner"
+            initial={isTestEnvironment() ? false : { opacity: 0, y: -12, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={isTestEnvironment() ? undefined : { opacity: 0, y: -10, scale: 0.96 }}
+            transition={SPRING_EXPRESSIVE}
             data-testid="first-run-targets-banner"
             className="bg-card border border-border rounded-2xl px-4 py-3.5 flex flex-wrap items-center justify-between gap-3"
           >
@@ -523,38 +542,38 @@ export default function HomePage() {
                 <X className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
 
         <div style={{ viewTransitionName: 'date-stage' }} className="space-y-5 sm:space-y-6">
           {/* Top Responsive Bento Workspace: Hero (left) + Insights & Habits (right on tablet/laptop) */}
           <div
             key={`bento-${activeDate}`}
-            className={`grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 md:items-stretch ${dateSlideClass || 'animate-card-enter'}`}
+            className={`grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 md:items-stretch ${dateSlideClass}`}
           >
-            <div className="md:col-span-6 lg:col-span-5 flex">
+            <StaggerItem className="md:col-span-6 lg:col-span-5 flex">
               <MacroBentoGrid
                 summary={summary}
                 weeklyDays={weeklyDays}
                 onSelectDate={handleSelectDate}
                 className="w-full"
               />
-            </div>
+            </StaggerItem>
 
-            <div className="md:col-span-6 lg:col-span-7">
+            <StaggerItem className="md:col-span-6 lg:col-span-7">
               <HabitsAnalyticsGrid
                 summary={summary}
                 weeklyDays={weeklyDays}
                 thirtyDayDots={thirtyDayDots}
                 onSelectDate={handleSelectDate}
               />
-            </div>
+            </StaggerItem>
           </div>
 
           {/* Bottom Workspace: Logged Entries + Quick Tools (left) | Micronutrient Targets (right) */}
-          <div
-            className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 items-start animate-card-enter"
-            style={{ animationDelay: '35ms' }}
+          <ScrollReveal
+            className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 items-start"
           >
             {/* Left Column: Quick Coaching Strip + Logged Entries (absorbs vertical slack beside Micronutrients) */}
             <div className="lg:col-span-7 space-y-5 sm:space-y-6">
@@ -672,6 +691,7 @@ export default function HomePage() {
                 <FoodRowSkeleton count={3} />
               ) : sortedLogs.length > 0 ? (
                 <ul className="rounded-2xl bg-card border border-border/50 overflow-hidden divide-y divide-border/60">
+                  <AnimatePresence initial={false}>
                   {sortedLogs.map((log, idx) => {
                     const entryTime = formatEntryTime(log.createdAt);
                     const isExpanded = expandedEntryId === log.id;
@@ -679,10 +699,17 @@ export default function HomePage() {
                     const trimmedNote = log.note?.trim();
 
                     return (
-                      <li
+                      <motion.li
                         key={log.id}
-                        style={{ '--stagger-index': idx } as React.CSSProperties}
-                        className="stagger-item hover:bg-surface-sub/40 transition-colors"
+                        layout={!isTestEnvironment()}
+                        initial={isTestEnvironment() ? false : { opacity: 0, y: 14 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={isTestEnvironment() ? undefined : { opacity: 0, x: -28, scale: 0.97 }}
+                        transition={{
+                          ...SPRING_EXPRESSIVE,
+                          delay: isTestEnvironment() ? 0 : Math.min(idx, 5) * 0.04,
+                        }}
+                        className="hover:bg-surface-sub/40 transition-colors"
                       >
                         <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-[18px] sm:py-3.5">
                           <button
@@ -827,9 +854,10 @@ export default function HomePage() {
                             </div>
                           </div>
                         </div>
-                      </li>
+                      </motion.li>
                     );
                   })}
+                  </AnimatePresence>
                 </ul>
               ) : (
                 <div className="rounded-2xl bg-card border border-border/50 p-6 sm:p-8 text-center">
@@ -890,9 +918,9 @@ export default function HomePage() {
                 weeklyLogs={weeklyLogs}
               />
             </div>
-          </div>
+          </ScrollReveal>
         </div>
-      </div>
+      </PageStagger>
     </AppShell>
   );
 }
