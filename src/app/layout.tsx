@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { PwaRegister } from "@/components/shell/pwa-register";
 import { AppBootGate } from "@/components/shell/app-boot-gate";
+import { MotionRoot } from "@/components/motion/motion-primitives";
+import { RouteDirectionProvider } from "@/components/motion/route-direction-context";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
@@ -66,8 +68,12 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
         <ThemeProvider defaultTheme="dark">
-          <PwaRegister />
-          <AppBootGate>{children}</AppBootGate>
+          <MotionRoot>
+            <RouteDirectionProvider>
+              <PwaRegister />
+              <AppBootGate>{children}</AppBootGate>
+            </RouteDirectionProvider>
+          </MotionRoot>
           <Analytics />
           <SpeedInsights />
         </ThemeProvider>

@@ -462,13 +462,19 @@
   }
   .tactile-press {
     transition:
-      transform 140ms var(--ease-out-quart),
-      background-color 140ms ease,
-      border-color 140ms ease,
-      opacity 140ms ease;
+      transform 260ms var(--ease-out-quart),
+      background-color 220ms var(--ease-out-quart),
+      border-color 220ms var(--ease-out-quart),
+      box-shadow 260ms var(--ease-out-quart),
+      opacity 220ms ease;
+  }
+  @media (hover: hover) {
+    .tactile-press:hover:not(:disabled) {
+      transform: translateY(-1.5px) scale(1.025);
+    }
   }
   .tactile-press:active:not(:disabled) {
-    transform: scale(0.97);
+    transform: scale(0.94);
   }
   .progress-calories {
     --progress-bar-fill: var(--macro-calories);
@@ -653,44 +659,66 @@ progress.macro-progress::-moz-progress-bar {
 @keyframes macro-vt-out-left {
   from {
     opacity: 1;
-    translate: 0 0;
+    transform: translate3d(0, 0, 0) scale(1);
   }
   to {
     opacity: 0;
-    translate: -16px 0;
+    transform: translate3d(-40px, 0, 0) scale(0.96);
   }
 }
 
 @keyframes macro-vt-in-right {
   from {
     opacity: 0;
-    translate: 16px 0;
+    transform: translate3d(40px, 0, 0) scale(0.96);
   }
   to {
     opacity: 1;
-    translate: 0 0;
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
 @keyframes macro-vt-out-right {
   from {
     opacity: 1;
-    translate: 0 0;
+    transform: translate3d(0, 0, 0) scale(1);
   }
   to {
     opacity: 0;
-    translate: 16px 0;
+    transform: translate3d(40px, 0, 0) scale(0.96);
   }
 }
 
 @keyframes macro-vt-in-left {
   from {
     opacity: 0;
-    translate: -16px 0;
+    transform: translate3d(-40px, 0, 0) scale(0.96);
   }
   to {
     opacity: 1;
-    translate: 0 0;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes macro-vt-route-out-up {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, -24px, 0) scale(0.96);
+  }
+}
+
+@keyframes macro-vt-route-in-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 32px, 0) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
@@ -703,10 +731,13 @@ progress.macro-progress::-moz-progress-bar {
   }
 }
 
-/* Keep pinned bottom chrome rock-steady during directional View Transitions */
+/* Keep pinned navigation chrome rock-steady during directional View Transitions */
 ::view-transition-group(bottom-chrome),
 ::view-transition-old(bottom-chrome),
-::view-transition-new(bottom-chrome) {
+::view-transition-new(bottom-chrome),
+::view-transition-group(desktop-sidebar),
+::view-transition-old(desktop-sidebar),
+::view-transition-new(desktop-sidebar) {
   animation: none;
 }
 
@@ -717,9 +748,9 @@ progress.macro-progress::-moz-progress-bar {
   opacity: 0;
   visibility: hidden;
   transition:
-    grid-template-rows 220ms var(--ease-out-quint),
-    opacity 180ms ease,
-    visibility 0ms linear 220ms;
+    grid-template-rows 340ms var(--ease-out-quart),
+    opacity 280ms var(--ease-out-quart),
+    visibility 0ms linear 340ms;
 }
 
 .accordion-grid > .accordion-inner {
@@ -732,21 +763,32 @@ progress.macro-progress::-moz-progress-bar {
   opacity: 1;
   visibility: visible;
   transition:
-    grid-template-rows 220ms var(--ease-out-quint),
-    opacity 180ms ease,
+    grid-template-rows 360ms var(--ease-out-quart),
+    opacity 300ms var(--ease-out-quart),
     visibility 0ms linear 0ms;
 }
 
-/* Flat tonal hover feedback without self-translation flicker */
+/* Expressive interactive card lift & glass specular border bloom */
 .macro-card-interactive {
   transition:
-    background-color 180ms ease,
-    border-color 180ms ease;
+    transform 320ms var(--ease-out-quart),
+    background-color 260ms var(--ease-out-quart),
+    border-color 260ms var(--ease-out-quart),
+    box-shadow 320ms var(--ease-out-quart);
 }
 
 @media (hover: hover) {
   .macro-card-interactive:hover {
     border-color: var(--border-focus);
+    transform: translateY(-4px);
+    box-shadow:
+      inset 0 1px 0 var(--glass-rim-strong),
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 var(--glass-rim-bottom),
+      0 20px 44px -12px rgba(0, 0, 0, 0.72);
+  }
+  .macro-card-interactive:active {
+    transform: translateY(-1px) scale(0.985);
   }
 }
 
@@ -993,18 +1035,41 @@ progress.macro-progress::-moz-progress-bar {
     transition: transform 360ms var(--ease-out-quint);
   }
 
-  /* Directional View Transitions on date-stage */
-  html[data-transition-direction="forward"]::view-transition-old(date-stage) {
-    animation: 180ms var(--ease-out-quint) both macro-vt-out-left;
+  /* Directional View Transitions on date-stage and route-stage */
+  ::view-transition-group(route-stage),
+  ::view-transition-group(date-stage) {
+    animation-duration: 440ms;
+    animation-timing-function: var(--ease-out-quart);
   }
-  html[data-transition-direction="forward"]::view-transition-new(date-stage) {
-    animation: 220ms var(--ease-out-quint) both macro-vt-in-right;
+  html:active-view-transition-type(forward)::view-transition-old(date-stage),
+  html[data-transition-direction="forward"]::view-transition-old(date-stage),
+  html:active-view-transition-type(forward)::view-transition-old(route-stage),
+  html[data-transition-direction="forward"]::view-transition-old(route-stage) {
+    animation: 340ms var(--ease-out-quart) both macro-vt-out-left;
   }
-  html[data-transition-direction="backward"]::view-transition-old(date-stage) {
-    animation: 180ms var(--ease-out-quint) both macro-vt-out-right;
+  html:active-view-transition-type(forward)::view-transition-new(date-stage),
+  html[data-transition-direction="forward"]::view-transition-new(date-stage),
+  html:active-view-transition-type(forward)::view-transition-new(route-stage),
+  html[data-transition-direction="forward"]::view-transition-new(route-stage) {
+    animation: 460ms var(--ease-out-quart) both macro-vt-in-right;
   }
-  html[data-transition-direction="backward"]::view-transition-new(date-stage) {
-    animation: 220ms var(--ease-out-quint) both macro-vt-in-left;
+  html:active-view-transition-type(backward)::view-transition-old(date-stage),
+  html[data-transition-direction="backward"]::view-transition-old(date-stage),
+  html:active-view-transition-type(backward)::view-transition-old(route-stage),
+  html[data-transition-direction="backward"]::view-transition-old(route-stage) {
+    animation: 340ms var(--ease-out-quart) both macro-vt-out-right;
+  }
+  html:active-view-transition-type(backward)::view-transition-new(date-stage),
+  html[data-transition-direction="backward"]::view-transition-new(date-stage),
+  html:active-view-transition-type(backward)::view-transition-new(route-stage),
+  html[data-transition-direction="backward"]::view-transition-new(route-stage) {
+    animation: 460ms var(--ease-out-quart) both macro-vt-in-left;
+  }
+  ::view-transition-old(route-stage) {
+    animation: 340ms var(--ease-out-quart) both macro-vt-route-out-up;
+  }
+  ::view-transition-new(route-stage) {
+    animation: 460ms var(--ease-out-quart) both macro-vt-route-in-up;
   }
 
   .macro-spring {
@@ -1258,8 +1323,11 @@ progress.macro-progress::-moz-progress-bar {
     transition: opacity 120ms ease-out;
   }
 
-  .tactile-press:active:not(:disabled) {
-    transform: none;
+  .tactile-press:hover:not(:disabled),
+  .tactile-press:active:not(:disabled),
+  .macro-card-interactive:hover,
+  .macro-card-interactive:active {
+    transform: none !important;
   }
 
   .macro-skeleton {
@@ -1270,12 +1338,6 @@ progress.macro-progress::-moz-progress-bar {
   ::view-transition-group(*),
   ::view-transition-old(*),
   ::view-transition-new(*) {
-    animation-duration: 120ms !important;
-  }
-
-  ::view-transition-group(bottom-chrome),
-  ::view-transition-old(bottom-chrome),
-  ::view-transition-new(bottom-chrome) {
     animation: none !important;
   }
 
