@@ -732,9 +732,9 @@ describe('Recipe Builder, Date Copy & Unified Log Views', () => {
 
       const { container } = render(React.createElement(RecipesPage));
 
-      // Switch to Custom Foods & Barcodes tab
+      // Switch to Custom Foods tab
       const customFoodsTab = screen.getByRole('tab', {
-        name: /custom foods & barcodes/i,
+        name: /custom foods/i,
       });
       fireEvent.click(customFoodsTab);
       expect(customFoodsTab).toHaveAttribute('aria-selected', 'true');

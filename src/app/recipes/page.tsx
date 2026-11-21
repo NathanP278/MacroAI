@@ -290,29 +290,15 @@ export default function RecipesPage() {
   return (
     <AppShell>
       <PageStagger className="flex flex-col gap-5 sm:gap-6 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
-        {/* Header matching Dashboard Obsidian Aesthetic */}
+        {/* Compact Header matching Dashboard & Trends */}
         <StaggerItem>
-        <header className="flex items-center sm:items-end justify-between gap-3">
+        <header className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight">
-              Recipes & Custom Foods
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight truncate">
+              Recipes
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-              Offline recipe book and custom ingredients
-              {activeTab === 'recipes' && recipes && recipes.length > 0 && (
-                <span className="sm:hidden tabular-nums">
-                  {' '}
-                  · {filteredRecipes.length} saved
-                </span>
-              )}
-              {activeTab === 'custom-foods' &&
-                customFoods &&
-                customFoods.length > 0 && (
-                  <span className="sm:hidden tabular-nums">
-                    {' '}
-                    · {filteredCustomFoods.length} saved
-                  </span>
-                )}
+            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+              Saved recipes &amp; custom foods
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -320,18 +306,18 @@ export default function RecipesPage() {
               <button
                 type="button"
                 onClick={handleOpenCreateRecipe}
-                className="touch-target tactile-press shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
+                className="touch-target tactile-press shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
               >
-                <Plus className="w-4 h-4" aria-hidden="true" />
+                <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>New Recipe</span>
               </button>
             ) : (
               <button
                 type="button"
                 onClick={handleOpenCreateCustomFood}
-                className="touch-target tactile-press shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
+                className="touch-target tactile-press shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
               >
-                <Plus className="w-4 h-4" aria-hidden="true" />
+                <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>Create Custom Food</span>
               </button>
             )}
@@ -345,7 +331,7 @@ export default function RecipesPage() {
           <div
             role="tablist"
             aria-label="Recipes and Custom Foods tabs"
-            className="grid grid-cols-2 gap-1.5 p-1 bg-card border border-border/50 rounded-full w-full md:w-auto md:min-w-[340px] shrink-0"
+            className="grid grid-cols-2 gap-1 p-1 bg-card border border-border/50 liquid-input-well rounded-full w-full md:w-auto md:min-w-[320px] shrink-0 overflow-hidden"
           >
             <button
               type="button"
@@ -355,7 +341,7 @@ export default function RecipesPage() {
                 triggerHaptic(6);
                 setActiveTab('recipes');
               }}
-              className={`relative tactile-press py-2 px-4 rounded-full text-xs font-semibold transition-colors tabular-nums whitespace-nowrap ${
+              className={`relative tactile-press py-2 px-2.5 sm:px-4 rounded-full text-xs font-semibold transition-colors tabular-nums min-w-0 truncate ${
                 activeTab === 'recipes'
                   ? 'text-background'
                   : 'text-muted-foreground hover:text-foreground'
@@ -369,7 +355,7 @@ export default function RecipesPage() {
                   className="pointer-events-none absolute inset-0 rounded-full bg-foreground liquid-glass-active-pill"
                 />
               )}
-              <span className="relative z-10">
+              <span className="relative z-10 truncate">
                 Recipes{recipes ? ` (${recipes.length})` : ''}
               </span>
             </button>
@@ -381,7 +367,7 @@ export default function RecipesPage() {
                 triggerHaptic(6);
                 setActiveTab('custom-foods');
               }}
-              className={`relative tactile-press py-2 px-4 rounded-full text-xs font-semibold transition-colors tabular-nums whitespace-nowrap ${
+              className={`relative tactile-press py-2 px-2.5 sm:px-4 rounded-full text-xs font-semibold transition-colors tabular-nums min-w-0 truncate ${
                 activeTab === 'custom-foods'
                   ? 'text-background'
                   : 'text-muted-foreground hover:text-foreground'
@@ -395,8 +381,8 @@ export default function RecipesPage() {
                   className="pointer-events-none absolute inset-0 rounded-full bg-foreground liquid-glass-active-pill"
                 />
               )}
-              <span className="relative z-10">
-                Custom Foods & Barcodes
+              <span className="relative z-10 truncate">
+                Custom Foods
                 {customFoods ? ` (${customFoods.length})` : ''}
               </span>
             </button>
@@ -491,7 +477,7 @@ export default function RecipesPage() {
                         delay: isTestEnvironment() ? 0 : Math.min(idx, 6) * 0.055,
                       }}
                       data-testid={`recipe-card-${recipe.id}`}
-                      className="bg-card border border-border/50 macro-card-interactive rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-4"
+                      className="bg-card border border-border/50 macro-card-interactive rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between gap-3"
                     >
                       {/* Card Title & Pin/Edit/Delete */}
                       <div className="flex items-start justify-between gap-2">
@@ -613,23 +599,37 @@ export default function RecipesPage() {
                         </div>
                       </div>
 
-                      {/* Log Action Bar (opens RecipePortionPickerModal) */}
-                      <div className="flex items-center justify-end pt-2 border-t border-border/60 gap-2">
-                        {feedback && (
-                          <span className="animate-check-pop text-[11px] text-[var(--macro-carbs)] flex items-center gap-1 font-semibold">
-                            <Check className="w-3.5 h-3.5" aria-hidden="true" />
-                            {feedback}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setPortionPickerRecipe(recipe)}
-                          aria-label={`Log ${recipe.name}`}
-                          className="touch-target tactile-press flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
-                        >
-                          <Utensils className="w-3.5 h-3.5" aria-hidden="true" />
-                          <span>Log</span>
-                        </button>
+                      {/* Compact Footer: Ingredient Preview + Log Action */}
+                      <div className="flex items-center justify-between pt-2.5 border-t border-border/50 gap-2.5 min-w-0">
+                        <div className="min-w-0 flex-1 text-[11px] text-muted-foreground truncate">
+                          {recipe.ingredients && recipe.ingredients.length > 0
+                            ? recipe.ingredients
+                                .map((ing) => ing.name)
+                                .filter(Boolean)
+                                .slice(0, 4)
+                                .join(' · ') +
+                              (recipe.ingredients.length > 4
+                                ? ` +${recipe.ingredients.length - 4}`
+                                : '')
+                            : `${recipe.totalGrams}g total`}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {feedback && (
+                            <span className="animate-check-pop text-[11px] text-[var(--macro-carbs)] flex items-center gap-1 font-semibold">
+                              <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                              {feedback}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setPortionPickerRecipe(recipe)}
+                            aria-label={`Log ${recipe.name}`}
+                            className="touch-target tactile-press flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-foreground hover:opacity-90 text-background text-xs font-semibold shadow-xs"
+                          >
+                            <Utensils className="w-3.5 h-3.5" aria-hidden="true" />
+                            <span>Log</span>
+                          </button>
+                        </div>
                       </div>
                     </motion.div>
                   );
