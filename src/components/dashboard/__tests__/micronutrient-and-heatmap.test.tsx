@@ -105,9 +105,9 @@ describe('MicronutrientPanel', () => {
       />
     );
 
-    // Today Net Carbs & K:Na ratio strip
-    expect(screen.getByText(/38g/i)).toBeInTheDocument();
-    expect(screen.getByText(/1\.5/i)).toBeInTheDocument();
+    // Net Carbs & K:Na ratio strip are intentionally omitted for cleaner layout
+    expect(screen.queryByText(/net carbs/i)).toBeNull();
+    expect(screen.queryByText(/k:na ratio/i)).toBeNull();
 
     // Switch to Extended tab and check zero-target nutrients render cleanly without / 0 or NaN
     fireEvent.click(screen.getByRole('button', { name: /extended/i }));
@@ -132,10 +132,8 @@ describe('MicronutrientPanel', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByRole('dialog', { name: /top contributors/i })).toBeNull();
 
-    // Toggle to 7D Avg: updates Net Carbs, K:Na ratio, and uses weeklyLogs for contributors
+    // Toggle to 7D Avg and uses weeklyLogs for contributors
     fireEvent.click(screen.getByRole('button', { name: /7d avg/i }));
-    expect(screen.getByText(/44g/i)).toBeInTheDocument();
-    expect(screen.getByText(/1\.82/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /caffeine/i }));
     const weeklyDialog = screen.getByRole('dialog', { name: /top contributors/i });
@@ -143,18 +141,14 @@ describe('MicronutrientPanel', () => {
     expect(weeklyDialog.textContent).toMatch(/210/);
   });
 
-  it('renders em-dash when potassiumSodiumRatio is null and shows empty state when no contributors exist', () => {
+  it('omits 7D Avg toggle when weeklyMicros is omitted and shows empty state when no contributors exist', () => {
     render(
       <MicronutrientPanel
         micros={todaySummary.micros}
-        netCarbsG={20}
-        potassiumSodiumRatio={null}
         todayLogs={todayLogs}
       />
     );
 
-    const ratioCard = screen.getByText(/k:na ratio/i).parentElement!;
-    expect(within(ratioCard).getByText('—')).toBeInTheDocument();
     // Toggle should not render when weeklyMicros is omitted
     expect(screen.queryByRole('button', { name: /7d avg/i })).toBeNull();
 

@@ -4,7 +4,6 @@ import React, { useState, useMemo } from 'react';
 import type { MicroMetric } from '@/lib/nutrition/daily-summary';
 import type { FoodLogEntry } from '@/types/nutrition';
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import { InfoPopover } from '@/components/ui/info-popover';
 import { NutrientContributorsSheet } from './nutrient-contributors-sheet';
 import { triggerHaptic } from '@/lib/motion';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -25,17 +24,6 @@ export interface MicronutrientPanelProps {
 
 type FilterTab = 'all' | 'minerals' | 'vitamins' | 'extended';
 type WindowMode = 'today' | '7d';
-
-function formatNetCarbs(val: number): string {
-  if (!Number.isFinite(val)) return '0g';
-  const rounded = Math.round(val * 10) / 10;
-  return `${rounded}g`;
-}
-
-function formatRatio(val: number | null | undefined): string {
-  if (val === null || val === undefined || !Number.isFinite(val)) return '—';
-  return val.toFixed(2);
-}
 
 function MicroRow({
   item,
@@ -137,10 +125,6 @@ function MicroRow({
 export function MicronutrientPanel({
   micros = {},
   weeklyMicros,
-  netCarbsG,
-  weeklyNetCarbsG,
-  potassiumSodiumRatio,
-  weeklyPotassiumSodiumRatio,
   todayLogs = [],
   weeklyLogs,
   defaultWindow = 'today',
@@ -155,18 +139,6 @@ export function MicronutrientPanel({
   const hasWeekly = Boolean(weeklyMicros);
   const effectiveWindow: WindowMode = hasWeekly ? activeWindow : 'today';
   const activeMicros = effectiveWindow === '7d' && weeklyMicros ? weeklyMicros : micros;
-
-  const activeNetCarbsG =
-    effectiveWindow === '7d' ? (weeklyNetCarbsG ?? netCarbsG) : netCarbsG;
-  const activePotassiumSodiumRatio =
-    effectiveWindow === '7d'
-      ? weeklyPotassiumSodiumRatio !== undefined
-        ? weeklyPotassiumSodiumRatio
-        : potassiumSodiumRatio
-      : potassiumSodiumRatio;
-
-  const showSummaryStrip =
-    activeNetCarbsG !== undefined || activePotassiumSodiumRatio !== undefined;
 
   const microList = useMemo(() => {
     return Object.values(activeMicros);
@@ -231,63 +203,24 @@ export function MicronutrientPanel({
         )}
       </div>
 
-      {/* Compact Net Carbs & K:Na Ratio strip */}
-      {showSummaryStrip && (
-        <div className="@container/micro-strip">
-          <div className="grid grid-cols-1 @[300px]/micro-strip:grid-cols-2 gap-2.5">
-            {activeNetCarbsG !== undefined && (
-              <div className="rounded-xl bg-surface-sub/65 border border-border/40 px-3 py-2 flex items-center gap-1.5 min-w-0">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
-                  Net Carbs
-                </span>
-                <InfoPopover
-                  label="Net Carbs"
-                  description="Total carbohydrates minus dietary fiber — estimates digestible carbs."
-                />
-                <span className="ml-auto text-sm font-bold text-foreground tabular-nums whitespace-nowrap">
-                  {formatNetCarbs(activeNetCarbsG)}
-                </span>
-              </div>
-            )}
-            {activePotassiumSodiumRatio !== undefined && (
-              <div className="rounded-xl bg-surface-sub/65 border border-border/40 px-3 py-2 flex items-center gap-1.5 min-w-0">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
-                  K:Na Ratio
-                </span>
-                <InfoPopover
-                  label="K:Na Ratio"
-                  description="Potassium-to-sodium ratio. A higher ratio generally reflects more whole-food potassium relative to dietary sodium."
-                  align="right"
-                />
-                <span className="ml-auto text-sm font-bold text-foreground tabular-nums whitespace-nowrap">
-                  {formatRatio(activePotassiumSodiumRatio)}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Clean Segmented Filter Pills */}
-      <div className="relative overflow-x-auto no-scrollbar [mask-image:linear-gradient(to_right,black_calc(100%-16px),transparent)] sm:[mask-image:none]">
-        <SegmentedControl
-          role="group"
-          ariaLabel="Micronutrient category filter"
-          value={activeTab}
-          onChange={(next) => {
-            triggerHaptic(6);
-            setActiveTab(next);
-          }}
-          className="bg-surface-sub p-0.5"
-          buttonClassName="text-[11px] px-2 sm:px-2.5 py-1 whitespace-nowrap"
-          options={[
-            { value: 'all', label: `All (${microList.length})` },
-            { value: 'minerals', label: 'Minerals' },
-            { value: 'vitamins', label: 'Vitamins' },
-            { value: 'extended', label: 'Extended' },
-          ]}
-        />
-      </div>
+      {/* Full-Width Segmented Filter Pills */}
+      <SegmentedControl
+        role="group"
+        ariaLabel="Micronutrient category filter"
+        value={activeTab}
+        onChange={(next) => {
+          triggerHaptic(6);
+          setActiveTab(next);
+        }}
+        className="w-full flex bg-surface-sub p-0.5"
+        buttonClassName="flex-1 min-w-0 text-[11px] px-1.5 sm:px-2.5 py-1.5 whitespace-nowrap"
+        options={[
+          { value: 'all', label: `All (${microList.length})` },
+          { value: 'minerals', label: 'Minerals' },
+          { value: 'vitamins', label: 'Vitamins' },
+          { value: 'extended', label: 'Extended' },
+        ]}
+      />
 
       {/* Clean Divider Rows (zero box-inside-box nesting) */}
       <div key={`${activeTab}-${effectiveWindow}`} className="animate-panel-switch">
