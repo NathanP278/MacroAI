@@ -72,6 +72,13 @@ export function UndoToast() {
     isPausedRef.current = false;
     startTimer(AUTO_DISMISS_MS);
 
+    const docWithAriaNotify = document as Document & {
+      ariaNotify?: (message: string, options?: { priority?: "normal" | "high" }) => void;
+    };
+    if (typeof docWithAriaNotify.ariaNotify === "function") {
+      docWithAriaNotify.ariaNotify(`${undoToast.message}. Actions available`);
+    }
+
     return () => {
       clearTimer();
     };
@@ -95,61 +102,70 @@ export function UndoToast() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [undoToast, handleUndo]);
 
-  if (!undoToast) return null;
-
   const hasQuickSearchBar = pathname === "/" || pathname.startsWith("/log");
 
   return (
     <div
-      role="status"
-      aria-live="polite"
-      data-testid="undo-toast"
-      onMouseEnter={handlePause}
-      onMouseLeave={handleResume}
-      onFocus={handlePause}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-          handleResume();
-        }
-      }}
-      className={`fixed left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-md pointer-events-auto animate-sheet-in ${
+      role="region"
+      aria-label="Notifications"
+      className={`fixed inset-x-0 lg:left-[220px] z-50 flex justify-center px-4 pointer-events-none ${
         hasQuickSearchBar
-          ? "bottom-[calc(8.75rem+env(safe-area-inset-bottom))]"
-          : "bottom-[calc(5.25rem+env(safe-area-inset-bottom))]"
+          ? "bottom-[calc(8.75rem+env(safe-area-inset-bottom))] lg:bottom-6"
+          : "bottom-[calc(5.25rem+env(safe-area-inset-bottom))] lg:bottom-6"
       }`}
     >
-      <div className="undo-toast-card relative overflow-hidden surface-elevated-sheet rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3">
-        <span className="text-xs font-medium text-foreground truncate">
-          {undoToast.message}
-        </span>
-
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => void handleUndo()}
-            aria-label="Undo"
-            className="touch-target tactile-press inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90"
-          >
-            <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Undo</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={dismissUndoToast}
-            aria-label="Dismiss notification"
-            className="touch-target tactile-press p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
-          >
-            <X className="w-3.5 h-3.5" aria-hidden="true" />
-          </button>
-        </div>
-
-        <div
-          key={undoToast.id}
-          aria-hidden="true"
-          className="undo-toast-bar absolute bottom-0 left-0 right-0 h-[2px] bg-[var(--macro-calories)]/85 pointer-events-none"
-        />
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {undoToast ? `${undoToast.message}. Actions available` : ""}
       </div>
+
+      {undoToast && (
+        <div
+          role="status"
+          data-testid="undo-toast"
+          onMouseEnter={handlePause}
+          onMouseLeave={handleResume}
+          onFocus={handlePause}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              handleResume();
+            }
+          }}
+          className="w-full max-w-md pointer-events-auto animate-sheet-in"
+        >
+          <div className="undo-toast-card relative overflow-hidden surface-elevated-sheet rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3">
+            <span className="text-xs font-medium text-foreground leading-snug line-clamp-2 min-w-0">
+              {undoToast.message}
+            </span>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => void handleUndo()}
+                aria-label="Undo"
+                className="touch-target tactile-press inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90"
+              >
+                <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Undo</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={dismissUndoToast}
+                aria-label="Dismiss notification"
+                className="touch-target tactile-press p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+              >
+                <X className="w-3.5 h-3.5" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div
+              key={undoToast.id}
+              aria-hidden="true"
+              className="undo-toast-bar absolute bottom-0 left-0 right-0 h-[2px] bg-[var(--macro-calories)]/85 pointer-events-none"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

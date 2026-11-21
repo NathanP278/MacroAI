@@ -148,8 +148,15 @@ describe('AppShell', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('undo-toast')).toBeInTheDocument();
+      const toast = screen.getByTestId('undo-toast');
+      expect(toast).toBeInTheDocument();
       expect(screen.getByText('Removed Chicken Breast')).toBeInTheDocument();
+      // Centering lives on the outer Notifications region (not -translate-x-1/2 on the animated card)
+      expect(toast.className).not.toContain('-translate-x-1/2');
+      const region = screen.getByRole('region', { name: /notifications/i });
+      expect(region.className).toContain('inset-x-0');
+      expect(region.className).toContain('lg:left-[220px]');
+      expect(region.className).toContain('justify-center');
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
