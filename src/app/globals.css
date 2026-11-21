@@ -265,6 +265,13 @@
   html {
     font-family: var(--font-sans);
     -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    -webkit-touch-callout: none;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow-x: clip;
+    overscroll-behavior-x: none;
     scroll-padding-top: max(1rem, env(safe-area-inset-top, 0px));
     scroll-padding-bottom: calc(9.25rem + env(safe-area-inset-bottom, 0px));
   }
@@ -272,7 +279,11 @@
     @apply bg-background text-foreground font-sans;
     position: relative;
     isolation: isolate;
+    overflow-x: clip;
     overflow-wrap: break-word;
+    -webkit-touch-callout: none;
+    user-select: none;
+    -webkit-user-select: none;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     accent-color: var(--macro-calories);
   }
@@ -286,15 +297,30 @@
     background-image: var(--canvas-ambient);
     transform: translateZ(0);
   }
-  /* Prevent accidental iOS Safari callouts / text selection on interactive UI chrome */
-  nav,
+  /* Re-enable native text selection only inside form inputs and explicit copy blocks */
+  input,
+  textarea,
+  [contenteditable="true"],
+  .select-text {
+    user-select: text;
+    -webkit-user-select: text;
+    -webkit-touch-callout: default;
+  }
+  /* Eliminate iOS 300ms tap delay / double-tap zoom and image drag ghosts */
   button,
+  a,
+  [role="button"],
   [role="tab"],
-  [role="tablist"],
+  input,
+  select,
+  textarea,
+  label,
   .touch-target {
-    -webkit-touch-callout: none;
-    user-select: none;
-    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  img,
+  a {
+    -webkit-user-drag: none;
   }
   /* Standalone iOS Home Screen Web App polish */
   @media (display-mode: standalone) {
@@ -975,7 +1001,11 @@ progress.macro-progress::-moz-progress-bar {
   }
 
   .boot-splash-exit {
-    animation: boot-splash-dissolve 340ms var(--ease-out-quint) forwards;
+    animation: boot-splash-dissolve 420ms var(--ease-out-quint) forwards;
+  }
+
+  .boot-page-reveal {
+    animation: boot-page-enter 440ms var(--ease-out-quint) both;
   }
 
   .boot-emblem-enter {
@@ -1023,6 +1053,19 @@ progress.macro-progress::-moz-progress-bar {
     opacity: 0;
     transform: scale(1.03);
     filter: blur(8px);
+  }
+}
+
+@keyframes boot-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.986);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0px);
   }
 }
 
@@ -1100,10 +1143,12 @@ progress.macro-progress::-moz-progress-bar {
   .slide-enter-left,
   .boot-splash-enter,
   .boot-emblem-enter,
-  .boot-copy-enter {
+  .boot-copy-enter,
+  .boot-page-reveal {
     animation: macro-fade-in 120ms ease-out both;
     transform: none !important;
     translate: none !important;
+    filter: none !important;
   }
 
   .boot-splash-exit {

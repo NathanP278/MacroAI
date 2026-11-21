@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { PwaRegister } from "@/components/shell/pwa-register";
+import { AppBootGate } from "@/components/shell/app-boot-gate";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
@@ -43,6 +44,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: dark)", color: "#0d0d11" },
@@ -64,7 +67,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
         <ThemeProvider defaultTheme="dark">
           <PwaRegister />
-          {children}
+          <AppBootGate>{children}</AppBootGate>
           <Analytics />
           <SpeedInsights />
         </ThemeProvider>

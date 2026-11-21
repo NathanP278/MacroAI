@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { Lock, ShieldCheck, X } from "lucide-react";
 import { BottomNav } from "./bottom-nav";
-import { BootSplashOverlay } from "./boot-splash-overlay";
 import { QuickActionDock, QuickActionType } from "./quick-action-dock";
 import { UndoToast } from "./undo-toast";
 import { CommandPalette } from "./command-palette";
@@ -128,11 +127,9 @@ function SyncAuthModal() {
 
 export function AppShell({ children, onQuickAction }: AppShellProps) {
   const [isDockOpen, setIsDockOpen] = useState(false);
-  const [bootVisible, setBootVisible] = useState(false);
-  const [bootExiting, setBootExiting] = useState(false);
-  const [bootStatus, setBootStatus] = useState("Calibrating cockpit...");
   const pathname = usePathname() ?? "/";
-  const hasQuickSearchBar = pathname === "/" || pathname.startsWith("/log");
+  const hasQuickSearchBar =
+    pathname === "/" || pathname === "/log" || pathname.startsWith("/log/");
   const activeSheet = useLoggerStore((s) => s.activeSheet);
   const openSheet = useLoggerStore((s) => s.openSheet);
   const closeSheet = useLoggerStore((s) => s.closeSheet);
@@ -177,33 +174,9 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
 
   useEffect(() => {
     let cancelled = false;
-    let exitTimer: ReturnType<typeof setTimeout> | null = null;
-    let hideTimer: ReturnType<typeof setTimeout> | null = null;
-
-    const isJsdom =
-      typeof navigator !== "undefined" && /jsdom/i.test(navigator.userAgent);
-    let shouldShowBoot = false;
-    if (!isJsdom && typeof window !== "undefined") {
-      try {
-        shouldShowBoot =
-          window.sessionStorage?.getItem("macroai-boot-seen") !== "1";
-      } catch {
-        shouldShowBoot = false;
-      }
-    }
-
-    const bootStartedAt = Date.now();
-    if (shouldShowBoot) {
-      setBootVisible(true);
-      setBootExiting(false);
-      setBootStatus("Calibrating cockpit...");
-    }
 
     async function initData() {
       if (isCloudSyncEnabled()) {
-        if (shouldShowBoot && !cancelled) {
-          setBootStatus("Checking Cloud Sync...");
-        }
         await syncWithCentralDb(db).catch((err) => {
           console.error("Central DB sync warning:", err);
         });
@@ -213,33 +186,6 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
           console.error("Failed to seed default user goals:", err);
         });
       }
-
-      if (shouldShowBoot && !cancelled) {
-        try {
-          window.sessionStorage?.setItem("macroai-boot-seen", "1");
-        } catch {
-          // Ignore storage errors
-        }
-        const locked = useLoggerStore.getState().syncAuthLocked;
-        setBootStatus(locked ? "Sign in to Cloud Sync" : "Ready");
-
-        const prefersReduced =
-          typeof window !== "undefined" &&
-          window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-        const minHoldMs = prefersReduced ? 120 : 680;
-        const remaining = Math.max(0, minHoldMs - (Date.now() - bootStartedAt));
-
-        exitTimer = setTimeout(() => {
-          if (cancelled) return;
-          setBootExiting(true);
-          hideTimer = setTimeout(() => {
-            if (!cancelled) {
-              setBootVisible(false);
-              setBootExiting(false);
-            }
-          }, prefersReduced ? 130 : 340);
-        }, remaining);
-      }
     }
 
     initData();
@@ -247,8 +193,6 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
     if (!isCloudSyncEnabled()) {
       return () => {
         cancelled = true;
-        if (exitTimer) clearTimeout(exitTimer);
-        if (hideTimer) clearTimeout(hideTimer);
       };
     }
 
@@ -262,8 +206,6 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       cancelled = true;
-      if (exitTimer) clearTimeout(exitTimer);
-      if (hideTimer) clearTimeout(hideTimer);
       window.removeEventListener("focus", handleVisibility);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
@@ -293,13 +235,7 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
             : "pb-[calc(5.25rem+env(safe-area-inset-bottom))] sm:pb-[calc(5.75rem+env(safe-area-inset-bottom))]"
         }`}
       >
-        <BootSplashOverlay
-          visible={bootVisible}
-          exiting={bootExiting}
-          statusLabel={bootStatus}
-        />
-
-        {!bootVisible && syncAuthLocked && <SyncAuthModal />}
+        {syncAuthLocked && <SyncAuthModal />}
 
         <main className="flex-1 flex flex-col w-full animate-page-enter">
           {children}

@@ -409,35 +409,47 @@ export default function HomePage() {
   return (
     <AppShell>
       <div className="flex flex-col gap-5 sm:gap-7 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
-        {/* Clean MacroFactor Header (swipeable horizontally on mobile) */}
+        {/* Clean MacroFactor Header (swipeable horizontally on mobile, zero layout shift on day switch) */}
         <header
           onTouchStart={handleHeaderTouchStart}
           onTouchEnd={handleHeaderTouchEnd}
-          className="flex flex-wrap items-end justify-between gap-3"
+          className="flex items-center justify-between gap-2.5"
         >
-          <div className="min-w-0">
-            <DatePickerPopover
-              activeDate={activeDate}
-              onSelectDate={handleSelectDate}
-              align="left"
-              trigger={
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <DatePickerPopover
+                activeDate={activeDate}
+                onSelectDate={handleSelectDate}
+                align="left"
+                trigger={
+                  <button
+                    type="button"
+                    title="Choose date"
+                    className="tactile-press inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground transition-colors rounded-lg py-0.5 max-w-full"
+                  >
+                    <Calendar
+                      className="w-3 h-3 text-[var(--macro-calories)] shrink-0"
+                      aria-hidden="true"
+                    />
+                    <span className="truncate" suppressHydrationWarning>
+                      {dateInfo.kicker}
+                    </span>
+                  </button>
+                }
+              />
+              {!dateInfo.isToday && (
                 <button
                   type="button"
-                  title="Choose date"
-                  className="tactile-press inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground transition-colors rounded-lg py-0.5 max-w-full"
+                  onClick={handleToday}
+                  className="touch-target tactile-press inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-sub border border-border/60 text-foreground hover:bg-surface-elevated shrink-0"
                 >
-                  <Calendar
-                    className="w-3 h-3 text-[var(--macro-calories)] shrink-0"
-                    aria-hidden="true"
-                  />
-                  <span className="truncate" suppressHydrationWarning>
-                    {dateInfo.kicker}
-                  </span>
+                  <RotateCcw className="w-2.5 h-2.5" aria-hidden="true" />
+                  <span>Today</span>
                 </button>
-              }
-            />
+              )}
+            </div>
             <div className="flex items-baseline gap-2.5 mt-0.5">
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground truncate">
                 Dashboard
               </h1>
               <span className="text-xs font-medium text-muted-foreground hidden sm:inline">
@@ -446,17 +458,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {!dateInfo.isToday && (
-              <button
-                type="button"
-                onClick={handleToday}
-                className="touch-target tactile-press px-3 min-h-[44px] sm:min-h-[36px] py-2 sm:py-1.5 rounded-full text-xs sm:text-[11px] font-semibold bg-surface-sub border border-border/50 text-foreground hover:bg-surface-elevated flex items-center gap-1 mr-0.5"
-              >
-                <RotateCcw className="w-3 h-3" aria-hidden="true" />
-                Today
-              </button>
-            )}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               type="button"
               onClick={handlePrevDay}
@@ -524,59 +526,6 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Sleek Adherence-Neutral Quick Triggers: AI Meal Ideas & Latest Weight Trend */}
-        <div className="flex flex-wrap items-center gap-2 -mt-2 sm:-mt-3">
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic(8);
-              openSheet('meal-ideas');
-            }}
-            className="touch-target tactile-press inline-flex items-center gap-1.5 px-3.5 min-h-[44px] sm:min-h-[36px] py-2 sm:py-1.5 rounded-full bg-card border border-border/50 hover:bg-surface-sub text-xs font-semibold text-foreground transition-colors"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-[var(--macro-calories)] shrink-0" aria-hidden="true" />
-            <span>AI Meal Ideas</span>
-          </button>
-
-          <div className="inline-flex items-center rounded-full bg-card border border-border/50 overflow-hidden divide-x divide-border/50">
-            <Link
-              href="/trends"
-              title={
-                rolling7d.rolling7dSummary.loggedDays > 0
-                  ? `7D avg ${Math.round(rolling7d.avgCalories).toLocaleString('en-US')} kcal — Open Trends`
-                  : 'Open Trends'
-              }
-              className="touch-target tactile-press inline-flex items-center gap-1.5 px-3.5 min-h-[44px] sm:min-h-[36px] py-2 sm:py-1.5 text-xs font-semibold text-foreground hover:bg-surface-sub transition-colors tabular-nums"
-            >
-              <Scale className="w-3.5 h-3.5 text-[var(--macro-fiber)] shrink-0" aria-hidden="true" />
-              <span>
-                {adaptive.latestTrendKg !== null
-                  ? formatWeight(adaptive.latestTrendKg, weightUnit)
-                  : adaptive.latestScaleKg !== null
-                    ? formatWeight(adaptive.latestScaleKg, weightUnit)
-                    : 'Weight Trend'}
-              </span>
-              {adaptive.latestTrendKg !== null && (
-                <span className="text-[11px] font-normal text-muted-foreground hidden sm:inline">
-                  trend
-                </span>
-              )}
-            </Link>
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic(8);
-                openSheet('weight');
-              }}
-              aria-label="Log weigh-in"
-              title="Log weigh-in"
-              className="touch-target tactile-press min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] px-2.5 py-2 sm:py-1.5 text-muted-foreground hover:text-foreground hover:bg-surface-sub transition-colors inline-flex items-center justify-center"
-            >
-              <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-
         <div style={{ viewTransitionName: 'date-stage' }} className="space-y-5 sm:space-y-6">
           {/* Top Responsive Bento Workspace: Hero (left) + Insights & Habits (right on tablet/laptop) */}
           <div
@@ -599,6 +548,81 @@ export default function HomePage() {
                 thirtyDayDots={thirtyDayDots}
                 onSelectDate={handleSelectDate}
               />
+            </div>
+          </div>
+
+          {/* Contextual Coaching & Body Strip: AI Meal Ideas + Weight Trend */}
+          <div
+            data-testid="dashboard-quick-tools"
+            className="grid grid-cols-2 gap-3 sm:gap-4 animate-card-enter"
+            style={{ animationDelay: '25ms' }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic(8);
+                openSheet('meal-ideas');
+              }}
+              className="touch-target tactile-press macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 text-left flex items-center gap-3 min-w-0"
+            >
+              <span className="w-9 h-9 rounded-xl bg-[var(--macro-calories)]/15 border border-[var(--macro-calories)]/25 flex items-center justify-center text-[var(--macro-calories)] shrink-0">
+                <Sparkles className="w-4 h-4" aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs sm:text-sm font-bold text-foreground truncate">
+                  AI Meal Ideas
+                </span>
+                <span className="block text-[11px] text-muted-foreground truncate tabular-nums">
+                  {summary.calories.remaining > 0
+                    ? `${Math.round(summary.calories.remaining).toLocaleString('en-US')} kcal left`
+                    : 'Fill remaining macros'}
+                </span>
+              </span>
+            </button>
+
+            <div className="macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-2 min-w-0">
+              <Link
+                href="/trends"
+                onClick={() => triggerHaptic(8)}
+                title={
+                  rolling7d.rolling7dSummary.loggedDays > 0
+                    ? `7D avg ${Math.round(rolling7d.avgCalories).toLocaleString('en-US')} kcal — Open Trends`
+                    : 'Open Trends'
+                }
+                className="touch-target tactile-press flex items-center gap-3 min-w-0 flex-1"
+              >
+                <span className="w-9 h-9 rounded-xl bg-[var(--macro-fiber)]/15 border border-[var(--macro-fiber)]/25 flex items-center justify-center text-[var(--macro-fiber)] shrink-0">
+                  <Scale className="w-4 h-4" aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs sm:text-sm font-bold text-foreground truncate tabular-nums">
+                    {adaptive.latestTrendKg !== null
+                      ? formatWeight(adaptive.latestTrendKg, weightUnit)
+                      : adaptive.latestScaleKg !== null
+                        ? formatWeight(adaptive.latestScaleKg, weightUnit)
+                        : 'Weight Trend'}
+                  </span>
+                  <span className="block text-[11px] text-muted-foreground truncate">
+                    {adaptive.latestTrendKg !== null
+                      ? 'EMA trend'
+                      : adaptive.latestScaleKg !== null
+                        ? 'Latest scale'
+                        : 'Open Trends'}
+                  </span>
+                </span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic(8);
+                  openSheet('weight');
+                }}
+                aria-label="Log weigh-in"
+                title="Log weigh-in"
+                className="touch-target tactile-press w-9 h-9 rounded-full bg-surface-sub border border-border/60 hover:bg-surface-elevated text-muted-foreground hover:text-foreground inline-flex items-center justify-center shrink-0"
+              >
+                <Plus className="w-4 h-4" aria-hidden="true" />
+              </button>
             </div>
           </div>
 

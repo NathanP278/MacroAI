@@ -35,6 +35,20 @@ function applyThemeClass(resolved: ResolvedTheme) {
   const root = document.documentElement;
   root.classList.remove("light", "dark");
   root.classList.add(resolved);
+
+  // Sync iOS Safari status-bar / bottom-bar tint with the active in-app theme
+  const themeColor = resolved === "light" ? "#eef0f5" : "#0d0d11";
+  const existing = document.querySelectorAll('meta[name="theme-color"]');
+  if (existing.length > 0) {
+    existing.forEach((meta) => {
+      meta.setAttribute("content", themeColor);
+    });
+  } else {
+    const meta = document.createElement("meta");
+    meta.name = "theme-color";
+    meta.content = themeColor;
+    document.head.appendChild(meta);
+  }
 }
 
 export function ThemeProvider({
