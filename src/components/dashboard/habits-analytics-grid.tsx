@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import type { DailySummary, MacroMetric } from '@/lib/nutrition/daily-summary';
+import type { DailySummary } from '@/lib/nutrition/daily-summary';
 import { computeLoggingStreak } from '@/lib/nutrition/analytics';
 import type { DayNutritionPoint } from './macro-bento-grid';
 import { ChevronRight } from 'lucide-react';
@@ -48,22 +48,12 @@ export interface HabitsAnalyticsGridProps {
   className?: string;
 }
 
-function formatRemainingParts(
-  metric: MacroMetric,
-  unit: string
-): { numText: string; unitText: string } {
-  if (metric.overTarget) {
-    return { numText: `+${metric.delta.toLocaleString()}`, unitText: unit };
-  }
-  return { numText: metric.remaining.toLocaleString(), unitText: unit };
-}
-
 /**
  * MacroFactor-aligned Bento Analytics & Habits grid (Pics 1, 2, 3):
  * - Calories Today bar with target notch tick (Pic 2 & 3)
- * - Macros Last 7 Days stacked coral/gold/emerald columns (Pic 3)
+ * - Macros Last 7 Days stacked coral/gold/emerald columns with 7D kcal average (Pic 3)
  * - Food Logging Last 30 Days 3x10 dot matrix heatmap (Pic 1)
- * - Daily Balance remaining/surplus telemetry tile
+ * - 7-Day Pace tile (Weekly Calorie Bank delta + 7D P/F/C averages, zero duplication with Today)
  */
 export function HabitsAnalyticsGrid({
   summary,
@@ -88,13 +78,45 @@ export function HabitsAnalyticsGrid({
     1
   );
 
-  const calParts = formatRemainingParts(summary.calories, 'kcal');
-  const proParts = formatRemainingParts(summary.protein, 'g');
-  const fatParts = formatRemainingParts(summary.fat, 'g');
-  const carbParts = formatRemainingParts(summary.carbs, 'g');
+  // Compute distinct 7-day rolling averages (over logged days) so 7-day cards never echo today's 0 kcal
+  const loggedWeeklyDays = weeklyDays.filter(
+    (d) => d.calories > 0 || d.protein > 0 || d.fat > 0 || d.carbs > 0
+  );
+  const loggedWeeklyCount = loggedWeeklyDays.length;
+  const avg7dCalories =
+    loggedWeeklyCount > 0
+      ? Math.round(
+          loggedWeeklyDays.reduce((sum, d) => sum + d.calories, 0) / loggedWeeklyCount
+        )
+      : 0;
+  const avg7dProtein =
+    loggedWeeklyCount > 0
+      ? Math.round(
+          loggedWeeklyDays.reduce((sum, d) => sum + d.protein, 0) / loggedWeeklyCount
+        )
+      : 0;
+  const avg7dFat =
+    loggedWeeklyCount > 0
+      ? Math.round(
+          loggedWeeklyDays.reduce((sum, d) => sum + d.fat, 0) / loggedWeeklyCount
+        )
+      : 0;
+  const avg7dCarbs =
+    loggedWeeklyCount > 0
+      ? Math.round(
+          loggedWeeklyDays.reduce((sum, d) => sum + d.carbs, 0) / loggedWeeklyCount
+        )
+      : 0;
+  const weeklyBankDelta =
+    loggedWeeklyCount > 0
+      ? Math.round(
+          loggedWeeklyDays.reduce((sum, d) => sum + d.calories, 0) -
+            calTarget * loggedWeeklyCount
+        )
+      : 0;
 
   return (
-    <div className={`h-full flex flex-col justify-between gap-4 sm:gap-5 ${className}`}>
+    <div className={`@container/habits h-full flex flex-col justify-between gap-4 sm:gap-5 ${className}`}>
       {/* Insights & Nutrition Bento Section (Pic 3) */}
       <section aria-label="Nutrition analytics" className="space-y-2.5 sm:space-y-3">
         <div className="flex items-center justify-between px-0.5">
@@ -218,12 +240,12 @@ export function HabitsAnalyticsGrid({
 
             <div className="flex items-center justify-between gap-1">
               <span className="text-sm sm:text-base font-bold tabular-nums text-foreground whitespace-nowrap">
-                {summary.calories.consumed.toLocaleString()}{' '}
-                <span className="text-xs font-normal text-muted-foreground">kcal</span>
+                {avg7dCalories.toLocaleString()}{' '}
+                <span className="text-xs font-normal text-muted-foreground">kcal avg</span>
               </span>
               <Link
-                href="/log"
-                aria-label="Open macro history"
+                href="/trends"
+                aria-label="Open 7-day macro history"
                 className="touch-target p-1 -mr-1 rounded-full text-muted-foreground hover:text-foreground transition-colors shrink-0"
               >
                 <ChevronRight className="w-4 h-4" aria-hidden="true" />
@@ -244,7 +266,7 @@ export function HabitsAnalyticsGrid({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 @[420px]/habits:grid-cols-2 gap-3 sm:gap-4">
           {/* Food Logging 30-Day Interactive Heatmap Grid */}
           <div className="min-w-0 rounded-2xl bg-card border border-border/50 p-3.5 sm:p-4 flex flex-col justify-between gap-3">
             <div className="flex items-start justify-between gap-1">
@@ -303,66 +325,77 @@ export function HabitsAnalyticsGrid({
             </div>
           </div>
 
-          {/* Daily Balance Tile */}
+          {/* 7-Day Pace Tile (distinct multi-day horizon — zero duplication with Daily Nutrition) */}
           <Link
-            href="/log"
+            href="/trends"
             className="min-w-0 rounded-2xl bg-card border border-border/50 p-3.5 sm:p-4 flex flex-col justify-between gap-3 hover:bg-surface-sub/60 tactile-press macro-card-interactive group"
           >
             <div>
               <div className="text-sm font-semibold text-foreground truncate">
-                Daily Balance
+                7-Day Pace
               </div>
-              <div className="text-xs text-muted-foreground truncate">
-                {summary.calories.overTarget ? 'Surplus Today' : 'Remaining Today'}
+              <div className="text-xs text-muted-foreground truncate tabular-nums">
+                {loggedWeeklyCount > 0
+                  ? `${loggedWeeklyCount}/7 days logged`
+                  : 'No days logged yet'}
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-x-2 sm:gap-x-3 gap-y-2 tabular-nums">
               <div className="min-w-0">
-                <div className="text-[11px] font-medium text-muted-foreground">Calories</div>
+                <div className="text-[11px] font-medium text-muted-foreground">7D Bank</div>
                 <div
                   className="text-xs sm:text-sm font-bold whitespace-nowrap truncate"
-                  style={{ color: 'var(--macro-calories)' }}
+                  style={{
+                    color:
+                      weeklyBankDelta > 0
+                        ? 'var(--neutral-over)'
+                        : 'var(--macro-calories)',
+                  }}
                 >
-                  {calParts.numText}
+                  {weeklyBankDelta > 0
+                    ? `+${weeklyBankDelta.toLocaleString()}`
+                    : weeklyBankDelta < 0
+                      ? `-${Math.abs(weeklyBankDelta).toLocaleString()}`
+                      : '0'}
                   <span className="text-[10px] font-medium text-muted-foreground ml-0.5">
-                    {calParts.unitText}
+                    kcal
                   </span>
                 </div>
               </div>
               <div className="min-w-0">
-                <div className="text-[11px] font-medium text-muted-foreground">Protein</div>
+                <div className="text-[11px] font-medium text-muted-foreground">Protein Avg</div>
                 <div
                   className="text-xs sm:text-sm font-bold whitespace-nowrap truncate"
                   style={{ color: 'var(--macro-protein)' }}
                 >
-                  {proParts.numText}
+                  {avg7dProtein.toLocaleString()}
                   <span className="text-[10px] font-medium text-muted-foreground ml-0.5">
-                    {proParts.unitText}
+                    g
                   </span>
                 </div>
               </div>
               <div className="min-w-0">
-                <div className="text-[11px] font-medium text-muted-foreground">Fat</div>
+                <div className="text-[11px] font-medium text-muted-foreground">Fat Avg</div>
                 <div
                   className="text-xs sm:text-sm font-bold whitespace-nowrap truncate"
                   style={{ color: 'var(--macro-fat)' }}
                 >
-                  {fatParts.numText}
+                  {avg7dFat.toLocaleString()}
                   <span className="text-[10px] font-medium text-muted-foreground ml-0.5">
-                    {fatParts.unitText}
+                    g
                   </span>
                 </div>
               </div>
               <div className="min-w-0">
-                <div className="text-[11px] font-medium text-muted-foreground">Carbs</div>
+                <div className="text-[11px] font-medium text-muted-foreground">Carbs Avg</div>
                 <div
                   className="text-xs sm:text-sm font-bold whitespace-nowrap truncate"
                   style={{ color: 'var(--macro-carbs)' }}
                 >
-                  {carbParts.numText}
+                  {avg7dCarbs.toLocaleString()}
                   <span className="text-[10px] font-medium text-muted-foreground ml-0.5">
-                    {carbParts.unitText}
+                    g
                   </span>
                 </div>
               </div>
@@ -370,9 +403,9 @@ export function HabitsAnalyticsGrid({
 
             <div className="flex items-center justify-between gap-1">
               <span className="text-xs text-muted-foreground tabular-nums truncate">
-                {summary.logsCount > 0
-                  ? `${summary.logsCount} ${summary.logsCount === 1 ? 'entry' : 'entries'} logged`
-                  : 'Ready to log'}
+                {loggedWeeklyCount > 0
+                  ? `${avg7dCalories.toLocaleString()} kcal/day avg`
+                  : 'Log meals to track pace'}
               </span>
               <ChevronRight
                 className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0"

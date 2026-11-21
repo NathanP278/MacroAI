@@ -568,8 +568,8 @@ describe('aggregateDailySummary & Adherence-Neutral Analytics', () => {
       expect(screen.getByText('MacroAI')).toBeInTheDocument();
       expect(screen.getByText('Daily Nutrition')).toBeInTheDocument();
       expect(screen.getByText('Food Logging')).toBeInTheDocument();
-      expect(screen.getByText('Daily Balance')).toBeInTheDocument();
-      expect(screen.getByText('Remaining Today')).toBeInTheDocument();
+      expect(screen.getByText('7-Day Pace')).toBeInTheDocument();
+      expect(screen.getByText('7D Bank')).toBeInTheDocument();
       expect(screen.getByText('Logged Entries')).toBeInTheDocument();
 
       expect(screen.queryByText('Breakfast')).not.toBeInTheDocument();
