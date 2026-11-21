@@ -289,82 +289,156 @@ export default function TrendsPage() {
 
           {/* Summary Telemetry Strip */}
           <StaggerItem className="md:col-span-12 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            {/* Weekly Calorie Bank */}
-            <div className="macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 space-y-1">
-              <div className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                <span>Weekly Calorie Bank</span>
-                <InfoPopover
-                  label="Weekly Calorie Bank"
-                  description="Tracks your cumulative calorie balance across the week so higher- and lower-intake days average out naturally."
-                />
+            {/* Weekly Calorie Bank — full-width on mobile so title never wraps */}
+            <div className="col-span-2 lg:col-span-1 macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+                  <span>Weekly Calorie Bank</span>
+                  <InfoPopover
+                    label="Weekly Calorie Bank"
+                    description="Tracks your cumulative calorie balance across the week so higher- and lower-intake days average out naturally."
+                  />
+                </div>
+                <span className="lg:hidden text-[11px] font-medium text-muted-foreground tabular-nums whitespace-nowrap">
+                  Last 7D · {analytics.rolling7dSummary.loggedDays}/7 logged
+                </span>
               </div>
-              <div className="text-lg sm:text-xl font-bold tabular-nums text-foreground">
-                <AnimatedNumber
-                  value={analytics.weeklyNetBalance}
-                  format={formatSignedKcal}
-                />{' '}
-                <span className="text-xs font-normal text-muted-foreground">kcal</span>
+              <div className="flex items-baseline justify-between gap-2">
+                <div className="text-xl font-bold tabular-nums text-foreground">
+                  <AnimatedNumber
+                    value={analytics.weeklyNetBalance}
+                    format={formatSignedKcal}
+                  />{' '}
+                  <span className="text-xs font-normal text-muted-foreground">kcal</span>
+                </div>
+                <span className="lg:hidden text-[11px] text-muted-foreground tabular-nums">
+                  {analytics.weeklyNetBalance > 0
+                    ? 'Net surplus'
+                    : analytics.weeklyNetBalance < 0
+                      ? 'Net deficit'
+                      : 'On target'}
+                </span>
               </div>
-              <div className="text-[11px] text-muted-foreground tabular-nums">
+              <div className="hidden lg:block text-[11px] text-muted-foreground tabular-nums">
                 Last 7D ({analytics.rolling7dSummary.loggedDays}/7 logged)
               </div>
             </div>
 
             {/* Daily Avg Intake */}
-            <div className="macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 space-y-1">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="col-span-1 macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between gap-1.5 min-w-0">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
                 Daily Avg Intake
               </div>
-              <div className="text-lg sm:text-xl font-bold tabular-nums text-foreground">
+              <div className="text-lg sm:text-xl font-bold tabular-nums text-foreground whitespace-nowrap">
                 <AnimatedNumber
                   value={analytics.avgCalories}
                   format={formatInt}
                 />{' '}
                 <span className="text-xs font-normal text-muted-foreground">kcal</span>
               </div>
-              <div className="text-[11px] text-muted-foreground tabular-nums">
-                Target avg {formatInt(analytics.avgTargetCalories)} kcal
+              <div className="text-[11px] text-muted-foreground tabular-nums truncate">
+                Target {formatInt(analytics.avgTargetCalories)} kcal
               </div>
             </div>
 
-            {/* Macro Split % */}
-            <div className="macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 space-y-1">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Macro Split
-              </div>
-              <div className="text-sm sm:text-base font-bold tabular-nums flex flex-wrap items-baseline gap-x-2 gap-y-0.5 pt-0.5">
-                <span style={{ color: 'var(--macro-protein)' }}>
-                  <AnimatedNumber value={analytics.macroPct.protein} />% P
-                </span>
-                <span style={{ color: 'var(--macro-carbs)' }}>
-                  <AnimatedNumber value={analytics.macroPct.carbs} />% C
-                </span>
-                <span style={{ color: 'var(--macro-fat)' }}>
-                  <AnimatedNumber value={analytics.macroPct.fat} />% F
-                </span>
-              </div>
-              <div className="text-[11px] text-muted-foreground tabular-nums">
-                {Math.round(analytics.avgProtein)}P · {Math.round(analytics.avgCarbs)}C ·{' '}
-                {Math.round(analytics.avgFat)}F g/day
-              </div>
-            </div>
-
-            {/* Protein g/kg & Fiber / 1000 kcal */}
-            <div className="macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 space-y-1">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {/* Density & Protein — paired cleanly beside Daily Avg Intake on mobile */}
+            <div className="col-span-1 macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between gap-1.5 min-w-0">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
                 Density &amp; Protein
               </div>
-              <div className="text-lg sm:text-xl font-bold tabular-nums text-foreground">
+              <div className="text-lg sm:text-xl font-bold tabular-nums text-foreground whitespace-nowrap">
                 {analytics.proteinPerKg !== null
                   ? `${analytics.proteinPerKg.toFixed(2)}`
                   : '—'}{' '}
                 <span className="text-xs font-normal text-muted-foreground">g/kg</span>
               </div>
-              <div className="text-[11px] text-muted-foreground tabular-nums">
+              <div className="text-[11px] text-muted-foreground tabular-nums truncate">
                 Fiber{' '}
                 {analytics.fiberPer1000Kcal !== null
-                  ? `${analytics.fiberPer1000Kcal.toFixed(1)} g / 1000 kcal`
+                  ? `${analytics.fiberPer1000Kcal.toFixed(1)} g / 1k`
                   : '—'}
+              </div>
+            </div>
+
+            {/* Macro Split % — full-width on mobile with proportional bar & spacious 3-column breakdown */}
+            <div className="col-span-2 lg:col-span-1 macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between gap-2.5 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Macro Split
+                </span>
+                <span className="lg:hidden text-[11px] text-muted-foreground tabular-nums">
+                  Daily avg ({rangeDays}D)
+                </span>
+              </div>
+
+              {/* Proportional 3-segment bar */}
+              <div
+                aria-hidden="true"
+                className="w-full h-2 rounded-full bg-surface-sub overflow-hidden flex gap-0.5"
+              >
+                {analytics.macroPct.protein > 0 && (
+                  <div
+                    className="h-full rounded-l-full"
+                    style={{
+                      width: `${analytics.macroPct.protein}%`,
+                      backgroundColor: 'var(--macro-protein)',
+                    }}
+                  />
+                )}
+                {analytics.macroPct.carbs > 0 && (
+                  <div
+                    className="h-full"
+                    style={{
+                      width: `${analytics.macroPct.carbs}%`,
+                      backgroundColor: 'var(--macro-carbs)',
+                    }}
+                  />
+                )}
+                {analytics.macroPct.fat > 0 && (
+                  <div
+                    className="h-full rounded-r-full"
+                    style={{
+                      width: `${analytics.macroPct.fat}%`,
+                      backgroundColor: 'var(--macro-fat)',
+                    }}
+                  />
+                )}
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 tabular-nums">
+                <div className="min-w-0">
+                  <div
+                    className="text-sm font-bold whitespace-nowrap"
+                    style={{ color: 'var(--macro-protein)' }}
+                  >
+                    <AnimatedNumber value={analytics.macroPct.protein} />% P
+                  </div>
+                  <div className="text-[11px] text-muted-foreground whitespace-nowrap">
+                    {Math.round(analytics.avgProtein)}g/d
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  <div
+                    className="text-sm font-bold whitespace-nowrap"
+                    style={{ color: 'var(--macro-carbs)' }}
+                  >
+                    <AnimatedNumber value={analytics.macroPct.carbs} />% C
+                  </div>
+                  <div className="text-[11px] text-muted-foreground whitespace-nowrap">
+                    {Math.round(analytics.avgCarbs)}g/d
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  <div
+                    className="text-sm font-bold whitespace-nowrap"
+                    style={{ color: 'var(--macro-fat)' }}
+                  >
+                    <AnimatedNumber value={analytics.macroPct.fat} />% F
+                  </div>
+                  <div className="text-[11px] text-muted-foreground whitespace-nowrap">
+                    {Math.round(analytics.avgFat)}g/d
+                  </div>
+                </div>
               </div>
             </div>
           </StaggerItem>
