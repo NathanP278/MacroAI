@@ -1,11 +1,18 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { X, RefreshCw, Zap, AlertCircle, RotateCcw } from 'lucide-react';
 import { db, generateId } from '@/lib/db/macroai-db';
 import { computeMacroCalories } from '@/lib/nutrition/scaling';
 import { useLoggerStore, formatHumanDate } from '@/stores/logger-store';
-import { triggerHaptic } from '@/lib/motion';
+import {
+  EASE_EXPRESSIVE,
+  SPRING_SHEET,
+  isTestEnvironment,
+  triggerHaptic,
+} from '@/lib/motion';
+import { ShakeOnError } from '@/components/motion/motion-primitives';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import type { FoodLogEntry } from '@/types/nutrition';
 
@@ -233,18 +240,28 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
     }
   };
 
+  const isTest = isTestEnvironment();
+
   return (
-    <div
+    <motion.div
       role="dialog"
       aria-modal="true"
       aria-label="Quick Add Macros"
       data-testid="quick-add-drawer"
-      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-6 bg-black/70 backdrop-blur-xs animate-backdrop-in"
+      initial={isTest ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={isTest ? undefined : { opacity: 0 }}
+      transition={{ duration: 0.24, ease: EASE_EXPRESSIVE }}
+      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-6 bg-black/70 backdrop-blur-md"
       onClick={onClose}
     >
-      <div
+      <motion.div
         ref={sheetRef}
-        className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 animate-sheet-in sm:animate-modal-in max-h-[90dvh] flex flex-col"
+        initial={isTest ? false : { opacity: 0, y: 48, scale: 0.94 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={isTest ? undefined : { opacity: 0, y: 36, scale: 0.95 }}
+        transition={SPRING_SHEET}
+        className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 max-h-[90dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="w-9 h-1 rounded-full bg-border mx-auto mb-3 shrink-0 sm:hidden" aria-hidden="true" />
@@ -432,15 +449,17 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
             )}
           </div>
 
-          {/* Error Message */}
+          {/* Error Message with Validation Shake */}
           {errorMessage && (
-            <div
-              role="alert"
-              className="p-2.5 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-center gap-2"
-            >
-              <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
-              <span>{errorMessage}</span>
-            </div>
+            <ShakeOnError shakeKey={errorMessage}>
+              <div
+                role="alert"
+                className="p-2.5 rounded-xl bg-surface-sub border border-border text-[var(--neutral-over)] text-xs flex items-center gap-2"
+              >
+                <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                <span>{errorMessage}</span>
+              </div>
+            </ShakeOnError>
           )}
 
           {/* Submit Button */}
@@ -453,12 +472,22 @@ function QuickAddContent({ date, mealSlot, onClose }: QuickAddContentProps) {
             <span>{confirmHighCalories ? 'Confirm & Log' : 'Log Quick Add'}</span>
           </button>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
 export function QuickAddDrawer({ open, date, mealSlot, onClose }: QuickAddDrawerProps) {
-  if (!open) return null;
-  return <QuickAddContent key={`${date}-${mealSlot}`} date={date} mealSlot={mealSlot} onClose={onClose} />;
+  return (
+    <AnimatePresence>
+      {open && (
+        <QuickAddContent
+          key={`${date}-${mealSlot}`}
+          date={date}
+          mealSlot={mealSlot}
+          onClose={onClose}
+        />
+      )}
+    </AnimatePresence>
+  );
 }

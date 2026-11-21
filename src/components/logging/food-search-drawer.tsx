@@ -1,6 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import {
+  EASE_EXPRESSIVE,
+  SPRING_SHEET,
+  isTestEnvironment,
+} from '@/lib/motion';
 import {
   Search,
   X,
@@ -849,17 +855,25 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
   });
 
   return (
-    <div
+    <motion.div
       role="dialog"
       aria-modal="true"
       aria-label="Food Search"
       data-testid="food-search-drawer"
-      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-6 bg-black/70 backdrop-blur-xs animate-backdrop-in"
+      initial={isTestEnvironment() ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={isTestEnvironment() ? undefined : { opacity: 0 }}
+      transition={{ duration: 0.24, ease: EASE_EXPRESSIVE }}
+      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-6 bg-black/70 backdrop-blur-md"
       onClick={onClose}
     >
-      <div
+      <motion.div
         ref={sheetRef}
-        className="w-full max-w-lg lg:max-w-2xl mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 animate-sheet-in sm:animate-modal-in max-h-[90dvh] flex flex-col"
+        initial={isTestEnvironment() ? false : { opacity: 0, y: 48, scale: 0.94 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={isTestEnvironment() ? undefined : { opacity: 0, y: 36, scale: 0.95 }}
+        transition={SPRING_SHEET}
+        className="w-full max-w-lg lg:max-w-2xl mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 max-h-[90dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div
@@ -1517,8 +1531,8 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -1528,13 +1542,16 @@ export function FoodSearchDrawer({
   mealSlot,
   onClose,
 }: FoodSearchDrawerProps) {
-  if (!open) return null;
   return (
-    <FoodSearchContent
-      key={`${date}-${mealSlot}`}
-      date={date}
-      mealSlot={mealSlot}
-      onClose={onClose}
-    />
+    <AnimatePresence>
+      {open && (
+        <FoodSearchContent
+          key={`${date}-${mealSlot}`}
+          date={date}
+          mealSlot={mealSlot}
+          onClose={onClose}
+        />
+      )}
+    </AnimatePresence>
   );
 }

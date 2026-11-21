@@ -3,6 +3,7 @@
 import React, { useId, useState } from 'react';
 import { KeyRound, Lock } from 'lucide-react';
 import { useLoggerStore } from '@/stores/logger-store';
+import { ShakeOnError } from '@/components/motion/motion-primitives';
 
 export interface SyncUnlockCardProps {
   onUnlocked?: () => void;
@@ -114,9 +115,11 @@ export function SyncUnlockCard({
       </div>
 
       {error && (
-        <p className="text-[11px] text-[var(--neutral-over)]" role="status">
-          {error}
-        </p>
+        <ShakeOnError shakeKey={error}>
+          <p className="text-[11px] text-[var(--neutral-over)]" role="status">
+            {error}
+          </p>
+        </ShakeOnError>
       )}
     </form>
   );
