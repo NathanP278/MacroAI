@@ -30,14 +30,33 @@ function resolveTheme(theme: Theme): ResolvedTheme {
   return theme;
 }
 
-function applyThemeClass(resolved: ResolvedTheme) {
+let themeTransitionTimer: ReturnType<typeof setTimeout> | null = null;
+
+function applyThemeClass(resolved: ResolvedTheme, animate = false) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
+  const currentIsLight = root.classList.contains("light");
+  const currentIsDark = root.classList.contains("dark");
+  const changed =
+    (resolved === "light" && !currentIsLight) ||
+    (resolved === "dark" && !currentIsDark);
+
+  if (animate && changed) {
+    root.classList.add("theme-transitioning");
+    if (themeTransitionTimer) {
+      clearTimeout(themeTransitionTimer);
+    }
+    themeTransitionTimer = setTimeout(() => {
+      root.classList.remove("theme-transitioning");
+      themeTransitionTimer = null;
+    }, 460);
+  }
+
   root.classList.remove("light", "dark");
   root.classList.add(resolved);
 
   // Sync iOS Safari status-bar / bottom-bar tint with the active in-app theme
-  const themeColor = resolved === "light" ? "#eef0f5" : "#0d0d11";
+  const themeColor = resolved === "light" ? "#f2f4f8" : "#1e2229";
   const existing = document.querySelectorAll('meta[name="theme-color"]');
   if (existing.length > 0) {
     existing.forEach((meta) => {
@@ -117,7 +136,7 @@ export function ThemeProvider({
     const resolved = resolveTheme(newTheme);
     setThemeState(newTheme);
     setResolvedTheme(resolved);
-    applyThemeClass(resolved);
+    applyThemeClass(resolved, true);
   };
 
   return (
