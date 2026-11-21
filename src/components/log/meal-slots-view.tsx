@@ -356,13 +356,13 @@ export function MealSlotsView() {
   const isLoadingLogs = todayLogs === undefined;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start animate-card-enter">
-      {/* Left Sticky Daily Consumed Rail (Desktop) / Full-Width Summary (Mobile/Tablet) */}
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-5 lg:gap-6 items-start animate-card-enter">
+      {/* Left Sticky Daily Consumed Rail (Tablet & Desktop) / Full-Width Summary (Mobile) */}
       <aside
         aria-label="Daily nutrition totals"
-        className="lg:col-span-4 lg:sticky lg:top-[max(1.5rem,env(safe-area-inset-top))] bg-card border border-border/50 rounded-2xl p-4 sm:p-5 grid grid-cols-1 md:grid-cols-12 lg:grid-cols-1 gap-4 md:gap-5 md:items-center"
+        className="md:col-span-5 lg:col-span-4 md:sticky md:top-[max(1.5rem,env(safe-area-inset-top))] bg-card border border-border/50 rounded-2xl p-4 sm:p-5 grid grid-cols-1 gap-4"
       >
-        <div className="md:col-span-5 lg:col-span-1 space-y-3">
+        <div className="space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div>
               <span className="text-xs text-muted-foreground font-medium">Daily Consumed</span>
@@ -394,17 +394,17 @@ export function MealSlotsView() {
           />
         </div>
 
-        <div className="md:col-span-7 lg:col-span-1 space-y-3 md:border-l md:border-border/60 md:pl-5 lg:border-l-0 lg:pl-0 lg:pt-3 lg:border-t lg:border-border/60">
-          <div className="grid grid-cols-3 lg:grid-cols-1 gap-2.5 sm:gap-3.5 lg:gap-3">
-            <div className="flex flex-col items-center text-center gap-1.5 min-w-0 lg:grid lg:grid-cols-[1fr_auto] lg:items-baseline lg:text-left lg:gap-x-2 lg:gap-y-1.5">
+        <div className="space-y-3 md:pt-3 md:border-t md:border-border/60">
+          <div className="grid grid-cols-3 md:grid-cols-1 gap-2.5 sm:gap-3.5 md:gap-3">
+            <div className="flex flex-col items-center text-center gap-1.5 min-w-0 md:grid md:grid-cols-[1fr_auto] md:items-baseline md:text-left md:gap-x-2 md:gap-y-1.5">
               <span className="order-1 text-xs text-muted-foreground font-medium">Protein</span>
               <progress
-                className="order-2 lg:order-3 lg:col-span-2 macro-progress progress-protein w-full h-1.5 block"
+                className="order-2 md:order-3 md:col-span-2 macro-progress progress-protein w-full h-1.5 block"
                 max={Math.max(1, activeGoals.proteinG)}
                 value={Math.min(activeGoals.proteinG, Math.max(0, Math.round(totalProtein)))}
                 aria-label="Protein progress"
               />
-              <span className="order-3 lg:order-2 text-[11px] sm:text-xs font-semibold tabular-nums text-[var(--macro-protein)] whitespace-nowrap lg:text-right">
+              <span className="order-3 md:order-2 text-[11px] sm:text-xs font-semibold tabular-nums text-[var(--macro-protein)] whitespace-nowrap md:text-right">
                 {Math.round(totalProtein)}
                 <span className="text-[11px] text-muted-foreground font-normal">
                   /{activeGoals.proteinG}g
@@ -412,15 +412,15 @@ export function MealSlotsView() {
               </span>
             </div>
 
-            <div className="flex flex-col items-center text-center gap-1.5 min-w-0 lg:grid lg:grid-cols-[1fr_auto] lg:items-baseline lg:text-left lg:gap-x-2 lg:gap-y-1.5">
+            <div className="flex flex-col items-center text-center gap-1.5 min-w-0 md:grid md:grid-cols-[1fr_auto] md:items-baseline md:text-left md:gap-x-2 md:gap-y-1.5">
               <span className="order-1 text-xs text-muted-foreground font-medium">Fat</span>
               <progress
-                className="order-2 lg:order-3 lg:col-span-2 macro-progress progress-fat w-full h-1.5 block"
+                className="order-2 md:order-3 md:col-span-2 macro-progress progress-fat w-full h-1.5 block"
                 max={Math.max(1, activeGoals.fatG)}
                 value={Math.min(activeGoals.fatG, Math.max(0, Math.round(totalFat)))}
                 aria-label="Fat progress"
               />
-              <span className="order-3 lg:order-2 text-[11px] sm:text-xs font-semibold tabular-nums text-[var(--macro-fat)] whitespace-nowrap lg:text-right">
+              <span className="order-3 md:order-2 text-[11px] sm:text-xs font-semibold tabular-nums text-[var(--macro-fat)] whitespace-nowrap md:text-right">
                 {Math.round(totalFat)}
                 <span className="text-[11px] text-muted-foreground font-normal">
                   /{activeGoals.fatG}g
@@ -428,15 +428,15 @@ export function MealSlotsView() {
               </span>
             </div>
 
-            <div className="flex flex-col items-center text-center gap-1.5 min-w-0 lg:grid lg:grid-cols-[1fr_auto] lg:items-baseline lg:text-left lg:gap-x-2 lg:gap-y-1.5">
+            <div className="flex flex-col items-center text-center gap-1.5 min-w-0 md:grid md:grid-cols-[1fr_auto] md:items-baseline md:text-left md:gap-x-2 md:gap-y-1.5">
               <span className="order-1 text-xs text-muted-foreground font-medium">Carbs</span>
               <progress
-                className="order-2 lg:order-3 lg:col-span-2 macro-progress progress-carbs w-full h-1.5 block"
+                className="order-2 md:order-3 md:col-span-2 macro-progress progress-carbs w-full h-1.5 block"
                 max={Math.max(1, activeGoals.carbsG)}
                 value={Math.min(activeGoals.carbsG, Math.max(0, Math.round(totalCarbs)))}
                 aria-label="Carbs progress"
               />
-              <span className="order-3 lg:order-2 text-[11px] sm:text-xs font-semibold tabular-nums text-[var(--macro-carbs)] whitespace-nowrap lg:text-right">
+              <span className="order-3 md:order-2 text-[11px] sm:text-xs font-semibold tabular-nums text-[var(--macro-carbs)] whitespace-nowrap md:text-right">
                 {Math.round(totalCarbs)}
                 <span className="text-[11px] text-muted-foreground font-normal">
                   /{activeGoals.carbsG}g
@@ -456,7 +456,7 @@ export function MealSlotsView() {
       </aside>
 
       {/* Unified Logged Entries List */}
-      <section aria-labelledby="food-log-entries-heading" className="lg:col-span-8 space-y-3">
+      <section aria-labelledby="food-log-entries-heading" className="md:col-span-7 lg:col-span-8 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
           <div className="flex items-baseline gap-2">
             <h2

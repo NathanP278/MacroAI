@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { Lock, ShieldCheck, X } from "lucide-react";
 import { BottomNav } from "./bottom-nav";
+import { DesktopSidebar } from "./desktop-sidebar";
 import { QuickActionDock, QuickActionType } from "./quick-action-dock";
 import { UndoToast } from "./undo-toast";
 import { CommandPalette } from "./command-palette";
@@ -219,20 +220,29 @@ export function AppShell({ children, onQuickAction }: AppShellProps) {
   };
 
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div className="min-h-dvh bg-background text-foreground lg:flex lg:items-start">
       {/* Translucent top safe-area scrim so scrolled content never clashes with iOS/Android status bar */}
       <div
         aria-hidden="true"
         className="fixed top-0 left-0 right-0 z-40 h-[env(safe-area-inset-top)] bg-background/85 backdrop-blur-md pointer-events-none"
       />
 
+      {/* Persistent Desktop Left Sidebar Rail (lg+) */}
+      <DesktopSidebar
+        onOpenQuickActions={() => {
+          triggerHaptic(10);
+          setIsDockOpen(true);
+        }}
+        onDirectAction={handleAction}
+      />
+
       {/* Dynamic responsive workspace: mobile-first full bleed, expands gracefully on tablets & laptops */}
       <div
         data-testid="app-shell-container"
-        className={`w-full max-w-6xl mx-auto min-h-dvh flex flex-col relative pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] ${
+        className={`flex-1 min-w-0 w-full max-w-6xl mx-auto min-h-dvh flex flex-col relative pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] ${
           hasQuickSearchBar
-            ? "pb-[calc(8.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(9.25rem+env(safe-area-inset-bottom))]"
-            : "pb-[calc(5.25rem+env(safe-area-inset-bottom))] sm:pb-[calc(5.75rem+env(safe-area-inset-bottom))]"
+            ? "pb-[calc(9.5rem+env(safe-area-inset-bottom))] sm:pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-8"
+            : "pb-[calc(6.25rem+env(safe-area-inset-bottom))] sm:pb-[calc(6.75rem+env(safe-area-inset-bottom))] lg:pb-8"
         }`}
       >
         {syncAuthLocked && <SyncAuthModal />}
