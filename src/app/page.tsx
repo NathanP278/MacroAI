@@ -551,88 +551,89 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Contextual Coaching & Body Strip: AI Meal Ideas + Weight Trend */}
+          {/* Bottom Workspace: Logged Entries + Quick Tools (left) | Micronutrient Targets (right) */}
           <div
-            data-testid="dashboard-quick-tools"
-            className="grid grid-cols-2 gap-3 sm:gap-4 animate-card-enter"
-            style={{ animationDelay: '25ms' }}
+            className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 items-start animate-card-enter"
+            style={{ animationDelay: '35ms' }}
           >
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic(8);
-                openSheet('meal-ideas');
-              }}
-              className="touch-target tactile-press macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 text-left flex items-center gap-3 min-w-0"
-            >
-              <span className="w-9 h-9 rounded-xl bg-[var(--macro-calories)]/15 border border-[var(--macro-calories)]/25 flex items-center justify-center text-[var(--macro-calories)] shrink-0">
-                <Sparkles className="w-4 h-4" aria-hidden="true" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-xs sm:text-sm font-bold text-foreground truncate">
-                  AI Meal Ideas
-                </span>
-                <span className="block text-[11px] text-muted-foreground truncate tabular-nums">
-                  {summary.calories.remaining > 0
-                    ? `${Math.round(summary.calories.remaining).toLocaleString('en-US')} kcal left`
-                    : 'Fill remaining macros'}
-                </span>
-              </span>
-            </button>
-
-            <div className="macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-2 min-w-0">
-              <Link
-                href="/trends"
-                onClick={() => triggerHaptic(8)}
-                title={
-                  rolling7d.rolling7dSummary.loggedDays > 0
-                    ? `7D avg ${Math.round(rolling7d.avgCalories).toLocaleString('en-US')} kcal — Open Trends`
-                    : 'Open Trends'
-                }
-                className="touch-target tactile-press flex items-center gap-3 min-w-0 flex-1"
+            {/* Left Column: Quick Coaching Strip + Logged Entries (absorbs vertical slack beside Micronutrients) */}
+            <div className="lg:col-span-7 space-y-5 sm:space-y-6">
+              {/* Contextual Coaching & Body Strip: AI Meal Ideas + Weight Trend */}
+              <div
+                data-testid="dashboard-quick-tools"
+                className="grid grid-cols-2 gap-3 sm:gap-4"
               >
-                <span className="w-9 h-9 rounded-xl bg-[var(--macro-fiber)]/15 border border-[var(--macro-fiber)]/25 flex items-center justify-center text-[var(--macro-fiber)] shrink-0">
-                  <Scale className="w-4 h-4" aria-hidden="true" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-xs sm:text-sm font-bold text-foreground truncate tabular-nums">
-                    {adaptive.latestTrendKg !== null
-                      ? formatWeight(adaptive.latestTrendKg, weightUnit)
-                      : adaptive.latestScaleKg !== null
-                        ? formatWeight(adaptive.latestScaleKg, weightUnit)
-                        : 'Weight Trend'}
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic(8);
+                    openSheet('meal-ideas');
+                  }}
+                  className="touch-target tactile-press macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 text-left flex items-center gap-3 min-w-0"
+                >
+                  <span className="w-9 h-9 rounded-xl bg-[var(--macro-calories)]/15 border border-[var(--macro-calories)]/25 flex items-center justify-center text-[var(--macro-calories)] shrink-0">
+                    <Sparkles className="w-4 h-4" aria-hidden="true" />
                   </span>
-                  <span className="block text-[11px] text-muted-foreground truncate">
-                    {adaptive.latestTrendKg !== null
-                      ? 'EMA trend'
-                      : adaptive.latestScaleKg !== null
-                        ? 'Latest scale'
-                        : 'Open Trends'}
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs sm:text-sm font-bold text-foreground truncate">
+                      AI Meal Ideas
+                    </span>
+                    <span className="block text-[11px] text-muted-foreground truncate tabular-nums">
+                      {summary.calories.remaining > 0
+                        ? `${Math.round(summary.calories.remaining).toLocaleString('en-US')} kcal left`
+                        : 'Fill remaining macros'}
+                    </span>
                   </span>
-                </span>
-              </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic(8);
-                  openSheet('weight');
-                }}
-                aria-label="Log weigh-in"
-                title="Log weigh-in"
-                className="touch-target tactile-press w-9 h-9 rounded-full bg-surface-sub border border-border/60 hover:bg-surface-elevated text-muted-foreground hover:text-foreground inline-flex items-center justify-center shrink-0"
-              >
-                <Plus className="w-4 h-4" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
+                </button>
 
-          {/* Bottom Workspace: Logged Entries + Micronutrient Targets */}
-          <div
-            className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 items-start animate-card-enter"
-            style={{ animationDelay: '45ms' }}
-          >
-            {/* Logged Entries Section */}
-            <section aria-labelledby="logged-entries-heading" className="md:col-span-7 space-y-3">
+                <div className="macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-2 min-w-0">
+                  <Link
+                    href="/trends"
+                    onClick={() => triggerHaptic(8)}
+                    title={
+                      rolling7d.rolling7dSummary.loggedDays > 0
+                        ? `7D avg ${Math.round(rolling7d.avgCalories).toLocaleString('en-US')} kcal — Open Trends`
+                        : 'Open Trends'
+                    }
+                    className="touch-target tactile-press flex items-center gap-3 min-w-0 flex-1"
+                  >
+                    <span className="w-9 h-9 rounded-xl bg-[var(--macro-fiber)]/15 border border-[var(--macro-fiber)]/25 flex items-center justify-center text-[var(--macro-fiber)] shrink-0">
+                      <Scale className="w-4 h-4" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs sm:text-sm font-bold text-foreground truncate tabular-nums">
+                        {adaptive.latestTrendKg !== null
+                          ? formatWeight(adaptive.latestTrendKg, weightUnit)
+                          : adaptive.latestScaleKg !== null
+                            ? formatWeight(adaptive.latestScaleKg, weightUnit)
+                            : 'Weight Trend'}
+                      </span>
+                      <span className="block text-[11px] text-muted-foreground truncate">
+                        {adaptive.latestTrendKg !== null
+                          ? 'EMA trend'
+                          : adaptive.latestScaleKg !== null
+                            ? 'Latest scale'
+                            : 'Open Trends'}
+                      </span>
+                    </span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic(8);
+                      openSheet('weight');
+                    }}
+                    aria-label="Log weigh-in"
+                    title="Log weigh-in"
+                    className="touch-target tactile-press w-9 h-9 rounded-full bg-surface-sub border border-border/60 hover:bg-surface-elevated text-muted-foreground hover:text-foreground inline-flex items-center justify-center shrink-0"
+                  >
+                    <Plus className="w-4 h-4" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Logged Entries Section */}
+              <section aria-labelledby="logged-entries-heading" className="space-y-3">
               <div className="flex items-center justify-between gap-2 px-0.5">
                 <div className="flex items-baseline gap-2">
                   <h2
@@ -744,7 +745,7 @@ export default function HomePage() {
                               type="button"
                               onClick={() => void handleDeleteEntry(log)}
                               aria-label={`Delete ${log.name}`}
-                              className="touch-target tactile-press w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+                              className="touch-target tactile-press ml-0.5 w-8 h-8 rounded-full border border-transparent hover:border-border/60 flex items-center justify-center text-muted-foreground/75 hover:text-foreground hover:bg-surface-sub transition-colors"
                             >
                               <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                             </button>
@@ -873,10 +874,11 @@ export default function HomePage() {
                   </button>
                 </div>
               )}
-            </section>
+              </section>
+            </div>
 
             {/* Micronutrient Targets Panel */}
-            <div className="md:col-span-5 md:sticky md:top-[max(1.5rem,env(safe-area-inset-top))]">
+            <div className="lg:col-span-5 lg:sticky lg:top-[max(1.5rem,env(safe-area-inset-top))]">
               <MicronutrientPanel
                 micros={summary.micros}
                 weeklyMicros={weeklyMicroSummary.micros}

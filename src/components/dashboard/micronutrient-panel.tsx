@@ -19,6 +19,7 @@ export interface MicronutrientPanelProps {
   todayLogs?: FoodLogEntry[];
   weeklyLogs?: FoodLogEntry[];
   defaultWindow?: 'today' | '7d';
+  columns?: 1 | 2;
   className?: string;
 }
 
@@ -143,6 +144,7 @@ export function MicronutrientPanel({
   todayLogs = [],
   weeklyLogs,
   defaultWindow = 'today',
+  columns = 1,
   className = '',
 }: MicronutrientPanelProps) {
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
@@ -231,41 +233,43 @@ export function MicronutrientPanel({
 
       {/* Compact Net Carbs & K:Na Ratio strip */}
       {showSummaryStrip && (
-        <div className="grid grid-cols-2 gap-2.5">
-          {activeNetCarbsG !== undefined && (
-            <div className="rounded-xl bg-surface-sub/65 border border-border/40 px-3 py-2 flex items-center gap-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Net Carbs
-              </span>
-              <InfoPopover
-                label="Net Carbs"
-                description="Total carbohydrates minus dietary fiber — estimates digestible carbs."
-              />
-              <span className="ml-auto text-sm font-bold text-foreground tabular-nums">
-                {formatNetCarbs(activeNetCarbsG)}
-              </span>
-            </div>
-          )}
-          {activePotassiumSodiumRatio !== undefined && (
-            <div className="rounded-xl bg-surface-sub/65 border border-border/40 px-3 py-2 flex items-center gap-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                K:Na Ratio
-              </span>
-              <InfoPopover
-                label="K:Na Ratio"
-                description="Potassium-to-sodium ratio. A higher ratio generally reflects more whole-food potassium relative to dietary sodium."
-                align="right"
-              />
-              <span className="ml-auto text-sm font-bold text-foreground tabular-nums">
-                {formatRatio(activePotassiumSodiumRatio)}
-              </span>
-            </div>
-          )}
+        <div className="@container/micro-strip">
+          <div className="grid grid-cols-1 @[300px]/micro-strip:grid-cols-2 gap-2.5">
+            {activeNetCarbsG !== undefined && (
+              <div className="rounded-xl bg-surface-sub/65 border border-border/40 px-3 py-2 flex items-center gap-1.5 min-w-0">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+                  Net Carbs
+                </span>
+                <InfoPopover
+                  label="Net Carbs"
+                  description="Total carbohydrates minus dietary fiber — estimates digestible carbs."
+                />
+                <span className="ml-auto text-sm font-bold text-foreground tabular-nums whitespace-nowrap">
+                  {formatNetCarbs(activeNetCarbsG)}
+                </span>
+              </div>
+            )}
+            {activePotassiumSodiumRatio !== undefined && (
+              <div className="rounded-xl bg-surface-sub/65 border border-border/40 px-3 py-2 flex items-center gap-1.5 min-w-0">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+                  K:Na Ratio
+                </span>
+                <InfoPopover
+                  label="K:Na Ratio"
+                  description="Potassium-to-sodium ratio. A higher ratio generally reflects more whole-food potassium relative to dietary sodium."
+                  align="right"
+                />
+                <span className="ml-auto text-sm font-bold text-foreground tabular-nums whitespace-nowrap">
+                  {formatRatio(activePotassiumSodiumRatio)}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {/* Clean Segmented Filter Pills */}
-      <div className="overflow-x-auto no-scrollbar">
+      <div className="relative overflow-x-auto no-scrollbar [mask-image:linear-gradient(to_right,black_calc(100%-16px),transparent)] sm:[mask-image:none]">
         <SegmentedControl
           role="group"
           ariaLabel="Micronutrient category filter"
@@ -275,7 +279,7 @@ export function MicronutrientPanel({
             setActiveTab(next);
           }}
           className="bg-surface-sub p-0.5"
-          buttonClassName="text-[11px] px-2.5 py-1"
+          buttonClassName="text-[11px] px-2 sm:px-2.5 py-1 whitespace-nowrap"
           options={[
             { value: 'all', label: `All (${microList.length})` },
             { value: 'minerals', label: 'Minerals' },
@@ -293,7 +297,13 @@ export function MicronutrientPanel({
           </div>
         ) : (
           <>
-            <div className="divide-y divide-border/60">
+            <div
+              className={
+                columns === 2
+                  ? 'grid grid-cols-1 md:grid-cols-2 md:gap-x-6 divide-y divide-border/60 md:divide-y-0 [&>*]:border-b [&>*]:border-border/60 [&>*:last-child]:border-b-0'
+                  : 'divide-y divide-border/60'
+              }
+            >
               {primaryItems.map((item) => (
                 <MicroRow key={item.key} item={item} onSelect={setSelectedMetric} />
               ))}
@@ -305,7 +315,13 @@ export function MicronutrientPanel({
                 data-open={isExpanded ? 'true' : 'false'}
                 aria-hidden={!isExpanded}
               >
-                <div className="accordion-inner border-t border-border/60 divide-y divide-border/60">
+                <div
+                  className={
+                    columns === 2
+                      ? 'accordion-inner border-t border-border/60 grid grid-cols-1 md:grid-cols-2 md:gap-x-6 divide-y divide-border/60 md:divide-y-0 [&>*]:border-b [&>*]:border-border/60 [&>*:last-child]:border-b-0'
+                      : 'accordion-inner border-t border-border/60 divide-y divide-border/60'
+                  }
+                >
                   {extraItems.map((item) => (
                     <MicroRow
                       key={item.key}

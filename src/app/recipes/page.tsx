@@ -332,76 +332,104 @@ export default function RecipesPage() {
           </div>
         </header>
 
-        {/* Segmented Tabs: Recipes | Custom Foods & Barcodes */}
-        <div
-          role="tablist"
-          aria-label="Recipes and Custom Foods tabs"
-          className="grid grid-cols-2 gap-1.5 p-1 bg-card border border-border/50 rounded-full max-w-md"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'recipes'}
-            onClick={() => setActiveTab('recipes')}
-            className={`tactile-press py-2 px-4 rounded-full text-xs font-semibold transition-colors tabular-nums ${
-              activeTab === 'recipes'
-                ? 'bg-foreground text-background shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+        {/* Unified Toolbar Row: Segmented Tabs + Search (single horizontal row on md+) */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div
+            role="tablist"
+            aria-label="Recipes and Custom Foods tabs"
+            className="grid grid-cols-2 gap-1.5 p-1 bg-card border border-border/50 rounded-full w-full md:w-auto md:min-w-[340px] shrink-0"
           >
-            Recipes{recipes ? ` (${recipes.length})` : ''}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'custom-foods'}
-            onClick={() => setActiveTab('custom-foods')}
-            className={`tactile-press py-2 px-4 rounded-full text-xs font-semibold transition-colors tabular-nums ${
-              activeTab === 'custom-foods'
-                ? 'bg-foreground text-background shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Custom Foods & Barcodes
-            {customFoods ? ` (${customFoods.length})` : ''}
-          </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'recipes'}
+              onClick={() => setActiveTab('recipes')}
+              className={`tactile-press py-2 px-4 rounded-full text-xs font-semibold transition-colors tabular-nums whitespace-nowrap ${
+                activeTab === 'recipes'
+                  ? 'bg-foreground text-background shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Recipes{recipes ? ` (${recipes.length})` : ''}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'custom-foods'}
+              onClick={() => setActiveTab('custom-foods')}
+              className={`tactile-press py-2 px-4 rounded-full text-xs font-semibold transition-colors tabular-nums whitespace-nowrap ${
+                activeTab === 'custom-foods'
+                  ? 'bg-foreground text-background shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Custom Foods & Barcodes
+              {customFoods ? ` (${customFoods.length})` : ''}
+            </button>
+          </div>
+
+          {/* Active Tab Search Input & Count Summary */}
+          <div className="flex items-center gap-2.5 w-full md:w-auto md:flex-1 md:justify-end">
+            <div className="relative flex-1 md:max-w-sm min-w-0">
+              <Search
+                className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                aria-hidden="true"
+              />
+              {activeTab === 'recipes' ? (
+                <>
+                  <input
+                    type="text"
+                    aria-label="Search saved recipes"
+                    placeholder="Search saved recipes..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full h-11 bg-card border border-border/50 rounded-2xl pl-10 pr-10 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring transition-shadow"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      aria-label="Clear recipe search"
+                      className="touch-target tactile-press absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+                    >
+                      <X className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    aria-label="Search custom foods and barcodes"
+                    placeholder="Search custom foods or barcodes..."
+                    value={customFoodSearchQuery}
+                    onChange={(e) => setCustomFoodSearchQuery(e.target.value)}
+                    className="w-full h-11 bg-card border border-border/50 rounded-2xl pl-10 pr-10 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring transition-shadow"
+                  />
+                  {customFoodSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomFoodSearchQuery('')}
+                      aria-label="Clear custom food search"
+                      className="touch-target tactile-press absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+                    >
+                      <X className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+            {activeTab === 'recipes' && recipes && recipes.length > 0 && (
+              <div className="hidden sm:flex items-center h-11 px-3.5 rounded-2xl bg-card border border-border/50 text-xs font-medium text-muted-foreground tabular-nums shrink-0">
+                {filteredRecipes.length}{' '}
+                {filteredRecipes.length === 1 ? 'recipe' : 'recipes'}
+              </div>
+            )}
+          </div>
         </div>
 
         {activeTab === 'recipes' ? (
           <>
-            {/* Search Bar & Count Summary */}
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1 min-w-0">
-                <Search
-                  className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                  aria-hidden="true"
-                />
-                <input
-                  type="text"
-                  aria-label="Search saved recipes"
-                  placeholder="Search saved recipes..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-11 sm:h-12 bg-card border border-border/50 rounded-2xl pl-10 pr-10 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring transition-shadow"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    aria-label="Clear recipe search"
-                    className="touch-target tactile-press absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
-                  >
-                    <X className="w-4 h-4" aria-hidden="true" />
-                  </button>
-                )}
-              </div>
-              {recipes && recipes.length > 0 && (
-                <div className="hidden sm:flex items-center h-11 sm:h-12 px-4 rounded-2xl bg-card border border-border/50 text-xs font-medium text-muted-foreground tabular-nums shrink-0">
-                  {filteredRecipes.length}{' '}
-                  {filteredRecipes.length === 1 ? 'recipe' : 'recipes'}
-                </div>
-              )}
-            </div>
 
             {/* Recipes Bento Grid */}
             {recipes === undefined ? (
@@ -483,11 +511,12 @@ export default function RecipesPage() {
                           >
                             <Edit className="w-3.5 h-3.5" aria-hidden="true" />
                           </button>
+                          <span className="h-4 w-px bg-border/50 mx-0.5" aria-hidden="true" />
                           <button
                             type="button"
                             onClick={() => void handleDeleteRecipe(recipe)}
                             aria-label={`Delete recipe ${recipe.name}`}
-                            className="touch-target tactile-press p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
+                            className="touch-target tactile-press p-2 rounded-full text-muted-foreground/75 hover:text-foreground hover:bg-surface-sub transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                           </button>
@@ -635,33 +664,6 @@ export default function RecipesPage() {
         ) : (
           /* Custom Foods & Barcodes Tab */
           <>
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1 min-w-0">
-                <Search
-                  className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                  aria-hidden="true"
-                />
-                <input
-                  type="text"
-                  aria-label="Search custom foods and barcodes"
-                  placeholder="Search custom foods or barcodes..."
-                  value={customFoodSearchQuery}
-                  onChange={(e) => setCustomFoodSearchQuery(e.target.value)}
-                  className="w-full h-11 sm:h-12 bg-card border border-border/50 rounded-2xl pl-10 pr-10 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring transition-shadow"
-                />
-                {customFoodSearchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setCustomFoodSearchQuery('')}
-                    aria-label="Clear custom food search"
-                    className="touch-target tactile-press absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-sub"
-                  >
-                    <X className="w-4 h-4" aria-hidden="true" />
-                  </button>
-                )}
-              </div>
-            </div>
-
             {customFoods === undefined ? (
               <RecipeCardSkeleton count={3} />
             ) : filteredCustomFoods.length > 0 ? (

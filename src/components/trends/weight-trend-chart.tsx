@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { Plus } from 'lucide-react';
 import type { DailyWeightPoint } from '@/lib/nutrition/adaptive-tdee';
 import {
   PAD,
@@ -18,6 +19,7 @@ import {
 export interface WeightTrendChartProps {
   points: DailyWeightPoint[];
   unit: 'kg' | 'lb';
+  onLogFirst?: () => void;
   className?: string;
 }
 
@@ -26,7 +28,7 @@ function dayNumber(date: string): number {
   return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) / 86_400_000 : NaN;
 }
 
-export function WeightTrendChart({ points, unit, className = '' }: WeightTrendChartProps) {
+export function WeightTrendChart({ points, unit, onLogFirst, className = '' }: WeightTrendChartProps) {
   const clean = useMemo(
     () =>
       (points ?? []).filter(
@@ -53,9 +55,23 @@ export function WeightTrendChart({ points, unit, className = '' }: WeightTrendCh
 
   if (clean.length === 0) {
     return (
-      <p className={`text-sm text-muted-foreground ${className}`}>
-        No weigh-ins in this range yet. Add one and your trend will appear here.
-      </p>
+      <div
+        className={`flex-1 min-h-[156px] rounded-xl bg-surface-sub/40 border border-dashed border-border/60 p-5 flex flex-col items-center justify-center text-center gap-3 ${className}`}
+      >
+        <p className="text-sm text-muted-foreground max-w-xs">
+          No weigh-ins in this range yet. Add one and your trend will appear here.
+        </p>
+        {onLogFirst && (
+          <button
+            type="button"
+            onClick={onLogFirst}
+            className="touch-target tactile-press inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Add Weigh-In</span>
+          </button>
+        )}
+      </div>
     );
   }
 

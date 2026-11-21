@@ -356,7 +356,7 @@ export default function TrendsPage() {
           </div>
 
           {/* Weight Trend Chart */}
-          <section className="md:col-span-7 bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-3">
+          <section className="md:col-span-7 self-stretch flex flex-col bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-3">
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-xl bg-[var(--macro-fiber)]/15 flex items-center justify-center text-[var(--macro-fiber)] shrink-0">
@@ -390,11 +390,15 @@ export default function TrendsPage() {
               )}
             </div>
 
-            <WeightTrendChart points={visibleWeightPoints} unit={weightUnit} />
+            <WeightTrendChart
+              points={visibleWeightPoints}
+              unit={weightUnit}
+              onLogFirst={openNewWeighIn}
+            />
           </section>
 
           {/* Observed TDEE Chart */}
-          <section className="md:col-span-5 bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-3">
+          <section className="md:col-span-5 self-stretch flex flex-col bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-3">
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)] shrink-0">
@@ -464,10 +468,11 @@ export default function TrendsPage() {
             <IntakeTrendChart days={analytics.days} mode={intakeMode} />
           </section>
 
-          {/* Micronutrients (7D Avg default) + Weight History List */}
-          <div className="md:col-span-6">
+          {/* Micronutrients (Full-Width 2-Column Grid on md+ to eliminate vertical voids) */}
+          <div className="md:col-span-12">
             <MicronutrientPanel
               defaultWindow="7d"
+              columns={2}
               micros={todaySummary.micros}
               weeklyMicros={weeklyMicroSummary.micros}
               netCarbsG={todaySummary.netCarbsG}
@@ -479,7 +484,7 @@ export default function TrendsPage() {
             />
           </div>
 
-          <div className="md:col-span-6">
+          <div className="md:col-span-12">
             <WeightHistoryList
               entries={safeWeightLogs}
               weightSeries={adaptive.weightSeries}
