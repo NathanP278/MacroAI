@@ -1,10 +1,16 @@
 'use client';
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { db } from '@/lib/db/macroai-db';
-import { triggerHaptic } from '@/lib/motion';
+import {
+  EASE_EXPRESSIVE,
+  SPRING_SHEET,
+  isTestEnvironment,
+  triggerHaptic,
+} from '@/lib/motion';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 
 export interface DatePickerPopoverProps {
@@ -209,26 +215,35 @@ export function DatePickerPopover({
     >
       {renderedTrigger}
 
+      <AnimatePresence>
       {isOpen && (
-        <>
-          <div
+        <React.Fragment key="date-picker-dialog">
+          <motion.div
             data-testid="date-picker-backdrop"
             aria-hidden="true"
+            initial={isTestEnvironment() ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={isTestEnvironment() ? undefined : { opacity: 0 }}
+            transition={{ duration: 0.22, ease: EASE_EXPRESSIVE }}
             onClick={() => setIsOpen(false)}
             className="fixed inset-0 z-40 bg-black/45 sm:bg-transparent"
           />
 
-          <div
+          <motion.div
             ref={popoverRef}
             role="dialog"
             aria-modal="true"
             aria-label="Choose date"
             data-testid="date-picker-popover"
+            initial={isTestEnvironment() ? false : { opacity: 0, y: -12, scale: 0.94 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={isTestEnvironment() ? undefined : { opacity: 0, y: -8, scale: 0.95 }}
+            transition={SPRING_SHEET}
             onClick={(e) => e.stopPropagation()}
             style={shiftX !== 0 ? { marginLeft: `${shiftX}px` } : undefined}
             className={`fixed inset-x-4 top-[max(4.5rem,env(safe-area-inset-top))] sm:inset-x-auto sm:absolute sm:top-full sm:mt-2 ${alignClasses} z-50 w-auto sm:w-80`}
           >
-            <div className="surface-elevated-sheet rounded-2xl p-3.5 sm:p-4 animate-modal-in">
+            <div className="surface-elevated-sheet rounded-2xl p-3.5 sm:p-4">
             {/* Month Navigation Header */}
             <div className="flex items-center justify-between gap-2 pb-3 border-b border-border/60">
               <button
@@ -338,9 +353,10 @@ export function DatePickerPopover({
               </button>
             </div>
             </div>
-          </div>
-        </>
+          </motion.div>
+        </React.Fragment>
       )}
+      </AnimatePresence>
     </div>
   );
 }

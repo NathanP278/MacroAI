@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, generateId } from '@/lib/db/macroai-db';
 import { useLoggerStore } from '@/stores/logger-store';
@@ -13,7 +14,11 @@ import { DEFAULT_RDA_MICROS, resolveGoalsForDate } from '@/lib/nutrition/goals';
 import { FoodRowSkeleton } from '@/components/ui/skeleton';
 import { CopyFromDateDrawer } from './copy-from-date-drawer';
 import { RecipeBuilderModal } from '@/components/recipes/recipe-builder-modal';
-import { triggerHaptic } from '@/lib/motion';
+import {
+  SPRING_EXPRESSIVE,
+  isTestEnvironment,
+  triggerHaptic,
+} from '@/lib/motion';
 import type {
   CustomRecipe,
   CustomRecipeIngredient,
@@ -560,6 +565,7 @@ export function MealSlotsView() {
           <FoodRowSkeleton count={3} />
         ) : sortedLogs.length > 0 ? (
           <ul className="rounded-2xl bg-card border border-border/50 overflow-hidden divide-y divide-border/60">
+            <AnimatePresence initial={false}>
             {sortedLogs.map((entry, idx) => {
               const entryTime = formatEntryTime(entry.createdAt);
               const isSelected = isSelectMode && selectedIdSet.has(entry.id);
@@ -568,9 +574,16 @@ export function MealSlotsView() {
               const trimmedNote = entry.note?.trim();
 
               return (
-                <li
+                <motion.li
                   key={entry.id}
-                  style={{ '--stagger-index': idx } as React.CSSProperties}
+                  layout={!isTestEnvironment()}
+                  initial={isTestEnvironment() ? false : { opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={isTestEnvironment() ? undefined : { opacity: 0, x: -32, scale: 0.97 }}
+                  transition={{
+                    ...SPRING_EXPRESSIVE,
+                    delay: isTestEnvironment() ? 0 : Math.min(idx, 6) * 0.045,
+                  }}
                   onTouchStart={(e) => {
                     rowTouchStartX.current = e.touches[0]?.clientX ?? null;
                   }}
@@ -750,9 +763,10 @@ export function MealSlotsView() {
                       </div>
                     </div>
                   </div>
-                </li>
+                </motion.li>
               );
             })}
+            </AnimatePresence>
           </ul>
         ) : (
           <div className="rounded-2xl bg-card border border-border/50 p-6 sm:p-8 text-center">

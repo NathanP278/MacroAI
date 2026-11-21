@@ -1,12 +1,18 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { AlertCircle, Calendar, Check, CopyPlus, X } from 'lucide-react';
 import { db } from '@/lib/db/macroai-db';
 import { copyLogsFromDate, offsetIsoDate } from '@/lib/recipes/recipe-builder';
 import { useLoggerStore, formatHumanDate } from '@/stores/logger-store';
-import { triggerHaptic } from '@/lib/motion';
+import {
+  EASE_EXPRESSIVE,
+  SPRING_SHEET,
+  isTestEnvironment,
+  triggerHaptic,
+} from '@/lib/motion';
 
 export interface CopyFromDateDrawerProps {
   open: boolean;
@@ -136,16 +142,24 @@ function CopyFromDateContent({
   };
 
   return (
-    <div
+    <motion.div
       role="dialog"
       aria-modal="true"
       aria-label="Copy From Date"
       data-testid="copy-from-date-drawer"
-      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-6 bg-black/70 backdrop-blur-xs animate-backdrop-in"
+      initial={isTestEnvironment() ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={isTestEnvironment() ? undefined : { opacity: 0 }}
+      transition={{ duration: 0.24, ease: EASE_EXPRESSIVE }}
+      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center sm:p-6 bg-black/70 backdrop-blur-md"
       onClick={onClose}
     >
-      <div
-        className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 animate-sheet-in sm:animate-modal-in max-h-[90dvh] flex flex-col"
+      <motion.div
+        initial={isTestEnvironment() ? false : { opacity: 0, y: 48, scale: 0.94 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={isTestEnvironment() ? undefined : { opacity: 0, y: 36, scale: 0.95 }}
+        transition={SPRING_SHEET}
+        className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 max-h-[90dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div
@@ -351,12 +365,15 @@ function CopyFromDateContent({
             <span>Copy Selected ({selectedIds.length})</span>
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
 export function CopyFromDateDrawer({ open, targetDate, onClose }: CopyFromDateDrawerProps) {
-  if (!open) return null;
-  return <CopyFromDateContent key={targetDate} targetDate={targetDate} onClose={onClose} />;
+  return (
+    <AnimatePresence>
+      {open && <CopyFromDateContent key={targetDate} targetDate={targetDate} onClose={onClose} />}
+    </AnimatePresence>
+  );
 }

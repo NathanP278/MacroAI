@@ -5,6 +5,7 @@ import { AppShell } from '@/components/shell/app-shell';
 import { SettingsHeaderLink } from '@/components/shell/settings-header-link';
 import { MealSlotsView } from '@/components/log/meal-slots-view';
 import { DatePickerPopover } from '@/components/log/date-picker-popover';
+import { PageStagger, StaggerItem } from '@/components/motion/motion-primitives';
 import { useLoggerStore } from '@/stores/logger-store';
 import { offsetIsoDate } from '@/lib/recipes/recipe-builder';
 import { runViewTransition, triggerHaptic } from '@/lib/motion';
@@ -99,8 +100,9 @@ export default function LogPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-5 sm:gap-6 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
+      <PageStagger className="flex flex-col gap-5 sm:gap-6 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
         {/* Compact Single-Row Header & Date Switcher matching Dashboard Obsidian Aesthetic */}
+        <StaggerItem>
         <header
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
@@ -157,16 +159,17 @@ export default function LogPage() {
             <SettingsHeaderLink />
           </div>
         </header>
+        </StaggerItem>
 
         {/* Meal Slots View with Daily Consumed & Copy Yesterday */}
-        <div
+        <StaggerItem
           key={`log-date-${activeDate}`}
           style={{ viewTransitionName: 'date-stage' }}
           className={dateSlideClass}
         >
           <MealSlotsView />
-        </div>
-      </div>
+        </StaggerItem>
+      </PageStagger>
     </AppShell>
   );
 }
