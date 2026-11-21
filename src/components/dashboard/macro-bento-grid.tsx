@@ -120,11 +120,11 @@ export function MacroBentoGrid({
   const { calories, protein, carbs, fat, fiber } = summary;
 
   // Semicircular 240-deg open horseshoe arc (bottom gap from 30deg to 150deg)
-  const size = 168;
+  const size = 180;
   const cx = size / 2;
   const cy = size / 2 + 4;
-  const radius = 66;
-  const strokeWidth = 9;
+  const radius = 78;
+  const strokeWidth = 11;
   const circumference = 2 * Math.PI * radius;
   const arcSpan = circumference * (240 / 360);
   const clampedPercent = Math.min(100, Math.max(0, calories.percent));

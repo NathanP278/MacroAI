@@ -927,13 +927,13 @@ progress.macro-progress::-moz-progress-bar {
 }
 
 .hero-arc-box {
-  width: 128px;
-  height: 116px;
+  width: 156px;
+  height: 140px;
 }
 
 .hero-center-value {
-  font-size: 1.75rem;
-  line-height: 1.1;
+  font-size: 1.875rem;
+  line-height: 1.08;
 }
 
 .hero-center-value[data-digits="long"] {
@@ -968,12 +968,13 @@ progress.macro-progress::-moz-progress-bar {
 
 @container hero (inline-size >= 340px) {
   .hero-arc-box {
-    width: 152px;
-    height: 138px;
+    width: 184px;
+    height: 164px;
   }
 
   .hero-center-value {
-    font-size: 1.875rem;
+    font-size: 2.25rem;
+    line-height: 1.05;
   }
 
   .hero-flank-value {
@@ -1007,8 +1008,8 @@ progress.macro-progress::-moz-progress-bar {
 
 @container hero (inline-size >= 420px) {
   .hero-arc-box {
-    width: 172px;
-    height: 156px;
+    width: 210px;
+    height: 188px;
   }
 
   .hero-center-value {
