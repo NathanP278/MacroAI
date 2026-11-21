@@ -226,8 +226,9 @@ export function DatePickerPopover({
             data-testid="date-picker-popover"
             onClick={(e) => e.stopPropagation()}
             style={shiftX !== 0 ? { marginLeft: `${shiftX}px` } : undefined}
-            className={`fixed inset-x-4 top-[max(4.5rem,env(safe-area-inset-top))] sm:inset-x-auto sm:absolute sm:top-full sm:mt-2 ${alignClasses} z-50 w-auto sm:w-80 surface-elevated-sheet rounded-2xl p-3.5 sm:p-4 animate-modal-in`}
+            className={`fixed inset-x-4 top-[max(4.5rem,env(safe-area-inset-top))] sm:inset-x-auto sm:absolute sm:top-full sm:mt-2 ${alignClasses} z-50 w-auto sm:w-80`}
           >
+            <div className="surface-elevated-sheet rounded-2xl p-3.5 sm:p-4 animate-modal-in">
             {/* Month Navigation Header */}
             <div className="flex items-center justify-between gap-2 pb-3 border-b border-border/60">
               <button
@@ -335,6 +336,7 @@ export function DatePickerPopover({
                 <RotateCcw className="w-3 h-3" aria-hidden="true" />
                 <span>Today</span>
               </button>
+            </div>
             </div>
           </div>
         </>
