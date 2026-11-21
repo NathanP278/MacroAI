@@ -29,7 +29,7 @@ export function AppleHealthShortcutCard() {
     }
   }, []);
 
-  const endpointUrl = `${origin}/api/weight/latest`;
+  const endpointUrl = `${origin}/api/weight/latest?tz=Asia/Manila`;
   const authHeaderSnippet = 'Authorization: Bearer YOUR_SHORTCUT_API_KEY';
 
   const latestEntry = useLiveQuery(async () => {
@@ -106,10 +106,10 @@ export function AppleHealthShortcutCard() {
       };
 
   const shortcutStepsText = [
-    `1. Get Contents of URL: ${endpointUrl} (Method: GET, Header -> ${authHeaderSnippet}).`,
-    `2. Get Dictionary Value for "id", "weight_kg" (or "weight_lb"), and "recorded_at".`,
+    `1. Get Contents of URL: ${endpointUrl} (Method: GET, Header -> ${authHeaderSnippet}). Only returns weigh-ins logged for today's date (ignoring backfilled past entries).`,
+    `2. Get Dictionary Value for "id", "weight_kg" (or "weight_lb"), and "recorded_at". If "id" has no value (null when no weigh-in is logged today), stop.`,
     `3. Deduplicate via iCloud Drive: Get File from iCloud Drive at "Shortcuts/macroai-last-weight-id.txt" (disable Error If Not Found).`,
-    `4. If File does not match "id": Log Health Sample (Type: Weight, Value: weight_kg, Date: recorded_at) and Save "id" to "Shortcuts/macroai-last-weight-id.txt" (Overwrite).`,
+    `4. If "id" has any value and File does not match "id": Log Health Sample (Type: Weight, Value: weight_kg, Date: recorded_at) and Save "id" to "Shortcuts/macroai-last-weight-id.txt" (Overwrite).`,
   ].join('\n');
 
   return (
@@ -203,6 +203,12 @@ export function AppleHealthShortcutCard() {
           <div className="font-mono text-[11px] text-foreground bg-card border border-border rounded-lg px-2.5 py-1.5 break-all">
             {endpointUrl}
           </div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Only returns weigh-ins logged for today&apos;s date (ignoring backfilled past entries). When no entry exists for today, returns{' '}
+            <code className="font-mono text-[10px]">200 OK</code> with{' '}
+            <code className="font-mono text-[10px]">&quot;id&quot;: null</code> so{' '}
+            <em>If id has any value</em> cleanly skips logging.
+          </p>
         </div>
 
         {/* Authorization Header */}
@@ -275,7 +281,7 @@ export function AppleHealthShortcutCard() {
         <ol className="list-decimal list-inside space-y-1.5 text-[11px] text-muted-foreground leading-relaxed">
           <li>
             <span className="text-foreground font-medium">Get Contents of URL:</span>{' '}
-            Call <code className="font-mono text-[10px]">GET /api/weight/latest</code> with{' '}
+            Call <code className="font-mono text-[10px]">GET /api/weight/latest?tz=Asia/Manila</code> with{' '}
             <code className="font-mono text-[10px]">Authorization: Bearer &lt;key&gt;</code>.
           </li>
           <li>
@@ -294,8 +300,8 @@ export function AppleHealthShortcutCard() {
           </li>
           <li>
             <span className="text-foreground font-medium">Log Health Sample:</span>{' '}
-            If the saved ID does not match <code className="font-mono text-[10px]">id</code>,
-            run <strong>Log Health Sample</strong> (Weight, Date ={' '}
+            If <code className="font-mono text-[10px]">id</code> has any value and the saved ID does not match{' '}
+            <code className="font-mono text-[10px]">id</code>, run <strong>Log Health Sample</strong> (Weight, Date ={' '}
             <code className="font-mono text-[10px]">recorded_at</code>) and overwrite the{' '}
             <code className="font-mono text-[10px]">.txt</code> file with the new{' '}
             <code className="font-mono text-[10px]">id</code>.

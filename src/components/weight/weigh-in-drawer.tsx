@@ -18,12 +18,36 @@ export interface WeighInDrawerProps {
   onSaved?: (entry: WeightLogEntry) => void;
 }
 
-function getTodayIsoDate(): string {
-  const d = new Date();
+function getTodayIsoDate(d: Date = new Date()): string {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+export function buildRecordedAtForDate(
+  targetDate: string,
+  nowMs: number,
+  initialEntry?: WeightLogEntry | null
+): string {
+  if (initialEntry && initialEntry.date === targetDate) {
+    return initialEntry.recordedAt;
+  }
+
+  const now = new Date(nowMs);
+  if (targetDate === getTodayIsoDate(now)) {
+    return now.toISOString();
+  }
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(targetDate);
+  if (!match) {
+    return now.toISOString();
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  return new Date(year, month - 1, day, 12, 0, 0, 0).toISOString();
 }
 
 function formatWeightForUnit(weightKg: number, unit: 'kg' | 'lb'): string {
@@ -200,8 +224,8 @@ function WeighInContent({
       }
 
       const nowMs = Date.now();
-      const nowIso = new Date(nowMs).toISOString();
-      const targetDate = date.trim() || getTodayIsoDate();
+      const targetDate = date.trim() || getTodayIsoDate(new Date(nowMs));
+      const recordedAt = buildRecordedAtForDate(targetDate, nowMs, initialEntry);
 
       const previousSnapshot = initialEntry ? { ...initialEntry } : null;
 
@@ -211,7 +235,7 @@ function WeighInContent({
         weightKg,
         ...(combinedNote ? { note: combinedNote } : {}),
         source: initialEntry?.source ?? 'manual',
-        recordedAt: nowIso,
+        recordedAt,
         createdAt: initialEntry?.createdAt ?? nowMs,
         updatedAt: nowMs,
       };

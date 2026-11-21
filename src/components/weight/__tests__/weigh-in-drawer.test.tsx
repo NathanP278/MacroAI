@@ -106,7 +106,57 @@ describe('WeighInDrawer & AppleHealthShortcutCard', () => {
     expect(restored?.weightKg).toBe(75.0);
   });
 
-  it('renders AppleHealthShortcutCard with server status, latest JSON preview, and 4-step iCloud deduplication guide', async () => {
+  it('aligns recordedAt with the selected past Date when backfilling, and preserves recordedAt when editing without changing date', async () => {
+    const onClose = vi.fn();
+
+    const { unmount } = render(
+      <WeighInDrawer
+        open={true}
+        defaultDate="2026-11-21"
+        onClose={onClose}
+      />
+    );
+
+    const weightInput = screen.getByLabelText(/weight/i) as HTMLInputElement;
+    fireEvent.change(weightInput, { target: { value: '75.8' } });
+
+    const dateInput = screen.getByLabelText(/^date$/i) as HTMLInputElement;
+    fireEvent.change(dateInput, { target: { value: '2026-11-18' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /save weigh-in/i }));
+
+    await waitFor(async () => {
+      const all = await db.weightLogs.toArray();
+      expect(all).toHaveLength(1);
+      expect(all[0].date).toBe('2026-11-18');
+      expect(all[0].recordedAt.startsWith('2026-11-18T')).toBe(true);
+    });
+
+    unmount();
+
+    const saved = (await db.weightLogs.toArray())[0];
+    const originalRecordedAt = saved.recordedAt;
+
+    render(
+      <WeighInDrawer
+        open={true}
+        initialEntry={saved}
+        onClose={onClose}
+      />
+    );
+
+    const editWeightInput = screen.getByLabelText(/weight/i) as HTMLInputElement;
+    fireEvent.change(editWeightInput, { target: { value: '75.9' } });
+    fireEvent.click(screen.getByRole('button', { name: /update weigh-in/i }));
+
+    await waitFor(async () => {
+      const updated = await db.weightLogs.get(saved.id);
+      expect(updated?.weightKg).toBe(75.9);
+      expect(updated?.recordedAt).toBe(originalRecordedAt);
+    });
+  });
+
+  it('renders AppleHealthShortcutCard with server status, ?tz=Asia/Manila URL, today-only note, latest JSON preview, and 4-step iCloud deduplication guide', async () => {
     await db.weightLogs.put({
       id: 'w_200',
       date: '2026-11-20',
@@ -129,7 +179,10 @@ describe('WeighInDrawer & AppleHealthShortcutCard', () => {
     await waitFor(() => {
       expect(screen.getByText(/apple health ios shortcut/i)).toBeInTheDocument();
       expect(screen.getByText(/^configured$/i)).toBeInTheDocument();
-      expect(screen.getAllByText(/\/api\/weight\/latest/i).length).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText(/\/api\/weight\/latest\?tz=Asia\/Manila/i).length
+      ).toBeGreaterThan(0);
+      expect(screen.getByText(/backfilled/i)).toBeInTheDocument();
       expect(screen.getAllByText(/168\.65/).length).toBeGreaterThan(0);
       expect(screen.getAllByText(/icloud drive/i).length).toBeGreaterThan(0);
     });

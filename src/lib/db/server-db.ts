@@ -473,12 +473,19 @@ export async function getAllCentralTables(): Promise<AllCentralTablesResult> {
   };
 }
 
-export async function getLatestWeightLog(): Promise<WeightLogEntry | null> {
+export async function getLatestWeightLog(
+  date?: string
+): Promise<WeightLogEntry | null> {
   await ensureServerSchema();
   const client = getLibsqlClient();
-  const res = await client.execute(
-    'SELECT data FROM weight_logs ORDER BY date DESC, recorded_at DESC, created_at DESC LIMIT 1'
-  );
+  const res = date
+    ? await client.execute({
+        sql: 'SELECT data FROM weight_logs WHERE date = ? ORDER BY recorded_at DESC, created_at DESC LIMIT 1',
+        args: [date],
+      })
+    : await client.execute(
+        'SELECT data FROM weight_logs ORDER BY date DESC, recorded_at DESC, created_at DESC LIMIT 1'
+      );
   const row = res.rows[0] as Record<string, unknown> | undefined;
   if (!row || typeof row.data !== 'string') {
     return null;
