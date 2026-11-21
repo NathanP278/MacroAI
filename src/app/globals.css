@@ -960,6 +960,29 @@ progress.macro-progress::-moz-progress-bar {
     animation-play-state: paused;
   }
 
+  .info-popover-panel[popover] {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+    transition:
+      opacity 160ms var(--ease-out-quint),
+      transform 160ms var(--ease-out-quint),
+      display 160ms,
+      overlay 160ms;
+    transition-behavior: allow-discrete;
+  }
+
+  .info-popover-panel[popover]:is(:popover-open, .\:popover-open) {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  @starting-style {
+    .info-popover-panel[popover]:is(:popover-open, .\:popover-open) {
+      opacity: 0;
+      transform: translateY(4px) scale(0.97);
+    }
+  }
+
   .macro-bar-fill {
     transform-origin: left center;
     transition: transform 420ms var(--ease-out-quint);
@@ -1127,6 +1150,39 @@ progress.macro-progress::-moz-progress-bar {
   }
   50% {
     opacity: 0.35;
+  }
+}
+
+/* Top-layer InfoPopover layout + native CSS Anchor Positioning */
+.info-popover-panel {
+  color: var(--muted-foreground);
+  padding: 0.625rem 0.75rem;
+  width: max-content;
+  max-width: min(16rem, calc(100vw - 1.5rem));
+  overflow: visible;
+}
+
+@supports (position-area: block-end) {
+  .info-popover-panel[popover][data-anchored="true"] {
+    inset: auto;
+    margin: 0.375rem 0;
+    position-area: block-end span-inline-end;
+    position-try-fallbacks:
+      flip-inline,
+      flip-block,
+      flip-block flip-inline,
+      block-end span-all,
+      block-start span-all;
+  }
+
+  .info-popover-panel[popover][data-anchored="true"][data-align="right"] {
+    position-area: block-end span-inline-start;
+    position-try-fallbacks:
+      flip-inline,
+      flip-block,
+      flip-block flip-inline,
+      block-end span-all,
+      block-start span-all;
   }
 }
 
