@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { motion } from 'motion/react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, generateId } from '@/lib/db/macroai-db';
 import { AppShell } from '@/components/shell/app-shell';
@@ -14,7 +15,12 @@ import {
   getServingOptionsForFood,
   scaleFoodByOption,
 } from '@/lib/nutrition/scaling';
-import { triggerHaptic } from '@/lib/motion';
+import {
+  SPRING_PILL,
+  isTestEnvironment,
+  triggerHaptic,
+} from '@/lib/motion';
+import { PageStagger, StaggerItem } from '@/components/motion/motion-primitives';
 import { useLoggerStore } from '@/stores/logger-store';
 import type { CustomRecipe, FoodItem, FoodLogEntry } from '@/types/nutrition';
 import {
@@ -283,8 +289,9 @@ export default function RecipesPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-5 sm:gap-6 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
+      <PageStagger className="flex flex-col gap-5 sm:gap-6 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
         {/* Header matching Dashboard Obsidian Aesthetic */}
+        <StaggerItem>
         <header className="flex items-center sm:items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight">
@@ -331,9 +338,10 @@ export default function RecipesPage() {
             <SettingsHeaderLink />
           </div>
         </header>
+        </StaggerItem>
 
         {/* Unified Toolbar Row: Segmented Tabs + Search (single horizontal row on md+) */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <StaggerItem className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div
             role="tablist"
             aria-label="Recipes and Custom Foods tabs"
@@ -343,28 +351,54 @@ export default function RecipesPage() {
               type="button"
               role="tab"
               aria-selected={activeTab === 'recipes'}
-              onClick={() => setActiveTab('recipes')}
-              className={`tactile-press py-2 px-4 rounded-full text-xs font-semibold transition-colors tabular-nums whitespace-nowrap ${
+              onClick={() => {
+                triggerHaptic(6);
+                setActiveTab('recipes');
+              }}
+              className={`relative tactile-press py-2 px-4 rounded-full text-xs font-semibold transition-colors tabular-nums whitespace-nowrap ${
                 activeTab === 'recipes'
-                  ? 'bg-foreground text-background shadow-xs'
+                  ? 'text-background'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Recipes{recipes ? ` (${recipes.length})` : ''}
+              {activeTab === 'recipes' && (
+                <motion.span
+                  layoutId={isTestEnvironment() ? undefined : 'recipes-library-tab-pill'}
+                  transition={SPRING_PILL}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 rounded-full bg-foreground liquid-glass-active-pill"
+                />
+              )}
+              <span className="relative z-10">
+                Recipes{recipes ? ` (${recipes.length})` : ''}
+              </span>
             </button>
             <button
               type="button"
               role="tab"
               aria-selected={activeTab === 'custom-foods'}
-              onClick={() => setActiveTab('custom-foods')}
-              className={`tactile-press py-2 px-4 rounded-full text-xs font-semibold transition-colors tabular-nums whitespace-nowrap ${
+              onClick={() => {
+                triggerHaptic(6);
+                setActiveTab('custom-foods');
+              }}
+              className={`relative tactile-press py-2 px-4 rounded-full text-xs font-semibold transition-colors tabular-nums whitespace-nowrap ${
                 activeTab === 'custom-foods'
-                  ? 'bg-foreground text-background shadow-xs'
+                  ? 'text-background'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Custom Foods & Barcodes
-              {customFoods ? ` (${customFoods.length})` : ''}
+              {activeTab === 'custom-foods' && (
+                <motion.span
+                  layoutId={isTestEnvironment() ? undefined : 'recipes-library-tab-pill'}
+                  transition={SPRING_PILL}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 rounded-full bg-foreground liquid-glass-active-pill"
+                />
+              )}
+              <span className="relative z-10">
+                Custom Foods & Barcodes
+                {customFoods ? ` (${customFoods.length})` : ''}
+              </span>
             </button>
           </div>
 
@@ -426,7 +460,7 @@ export default function RecipesPage() {
               </div>
             )}
           </div>
-        </div>
+        </StaggerItem>
 
         {activeTab === 'recipes' ? (
           <>
@@ -444,11 +478,20 @@ export default function RecipesPage() {
                     recipe.cookedWeightGrams > 0;
 
                   return (
-                    <div
+                    <motion.div
                       key={recipe.id}
+                      layout={!isTestEnvironment()}
+                      initial={isTestEnvironment() ? false : { opacity: 0, y: 20, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 320,
+                        damping: 26,
+                        mass: 0.9,
+                        delay: isTestEnvironment() ? 0 : Math.min(idx, 6) * 0.055,
+                      }}
                       data-testid={`recipe-card-${recipe.id}`}
-                      style={{ '--stagger-index': idx } as React.CSSProperties}
-                      className="stagger-item bg-card border border-border/50 macro-card-interactive rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-4"
+                      className="bg-card border border-border/50 macro-card-interactive rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-4"
                     >
                       {/* Card Title & Pin/Edit/Delete */}
                       <div className="flex items-start justify-between gap-2">
@@ -588,7 +631,7 @@ export default function RecipesPage() {
                           <span>Log</span>
                         </button>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>
@@ -890,7 +933,7 @@ export default function RecipesPage() {
             setEditingCustomFood(null);
           }}
         />
-      </div>
+      </PageStagger>
     </AppShell>
   );
 }

@@ -24,6 +24,12 @@ import { WeeklyCheckInCard } from '@/components/trends/weekly-checkin-card';
 import { WeightHistoryList } from '@/components/trends/weight-history-list';
 import { formatInt, formatWeight } from '@/components/trends/chart-utils';
 import { MicronutrientPanel } from '@/components/dashboard/micronutrient-panel';
+import {
+  AnimatedNumber,
+  PageStagger,
+  ScrollReveal,
+  StaggerItem,
+} from '@/components/motion/motion-primitives';
 import { useLoggerStore } from '@/stores/logger-store';
 import { triggerHaptic } from '@/lib/motion';
 import type { FoodLogEntry, UserGoals, WeightLogEntry } from '@/types/nutrition';
@@ -227,8 +233,9 @@ export default function TrendsPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-5 sm:gap-6 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
+      <PageStagger className="flex flex-col gap-5 sm:gap-6 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
         {/* Header */}
+        <StaggerItem>
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
@@ -265,24 +272,25 @@ export default function TrendsPage() {
             <SettingsHeaderLink />
           </div>
         </header>
+        </StaggerItem>
 
         {/* Responsive 12-Column Obsidian Bento Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 items-start animate-card-enter">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 items-start">
           {/* Weekly Check-In Card (only when eligible) */}
           {proposal?.eligible && (
-            <div className="md:col-span-12">
+            <StaggerItem className="md:col-span-12">
               <WeeklyCheckInCard
                 goals={activeGoals}
                 proposal={proposal}
                 unit={weightUnit}
               />
-            </div>
+            </StaggerItem>
           )}
 
           {/* Summary Telemetry Strip */}
-          <div className="md:col-span-12 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <StaggerItem className="md:col-span-12 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {/* Weekly Calorie Bank */}
-            <div className="bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 space-y-1">
+            <div className="macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 space-y-1">
               <div className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 <span>Weekly Calorie Bank</span>
                 <InfoPopover
@@ -291,7 +299,10 @@ export default function TrendsPage() {
                 />
               </div>
               <div className="text-lg sm:text-xl font-bold tabular-nums text-foreground">
-                {formatSignedKcal(analytics.weeklyNetBalance)}{' '}
+                <AnimatedNumber
+                  value={analytics.weeklyNetBalance}
+                  format={formatSignedKcal}
+                />{' '}
                 <span className="text-xs font-normal text-muted-foreground">kcal</span>
               </div>
               <div className="text-[11px] text-muted-foreground tabular-nums">
@@ -300,12 +311,15 @@ export default function TrendsPage() {
             </div>
 
             {/* Daily Avg Intake */}
-            <div className="bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 space-y-1">
+            <div className="macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 space-y-1">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Daily Avg Intake
               </div>
               <div className="text-lg sm:text-xl font-bold tabular-nums text-foreground">
-                {formatInt(analytics.avgCalories)}{' '}
+                <AnimatedNumber
+                  value={analytics.avgCalories}
+                  format={formatInt}
+                />{' '}
                 <span className="text-xs font-normal text-muted-foreground">kcal</span>
               </div>
               <div className="text-[11px] text-muted-foreground tabular-nums">
@@ -314,19 +328,19 @@ export default function TrendsPage() {
             </div>
 
             {/* Macro Split % */}
-            <div className="bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 space-y-1">
+            <div className="macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 space-y-1">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Macro Split
               </div>
               <div className="text-sm sm:text-base font-bold tabular-nums flex flex-wrap items-baseline gap-x-2 gap-y-0.5 pt-0.5">
                 <span style={{ color: 'var(--macro-protein)' }}>
-                  {Math.round(analytics.macroPct.protein)}% P
+                  <AnimatedNumber value={analytics.macroPct.protein} />% P
                 </span>
                 <span style={{ color: 'var(--macro-carbs)' }}>
-                  {Math.round(analytics.macroPct.carbs)}% C
+                  <AnimatedNumber value={analytics.macroPct.carbs} />% C
                 </span>
                 <span style={{ color: 'var(--macro-fat)' }}>
-                  {Math.round(analytics.macroPct.fat)}% F
+                  <AnimatedNumber value={analytics.macroPct.fat} />% F
                 </span>
               </div>
               <div className="text-[11px] text-muted-foreground tabular-nums">
@@ -336,7 +350,7 @@ export default function TrendsPage() {
             </div>
 
             {/* Protein g/kg & Fiber / 1000 kcal */}
-            <div className="bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 space-y-1">
+            <div className="macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 space-y-1">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Density &amp; Protein
               </div>
@@ -353,10 +367,11 @@ export default function TrendsPage() {
                   : '—'}
               </div>
             </div>
-          </div>
+          </StaggerItem>
 
           {/* Weight Trend Chart */}
-          <section className="md:col-span-7 self-stretch flex flex-col bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-3">
+          <ScrollReveal className="md:col-span-7 self-stretch flex">
+          <section className="w-full flex flex-col bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-3">
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-xl bg-[var(--macro-fiber)]/15 flex items-center justify-center text-[var(--macro-fiber)] shrink-0">
@@ -396,9 +411,11 @@ export default function TrendsPage() {
               onLogFirst={openNewWeighIn}
             />
           </section>
+          </ScrollReveal>
 
           {/* Observed TDEE Chart */}
-          <section className="md:col-span-5 self-stretch flex flex-col bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-3">
+          <ScrollReveal delay={0.08} className="md:col-span-5 self-stretch flex">
+          <section className="w-full flex flex-col bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-3">
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)] shrink-0">
@@ -433,9 +450,11 @@ export default function TrendsPage() {
 
             <TdeeChart result={rangedAdaptive} />
           </section>
+          </ScrollReveal>
 
           {/* Multi-Day Intake Trend Chart */}
-          <section className="md:col-span-12 bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-3">
+          <ScrollReveal className="md:col-span-12">
+          <section className="bg-card border border-border/50 rounded-2xl p-4 sm:p-5 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-xl bg-[var(--macro-carbs)]/15 flex items-center justify-center text-[var(--macro-carbs)] shrink-0">
@@ -467,9 +486,10 @@ export default function TrendsPage() {
 
             <IntakeTrendChart days={analytics.days} mode={intakeMode} />
           </section>
+          </ScrollReveal>
 
           {/* Micronutrients (Full-Width 2-Column Grid on md+ to eliminate vertical voids) */}
-          <div className="md:col-span-12">
+          <ScrollReveal className="md:col-span-12">
             <MicronutrientPanel
               defaultWindow="7d"
               columns={2}
@@ -482,9 +502,9 @@ export default function TrendsPage() {
               todayLogs={todayLogs}
               weeklyLogs={weeklyLogs}
             />
-          </div>
+          </ScrollReveal>
 
-          <div className="md:col-span-12">
+          <ScrollReveal className="md:col-span-12">
             <WeightHistoryList
               entries={safeWeightLogs}
               weightSeries={adaptive.weightSeries}
@@ -492,9 +512,9 @@ export default function TrendsPage() {
               onEdit={openEditWeighIn}
               onLogFirst={openNewWeighIn}
             />
-          </div>
+          </ScrollReveal>
         </div>
-      </div>
+      </PageStagger>
     </AppShell>
   );
 }

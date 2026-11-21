@@ -10,6 +10,11 @@ import { AiHealthStatusCard } from "@/components/settings/ai-health-status-card"
 import { CentralDbStatusCard } from "@/components/settings/central-db-status-card";
 import { AppleHealthShortcutCard } from "@/components/settings/apple-health-shortcut-card";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import {
+  PageStagger,
+  ScrollReveal,
+  StaggerItem,
+} from "@/components/motion/motion-primitives";
 import { triggerHaptic } from "@/lib/motion";
 import { ArrowLeft, Moon, ShieldCheck, Database } from "lucide-react";
 
@@ -28,8 +33,9 @@ export default function SettingsPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-4 sm:gap-5 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
+      <PageStagger className="flex flex-col gap-4 sm:gap-5 px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-8">
         {/* Compact Header matching Dashboard Obsidian Aesthetic */}
+        <StaggerItem>
         <header className="space-y-2.5">
           <div className="flex items-center justify-between gap-2">
             <Link
@@ -51,9 +57,10 @@ export default function SettingsPage() {
             </p>
           </div>
         </header>
+        </StaggerItem>
 
         {/* Mobile & Tablet Segmented Section Switcher (eliminates 3.7x VH vertical scroll) */}
-        <div className="lg:hidden">
+        <StaggerItem className="lg:hidden">
           <SegmentedControl<SettingsSectionTab>
             role="tablist"
             ariaLabel="Settings sections"
@@ -70,12 +77,12 @@ export default function SettingsPage() {
               { value: "data", label: "Data & Theme" },
             ]}
           />
-        </div>
+        </StaggerItem>
 
         {/* Responsive 12-Column Obsidian Bento Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 items-start animate-card-enter">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 items-start">
           {/* Left Column: Goals & TDEE Calculator */}
-          <div
+          <StaggerItem
             className={`lg:col-span-7 space-y-4 sm:space-y-5 ${
               activeTab === "targets" ? "block" : "hidden lg:block"
             }`}
@@ -109,10 +116,10 @@ export default function SettingsPage() {
                 </span>
               </div>
             </div>
-          </div>
+          </StaggerItem>
 
           {/* Right Column: Appearance, Sync, AI Vision & Backup */}
-          <div
+          <ScrollReveal
             className={`lg:col-span-5 lg:sticky lg:top-[max(1.5rem,env(safe-area-inset-top))] grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4 sm:gap-5 items-start ${
               activeTab === "targets" ? "hidden lg:grid" : "grid"
             }`}
@@ -168,9 +175,9 @@ export default function SettingsPage() {
             >
               <BackupPanel />
             </div>
-          </div>
+          </ScrollReveal>
         </div>
-      </div>
+      </PageStagger>
     </AppShell>
   );
 }
