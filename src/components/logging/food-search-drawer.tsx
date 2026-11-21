@@ -859,7 +859,7 @@ function FoodSearchContent({ date, mealSlot, onClose }: FoodSearchContentProps) 
     >
       <div
         ref={sheetRef}
-        className="w-full max-w-lg mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 animate-sheet-in sm:animate-modal-in max-h-[90dvh] flex flex-col"
+        className="w-full max-w-lg lg:max-w-2xl mx-auto surface-elevated-sheet rounded-t-3xl sm:rounded-3xl px-4 sm:px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 animate-sheet-in sm:animate-modal-in max-h-[90dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div

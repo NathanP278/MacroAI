@@ -233,9 +233,9 @@
     0 24px 54px -14px rgba(15, 23, 42, 0.22),
     0 4px 14px -3px rgba(15, 23, 42, 0.1);
   --canvas-ambient:
-    radial-gradient(900px circle at 12% -10%, rgba(79, 111, 230, 0.08), transparent 55%),
-    radial-gradient(700px circle at 88% 8%, rgba(124, 92, 230, 0.06), transparent 50%),
-    radial-gradient(800px circle at 50% 105%, rgba(46, 150, 94, 0.045), transparent 55%);
+    radial-gradient(900px circle at 12% -10%, color-mix(in srgb, var(--calorie) 8%, transparent), transparent 55%),
+    radial-gradient(700px circle at 88% 8%, color-mix(in srgb, var(--fiber) 6%, transparent), transparent 50%),
+    radial-gradient(800px circle at 50% 105%, color-mix(in srgb, var(--carbs) 4.5%, transparent), transparent 55%);
 
   --canvas: #eef0f5;
   --tile: rgba(255, 255, 255, 0.74);
