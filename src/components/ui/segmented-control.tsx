@@ -52,7 +52,7 @@ export function SegmentedControl<T extends string>({
       role={role}
       aria-label={ariaLabel}
       data-testid={dataTestId}
-      className={`relative inline-flex items-center rounded-full border border-border/80 shadow-[var(--shadow-glass-pill)] backdrop-blur-md ${className}`}
+      className={`relative inline-flex items-center rounded-full liquid-input-well ${className}`}
     >
       {options.map((opt) => {
         const isSelected = opt.value === value;
