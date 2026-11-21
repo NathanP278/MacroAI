@@ -119,7 +119,7 @@ export default function LogPage() {
                   title="Choose date"
                   className="tactile-press inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors tabular-nums"
                 >
-                  <Calendar className="w-3 h-3 text-[var(--macro-calories)] shrink-0" aria-hidden="true" />
+                  <Calendar className="w-3 h-3 text-muted-foreground shrink-0" aria-hidden="true" />
                   <span suppressHydrationWarning className="truncate">{label}</span>
                 </button>
               }
@@ -134,7 +134,7 @@ export default function LogPage() {
               <button
                 type="button"
                 onClick={handleToday}
-                className="touch-target tactile-press px-2.5 sm:px-3 min-h-[36px] py-1.5 rounded-full text-[11px] font-semibold bg-surface-sub border border-border/50 text-foreground hover:bg-surface-elevated flex items-center gap-1"
+                className="touch-target px-3 min-h-[36px] py-1.5 rounded-full text-[11px] font-semibold liquid-pill-glass text-foreground flex items-center gap-1"
               >
                 <RotateCcw className="w-3 h-3" aria-hidden="true" />
                 <span>Today</span>
@@ -144,7 +144,7 @@ export default function LogPage() {
               type="button"
               onClick={handlePrevDay}
               aria-label="Previous day"
-              className="touch-target tactile-press w-10 h-10 sm:w-9 sm:h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground shrink-0"
+              className="touch-target w-10 h-10 sm:w-9 sm:h-9 rounded-full flex items-center justify-center liquid-pill-glass text-muted-foreground hover:text-foreground shrink-0"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -152,7 +152,7 @@ export default function LogPage() {
               type="button"
               onClick={handleNextDay}
               aria-label="Next day"
-              className="touch-target tactile-press w-10 h-10 sm:w-9 sm:h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground shrink-0"
+              className="touch-target w-10 h-10 sm:w-9 sm:h-9 rounded-full flex items-center justify-center liquid-pill-glass text-muted-foreground hover:text-foreground shrink-0"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

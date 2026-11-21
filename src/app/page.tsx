@@ -428,7 +428,15 @@ export default function HomePage() {
           className="flex items-center justify-between gap-2.5"
         >
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex items-baseline gap-2.5">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground truncate">
+                Dashboard
+              </h1>
+              <span className="text-xs font-medium text-muted-foreground hidden sm:inline">
+                MacroAI
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 min-w-0 mt-1">
               <DatePickerPopover
                 activeDate={activeDate}
                 onSelectDate={handleSelectDate}
@@ -437,10 +445,10 @@ export default function HomePage() {
                   <button
                     type="button"
                     title="Choose date"
-                    className="tactile-press inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground transition-colors rounded-lg py-0.5 max-w-full"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full liquid-pill-glass text-[11px] font-medium text-muted-foreground hover:text-foreground max-w-full"
                   >
                     <Calendar
-                      className="w-3 h-3 text-[var(--macro-calories)] shrink-0"
+                      className="w-3 h-3 text-muted-foreground shrink-0"
                       aria-hidden="true"
                     />
                     <span className="truncate" suppressHydrationWarning>
@@ -453,20 +461,12 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={handleToday}
-                  className="touch-target tactile-press inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-sub border border-border/60 text-foreground hover:bg-surface-elevated shrink-0"
+                  className="touch-target inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold liquid-pill-glass text-foreground shrink-0"
                 >
                   <RotateCcw className="w-2.5 h-2.5" aria-hidden="true" />
                   <span>Today</span>
                 </button>
               )}
-            </div>
-            <div className="flex items-baseline gap-2.5 mt-0.5">
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground truncate">
-                Dashboard
-              </h1>
-              <span className="text-xs font-medium text-muted-foreground hidden sm:inline">
-                MacroAI
-              </span>
             </div>
           </div>
 
@@ -475,7 +475,7 @@ export default function HomePage() {
               type="button"
               onClick={handlePrevDay}
               aria-label="Previous day"
-              className="touch-target tactile-press w-11 h-11 sm:w-9 sm:h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground"
+              className="touch-target w-11 h-11 sm:w-9 sm:h-9 rounded-full flex items-center justify-center liquid-pill-glass text-muted-foreground hover:text-foreground"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -483,7 +483,7 @@ export default function HomePage() {
               type="button"
               onClick={handleNextDay}
               aria-label="Next day"
-              className="touch-target tactile-press w-11 h-11 sm:w-9 sm:h-9 rounded-full flex items-center justify-center bg-card border border-border/50 hover:bg-surface-sub text-muted-foreground hover:text-foreground"
+              className="touch-target w-11 h-11 sm:w-9 sm:h-9 rounded-full flex items-center justify-center liquid-pill-glass text-muted-foreground hover:text-foreground"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -505,7 +505,7 @@ export default function HomePage() {
             className="bg-card border border-border rounded-2xl px-4 py-3.5 flex flex-wrap items-center justify-between gap-3"
           >
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="w-9 h-9 rounded-xl bg-[var(--macro-calories)]/15 border border-[var(--macro-calories)]/25 flex items-center justify-center text-[var(--macro-calories)] shrink-0">
+              <div className="w-9 h-9 rounded-full liquid-pill-glass flex items-center justify-center text-foreground shrink-0">
                 <SlidersHorizontal className="w-4 h-4" aria-hidden="true" />
               </div>
               <div className="min-w-0">
@@ -521,7 +521,7 @@ export default function HomePage() {
               <Link
                 href="/settings"
                 onClick={() => triggerHaptic(8)}
-                className="touch-target tactile-press px-3.5 py-2 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90"
+                className="touch-target px-4 py-2 rounded-full liquid-pill-primary text-xs font-semibold"
               >
                 Set My Targets
               </Link>
@@ -580,7 +580,7 @@ export default function HomePage() {
               {/* Contextual Coaching & Body Strip: AI Meal Ideas + Weight Trend */}
               <div
                 data-testid="dashboard-quick-tools"
-                className="grid grid-cols-2 gap-3 sm:gap-4"
+                className="grid grid-cols-2 gap-2.5 sm:gap-4"
               >
                 <button
                   type="button"
@@ -588,10 +588,10 @@ export default function HomePage() {
                     triggerHaptic(8);
                     openSheet('meal-ideas');
                   }}
-                  className="touch-target tactile-press macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 text-left flex items-center gap-3 min-w-0"
+                  className="touch-target tactile-press macro-card-interactive bg-card border border-border rounded-2xl p-2.5 sm:p-4 text-left flex items-center gap-2 sm:gap-3 min-w-0"
                 >
-                  <span className="w-9 h-9 rounded-xl bg-[var(--macro-calories)]/15 border border-[var(--macro-calories)]/25 flex items-center justify-center text-[var(--macro-calories)] shrink-0">
-                    <Sparkles className="w-4 h-4" aria-hidden="true" />
+                  <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-full liquid-pill-glass flex items-center justify-center text-foreground shrink-0">
+                    <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-xs sm:text-sm font-bold text-foreground truncate">
@@ -605,7 +605,7 @@ export default function HomePage() {
                   </span>
                 </button>
 
-                <div className="macro-card-interactive bg-card border border-border/50 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-2 min-w-0">
+                <div className="macro-card-interactive bg-card border border-border rounded-2xl p-2.5 sm:p-4 flex items-center justify-between gap-1.5 sm:gap-2 min-w-0">
                   <Link
                     href="/trends"
                     onClick={() => triggerHaptic(8)}
@@ -614,25 +614,25 @@ export default function HomePage() {
                         ? `7D avg ${Math.round(rolling7d.avgCalories).toLocaleString('en-US')} kcal — Open Trends`
                         : 'Open Trends'
                     }
-                    className="touch-target tactile-press flex items-center gap-3 min-w-0 flex-1"
+                    className="touch-target tactile-press flex items-center gap-2 sm:gap-3 min-w-0 flex-1"
                   >
-                    <span className="w-9 h-9 rounded-xl bg-[var(--macro-fiber)]/15 border border-[var(--macro-fiber)]/25 flex items-center justify-center text-[var(--macro-fiber)] shrink-0">
-                      <Scale className="w-4 h-4" aria-hidden="true" />
+                    <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-full liquid-pill-glass flex items-center justify-center text-foreground shrink-0">
+                      <Scale className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-xs sm:text-sm font-bold text-foreground truncate tabular-nums">
+                      <span className="block text-xs sm:text-sm font-bold text-foreground whitespace-nowrap">
                         {adaptive.latestTrendKg !== null
                           ? formatWeight(adaptive.latestTrendKg, weightUnit)
                           : adaptive.latestScaleKg !== null
                             ? formatWeight(adaptive.latestScaleKg, weightUnit)
-                            : 'Weight Trend'}
+                            : 'Weight'}
                       </span>
-                      <span className="block text-[11px] text-muted-foreground truncate">
+                      <span className="block text-[11px] text-muted-foreground whitespace-nowrap">
                         {adaptive.latestTrendKg !== null
                           ? 'EMA trend'
                           : adaptive.latestScaleKg !== null
                             ? 'Latest scale'
-                            : 'Open Trends'}
+                            : 'Trends'}
                       </span>
                     </span>
                   </Link>
@@ -644,9 +644,9 @@ export default function HomePage() {
                     }}
                     aria-label="Log weigh-in"
                     title="Log weigh-in"
-                    className="touch-target tactile-press w-9 h-9 rounded-full bg-surface-sub border border-border/60 hover:bg-surface-elevated text-muted-foreground hover:text-foreground inline-flex items-center justify-center shrink-0"
+                    className="touch-target w-7 h-7 sm:w-9 sm:h-9 rounded-full liquid-pill-glass text-muted-foreground hover:text-foreground inline-flex items-center justify-center shrink-0"
                   >
-                    <Plus className="w-4 h-4" aria-hidden="true" />
+                    <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -673,7 +673,7 @@ export default function HomePage() {
                     type="button"
                     onClick={() => openSheet('search')}
                     aria-label="Add food"
-                    className="touch-target tactile-press flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-sub hover:bg-foreground hover:text-background text-xs font-semibold text-foreground"
+                    className="touch-target flex items-center gap-1 px-3 py-1 rounded-full liquid-pill-glass text-xs font-semibold text-foreground"
                   >
                     <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                     <span>Add</span>
@@ -823,7 +823,7 @@ export default function HomePage() {
                                       triggerHaptic(8);
                                       setEditingEntry(log);
                                     }}
-                                    className="touch-target tactile-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-card border border-border text-foreground font-medium hover:bg-surface-elevated"
+                                    className="touch-target inline-flex items-center gap-1 px-2.5 py-1 rounded-full liquid-pill-glass text-foreground font-medium"
                                   >
                                     <Pencil className="w-3 h-3" aria-hidden="true" />
                                     <span>Edit</span>
@@ -832,7 +832,7 @@ export default function HomePage() {
                                     type="button"
                                     tabIndex={isExpanded ? 0 : -1}
                                     onClick={() => void handleDuplicateEntry(log)}
-                                    className="touch-target tactile-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-card border border-border text-foreground font-medium hover:bg-surface-elevated"
+                                    className="touch-target inline-flex items-center gap-1 px-2.5 py-1 rounded-full liquid-pill-glass text-foreground font-medium"
                                   >
                                     <CopyPlus className="w-3 h-3" aria-hidden="true" />
                                     <span>Log Again</span>
@@ -895,7 +895,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => openSheet('search')}
-                    className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-foreground text-background text-xs font-semibold hover:opacity-90 tactile-press"
+                    className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full liquid-pill-primary text-xs font-semibold"
                   >
                     <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                     <span>Log Food</span>

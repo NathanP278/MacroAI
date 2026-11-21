@@ -42,7 +42,7 @@ export default function SettingsPage() {
               href="/"
               onClick={handleBack}
               aria-label="Back to previous page"
-              className="touch-target tactile-press lg:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border hover:border-border-focus text-xs font-semibold text-foreground"
+              className="touch-target lg:hidden inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full liquid-pill-glass text-xs font-semibold text-foreground"
             >
               <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Back</span>
@@ -93,7 +93,7 @@ export default function SettingsPage() {
             <div className="rounded-2xl bg-surface-sub/45 border border-border/40 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 text-xs text-muted-foreground">
               <div className="flex items-start gap-2 flex-1 min-w-0">
                 <ShieldCheck
-                  className="w-4 h-4 text-[var(--macro-carbs)] shrink-0 mt-0.5"
+                  className="w-4 h-4 text-foreground/80 shrink-0 mt-0.5"
                   aria-hidden="true"
                 />
                 <span>
@@ -105,7 +105,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex items-start gap-2 flex-1 min-w-0 sm:border-l sm:border-border/50 sm:pl-3">
                 <Database
-                  className="w-4 h-4 text-[var(--macro-calories)] shrink-0 mt-0.5"
+                  className="w-4 h-4 text-foreground/80 shrink-0 mt-0.5"
                   aria-hidden="true"
                 />
                 <span>
@@ -132,7 +132,7 @@ export default function SettingsPage() {
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-9 h-9 rounded-2xl bg-[var(--macro-calories)]/15 flex items-center justify-center text-[var(--macro-calories)] shrink-0">
+                  <div className="w-9 h-9 rounded-full liquid-pill-glass flex items-center justify-center text-foreground shrink-0">
                     <Moon className="w-4 h-4" aria-hidden="true" />
                   </div>
                   <div className="min-w-0">
